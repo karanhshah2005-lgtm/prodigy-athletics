@@ -1,0 +1,84 @@
+<!doctype html>
+<meta charset="utf-8"><title>garment matrix</title>
+<style>
+  body{margin:0;background:#e9e9ec;font:12px system-ui;padding:8px}
+  h2{margin:14px 0 6px;font:600 13px system-ui;color:#556}
+  .row{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+  .t{background:#fff;border-radius:6px;position:relative;overflow:hidden}
+  .t b{position:absolute;left:6px;top:4px;font:600 10px system-ui;color:#9aa;z-index:2}
+  .t svg{display:block;width:100%;height:auto}
+  #log{white-space:pre;font:12px ui-monospace;background:#111;color:#9f9;padding:8px;margin-top:10px}
+  #png{margin-top:8px}#png img{width:220px;background:#fff;border:1px solid #ccc;margin-right:6px}
+</style>
+<h2>plain black — ls/ss/shorts/spats × front/back</h2><div class="row" id="r1"></div>
+<h2>all-over art (tiled) — same matrix</h2><div class="row" id="r2"></div>
+<h2>ranked SS: white blue purple brown black (front) + LS blue back + chest logo (single, LS) + white-body ranked</h2><div class="row" id="r3"></div>
+<h2>lite detail × 8 (grid-card mode)</h2><div class="row" id="r4"></div>
+<div id="log"></div><div id="png"></div>
+<script type="module">
+import { renderGarment, renderRanked, slotsFor, slotBBox, STYLES } from '../src/render/garment.js';
+import { artPatternDef, artPatternRef, demoArt } from '../src/render/art.js';
+import { svgToPng, composeGrid, selfTest } from '../src/render/export.js';
+
+const log = m => (document.getElementById('log').textContent += m + '\n');
+const tile = (label, svg) => `<div class="t"><b>${label}</b>${svg}</div>`;
+const t0 = performance.now();
+
+const styles = ['ls','ss','shorts','spats'], views = ['front','back'];
+let html = '';
+for (const s of styles) for (const v of views) html += tile(`${s} ${v}`, renderGarment({ style: s, view: v, uid: `p-${s}-${v}` }));
+document.getElementById('r1').innerHTML = html;
+
+const geo = demoArt('geo'), camo = demoArt('camo'), mark = demoArt('mark');
+html = '';
+for (const s of styles) for (const v of views) {
+  const uid = `a-${s}-${v}`;
+  const defs = artPatternDef({ uid, key: 'art', art: s === 'spats' ? camo : geo, tile: true, transform: { scale: 0.7, rotate: 0, x: 0, y: 0 } });
+  html += tile(`${s} ${v} art`, renderGarment({ style: s, view: v, uid, defs, slots: { all: artPatternRef({ uid, key: 'art' }) } }));
+}
+document.getElementById('r2').innerHTML = html;
+
+html = '';
+for (const b of ['white','blue','purple','brown','black']) html += tile(`ss ${b}`, renderRanked({ style: 'ss', belt: b, uid: `rk-${b}` }));
+html += tile('ls blue back', renderRanked({ style: 'ls', view: 'back', belt: 'blue', uid: 'rk-lsb' }));
+{
+  const uid = 'logo-ls';
+  const bbox = slotBBox('ls', 'front', 'chest');
+  const defs = artPatternDef({ uid, key: 'logo', art: mark, tile: false, bbox, transform: { scale: 0.8, rotate: 0, x: 0, y: 0 } });
+  html += tile('ls chest logo', renderGarment({ style: 'ls', view: 'front', uid, defs, slots: { chest: artPatternRef({ uid, key: 'logo' }) } }));
+}
+html += tile('ss purple / white body', renderRanked({ style: 'ss', belt: 'purple', body: 'white', uid: 'rk-pw' }));
+document.getElementById('r3').innerHTML = html;
+
+html = '';
+for (const s of styles) for (const v of views) {
+  const uid = `l-${s}-${v}`;
+  const defs = artPatternDef({ uid, art: geo, tile: true, transform: { scale: 0.5 } });
+  html += tile(`${s} ${v} lite`, renderGarment({ style: s, view: v, uid, defs, detail: 'lite', size: 300, slots: { all: artPatternRef({ uid }) } }));
+}
+document.getElementById('r4').innerHTML = html;
+
+const t1 = performance.now();
+log(`built ${document.querySelectorAll('svg').length} svgs in ${(t1 - t0).toFixed(0)} ms (string build)`);
+requestAnimationFrame(() => requestAnimationFrame(() => log(`first paint of all ${document.querySelectorAll('svg').length} svgs done at +${(performance.now() - t0).toFixed(0)} ms`)));
+
+// slot metadata sanity
+for (const s of styles) log(`${s} front slots: ` + slotsFor(s, 'front').map(x => x.key).join(','));
+
+// export tests
+try {
+  const st = await selfTest(); log(`selfTest: ${JSON.stringify(st)}`);
+  const uid = 'ex1';
+  const defs = artPatternDef({ uid, art: geo, tile: true, transform: { scale: 0.7 } });
+  const svg = renderGarment({ style: 'ls', view: 'front', uid, defs, slots: { all: artPatternRef({ uid }) } });
+  const tE = performance.now();
+  const png = await svgToPng(svg, { width: 2000 });
+  log(`svgToPng 2000px: ${png.size} bytes in ${(performance.now() - tE).toFixed(0)} ms`);
+  const belts = ['white','blue','purple','brown','black'];
+  const grid = await composeGrid(belts.map(b => renderRanked({ style: 'ss', belt: b, uid: 'g-' + b })), { cols: 5, cellSize: 500, labels: belts, title: 'Ranked short sleeve — 5 colourways' });
+  log(`composeGrid 5 cells: ${grid.size} bytes`);
+  const box = document.getElementById('png');
+  for (const b of [png, grid]) { const im = new Image(); im.src = URL.createObjectURL(b); box.appendChild(im); }
+  log('EXPORT OK — canvas untainted');
+} catch (e) { log('EXPORT FAILED: ' + e.message); console.error(e); }
+</script>

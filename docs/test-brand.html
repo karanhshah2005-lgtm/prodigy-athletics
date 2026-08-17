@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prodigy Athletics — brand test page</title>
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../src/brand.css">
+<style>
+  /* Test-harness-only glue CSS. Nothing here belongs in brand.css itself —
+     it's page furniture for verifying the tokens/utilities, not a brand rule. */
+  .section { padding-block: var(--space-8); border-bottom: 1px solid var(--line); }
+  .section > .container > .eyebrow { display: block; margin-bottom: var(--space-2); }
+  .section h2 { margin-bottom: var(--space-2); }
+  .section p.lede { color: var(--muted); max-width: 60ch; margin-bottom: var(--space-6); }
+
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--space-5);
+  }
+  .swatch {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .swatch__color { height: 96px; }
+  .swatch__meta { padding: var(--space-3) var(--space-4); }
+  .swatch__meta .name { font-weight: 700; font-size: var(--fs-sm); }
+  .swatch__meta .hex { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: var(--fs-xs); color: var(--muted); }
+  .swatch__meta .role { font-size: var(--fs-xs); color: var(--muted); margin-top: var(--space-1); }
+
+  .type-row { display: flex; align-items: baseline; gap: var(--space-5); padding-block: var(--space-3); border-bottom: 1px dashed var(--line); }
+  .type-row .tag { width: 6ch; flex-shrink: 0; font-family: ui-monospace, monospace; font-size: var(--fs-xs); color: var(--muted); }
+  .type-row .sample { text-transform: none; letter-spacing: normal; }
+
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4); }
+
+  .card-surface { border-radius: var(--radius-lg); padding: var(--space-6); }
+
+  .logo-grid { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-7); }
+  .logo-cell { text-align: center; }
+  .logo-cell .cap { margin-top: var(--space-2); font-family: ui-monospace, monospace; font-size: var(--fs-xs); color: var(--muted); }
+  .logo-cell img, .logo-cell svg { background: transparent; }
+
+  .wordmark-demo { display: flex; align-items: center; }
+  .wordmark-demo svg { height: 48px; width: auto; }
+  .wordmark-demo.large svg { height: 84px; }
+
+  table.contrast { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+  table.contrast th, table.contrast td { text-align: left; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
+  table.contrast th { color: var(--muted); font-weight: 700; text-transform: uppercase; font-size: var(--fs-xs); letter-spacing: var(--tracking-wide); }
+  .pass { color: #1a7d3a; font-weight: 700; }
+  .pass::before { content: "PASS "; }
+  .fail { color: #b3261e; font-weight: 700; }
+  .fail::before { content: "FAIL "; }
+  .swatch-chip { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; border: 1px solid rgba(0,0,0,.15); }
+
+  code.tok { font-family: ui-monospace, Consolas, monospace; font-size: 0.92em; background: rgba(var(--navy-rgb), 0.06); padding: 0.1em 0.4em; border-radius: 4px; }
+  .surface-dark code.tok { background: rgba(var(--bone-rgb), 0.1); }
+</style>
+</head>
+<body>
+
+<nav class="nav-dark">
+  <div class="wordmark-demo" aria-hidden="false">
+    <img src="../assets/wordmark.svg" alt="Prodigy Athletics" style="height:22px;width:auto;">
+  </div>
+  <span style="flex:1"></span>
+  <a href="#swatches">Palette</a>
+  <a href="#type">Type</a>
+  <a href="#components">Components</a>
+  <a href="#marks">Marks</a>
+  <a href="#contrast">Contrast</a>
+</nav>
+
+<header class="section surface-dark" style="border-bottom:none;">
+  <div class="container">
+    <span class="eyebrow">Brand foundation — test page</span>
+    <h1 style="font-size:var(--fs-3xl); max-width:22ch;">Prodigy Athletics</h1>
+    <p class="lede" style="color:var(--muted);">
+      Proposed palette, type scale, marks and UI primitives from
+      <code class="tok">src/brand.css</code> and <code class="tok">assets/*.svg</code>.
+      Everything below is <strong>PROPOSED</strong> — the client supplied no logo, no
+      palette, no typeface. See <code class="tok">docs/DESIGN.md §7</code>.
+    </p>
+  </div>
+</header>
+
+<!-- ============================== SWATCHES ============================== -->
+<section class="section" id="swatches">
+  <div class="container">
+    <span class="eyebrow">01 — Palette</span>
+    <h2>Core tokens</h2>
+    <p class="lede">Ink Navy ground, Bone White lockup, Prodigy Gold as the single hot accent, three neutrals, plus a light page surface and a near-black footer ground.</p>
+    <div class="swatch-grid" id="core-swatches"></div>
+
+    <h2 style="margin-top:var(--space-8);">Belt colours — rank system, not brand chrome</h2>
+    <p class="lede">A separate, locked semantic system encoding rank (white / blue / purple / brown / black). Never spent on marketing chrome. Purple reads differently under different lighting and screens; <code class="tok">#5B2C8F</code> is pinned here as a defensible mid-tone rather than left to drift per-component.</p>
+    <div class="swatch-grid" id="belt-swatches"></div>
+  </div>
+</section>
+
+<!-- ============================== TYPE ============================== -->
+<section class="section" id="type">
+  <div class="container">
+    <span class="eyebrow">02 — Type</span>
+    <h2>Scale</h2>
+    <p class="lede">Display face (headings, buttons, badges): <code class="tok">'Barlow Condensed', 'Arial Narrow', Impact, 'Segoe UI', system-ui, sans-serif</code>, uppercase, tight tracking. Body/UI face: <code class="tok">Barlow, 'Segoe UI', system-ui, sans-serif</code>. No external fonts — this is the system-stack fallback rendering, exactly as it will degrade everywhere.</p>
+
+    <div id="type-scale"></div>
+
+    <h2 style="margin-top:var(--space-8);">Body copy</h2>
+    <p style="max-width: 60ch;">Barlow, or its system fallback, set at <code class="tok">--fs-base</code> with <code class="tok">--leading-base</code> line height. A practitioner-craft, technical-sportswear read — not tribal, not flames, not blackletter. <span class="text-muted">Muted text uses <code class="tok">var(--muted)</code>, which resolves differently per surface (see the contrast table below).</span></p>
+  </div>
+</section>
+
+<!-- ============================== COMPONENTS — LIGHT ============================== -->
+<section class="section" id="components">
+  <div class="container">
+    <span class="eyebrow">03 — Components</span>
+    <h2>Buttons &amp; badges — light surface</h2>
+    <p class="lede">Default <code class="tok">:root</code> tokens (<code class="tok">--bg:var(--page)</code>).</p>
+
+    <div class="row">
+      <button class="btn btn--primary">Shop the line</button>
+      <button class="btn btn--secondary">View sizing</button>
+      <button class="btn btn--ghost">Learn more</button>
+    </div>
+    <div class="row">
+      <span class="badge badge--sale">Sale</span>
+      <span class="badge badge--new">New</span>
+      <span class="badge badge--bestseller">Bestseller</span>
+      <span class="badge badge--sample">Sample data</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== COMPONENTS — DARK ============================== -->
+<section class="section surface-dark">
+  <div class="container">
+    <span class="eyebrow">03 — Components</span>
+    <h2>Buttons &amp; badges — dark surface</h2>
+    <p class="lede" style="color:var(--muted);"><code class="tok">.surface-dark</code> (<code class="tok">--bg:var(--navy)</code>, <code class="tok">--fg:var(--bone)</code>).</p>
+
+    <div class="row">
+      <button class="btn btn--primary">Shop the line</button>
+      <button class="btn btn--secondary">View sizing</button>
+      <button class="btn btn--ghost">Learn more</button>
+    </div>
+    <div class="row">
+      <span class="badge badge--sale">Sale</span>
+      <span class="badge badge--new">New</span>
+      <span class="badge badge--bestseller">Bestseller</span>
+      <span class="badge badge--sample">Sample data</span>
+    </div>
+
+    <h3 style="margin-top:var(--space-7); font-size:var(--fs-lg);">grid-4 (resize to see 2-up &lt; 1024px)</h3>
+    <div class="grid-4" style="margin-top:var(--space-3);">
+      <div class="card-surface" style="background:var(--surface);">Card one</div>
+      <div class="card-surface" style="background:var(--surface);">Card two</div>
+      <div class="card-surface" style="background:var(--surface);">Card three</div>
+      <div class="card-surface" style="background:var(--surface);">Card four</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== MARKS ============================== -->
+<section class="section" id="marks">
+  <div class="container">
+    <span class="eyebrow">04 — Marks</span>
+    <h2>Monogram / badge</h2>
+    <p class="lede">Original mark — the client has no logo, this is a proposal. A bold "P" whose bowl is cut as an angular, faceted loop: reads as a cinched grappling-belt knot without going tribal / flames / blackletter. Two flat shapes, no gradients, no thin strokes — built to survive small embroidery and heavy sublimation. <code class="tok">assets/logo.svg</code> and <code class="tok">assets/favicon.svg</code> are the identical badge.</p>
+
+    <div class="logo-grid">
+      <div class="logo-cell">
+        <img src="../assets/logo.svg" width="512" height="512" alt="Prodigy Athletics monogram at 512px">
+        <div class="cap">512px</div>
+      </div>
+      <div class="logo-cell">
+        <img src="../assets/logo.svg" width="128" height="128" alt="Prodigy Athletics monogram at 128px">
+        <div class="cap">128px</div>
+      </div>
+      <div class="logo-cell">
+        <img src="../assets/logo.svg" width="32" height="32" alt="Prodigy Athletics monogram at 32px">
+        <div class="cap">32px</div>
+      </div>
+      <div class="logo-cell">
+        <img src="../assets/favicon.svg" width="16" height="16" alt="Prodigy Athletics favicon at 16px">
+        <div class="cap">16px (favicon)</div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:var(--space-8);">currentColor variant</h2>
+    <p class="lede">The mark path uses <code class="tok">fill="currentColor"</code>; the SVG's own <code class="tok">color="#E8A33D"</code> is a low-specificity presentation attribute, so an inlined instance can be recoloured with real CSS. Backing plate stays Ink Navy in both.</p>
+    <div class="row" id="mark-recolor-demo"></div>
+
+    <h2 style="margin-top:var(--space-8);">Wordmark</h2>
+    <p class="lede">Horizontal lockup, rectilinear block-stencil letterforms drawn as <code class="tok">&lt;path&gt;</code> geometry — no <code class="tok">&lt;text&gt;</code>, no font dependency.</p>
+
+    <div class="card-surface surface-dark" style="border-radius:var(--radius-lg); margin-bottom:var(--space-4);">
+      <div class="wordmark-demo large">
+        <img src="../assets/wordmark.svg" alt="Prodigy Athletics wordmark, Bone White on Ink Navy">
+      </div>
+      <p class="text-xs text-muted" style="margin-top:var(--space-3);">Default — Bone White on Ink Navy (the primary lockup colour per docs/DESIGN.md).</p>
+    </div>
+    <div class="card-surface" style="border:1px solid var(--line); border-radius:var(--radius-lg);">
+      <div class="wordmark-demo large" id="wordmark-recolor-demo"></div>
+      <p class="text-xs text-muted" style="margin-top:var(--space-3);">Recoloured via CSS to Ink Navy for use on a light surface (same file, inlined).</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== CONTRAST ============================== -->
+<section class="section" id="contrast">
+  <div class="container">
+    <span class="eyebrow">05 — Verification</span>
+    <h2>Measured contrast ratios</h2>
+    <p class="lede">Computed live in-browser (WCAG 2.x relative-luminance formula) from the actual token hex values, not hand-typed. AA normal text needs 4.5:1, AA large text / UI needs 3:1.</p>
+    <table class="contrast">
+      <thead><tr><th>Pair</th><th>Foreground</th><th>Background</th><th>Ratio</th><th>AA normal (4.5:1)</th><th>AA large / UI (3:1)</th></tr></thead>
+      <tbody id="contrast-body"></tbody>
+    </table>
+  </div>
+</section>
+
+<footer class="section surface-dark" style="--bg:var(--footer); border-bottom:none;">
+  <div class="container">
+    <div class="wordmark-demo" style="margin-bottom:var(--space-4);">
+      <img src="../assets/wordmark.svg" alt="Prodigy Athletics" style="height:20px;width:auto;">
+    </div>
+    <p class="text-xs text-muted">docs/test-brand.html — brand foundation verification. PROPOSED, not a client-supplied brand.</p>
+  </div>
+</footer>
+
+<script type="module">
+  // ---- token readout -------------------------------------------------
+  const root = getComputedStyle(document.documentElement);
+  const tok = (name) => root.getPropertyValue(name).trim();
+
+  const coreTokens = [
+    ['--navy', 'Ink Navy', 'Ground'],
+    ['--bone', 'Bone White', 'Primary lockup, body text on dark'],
+    ['--gold', 'Prodigy Gold', 'Single hot accent'],
+    ['--gold-dark', 'Gold (hover)', 'Hover/active state'],
+    ['--ink', 'Ink', 'Neutral — near-black'],
+    ['--grey', 'Grey', 'Neutral — mid'],
+    ['--grey-light', 'Grey Light', 'Neutral — hairlines'],
+    ['--page', 'Page', 'Light page surface'],
+    ['--footer', 'Footer', 'Near-black footer ground'],
+  ];
+  const beltTokens = [
+    ['--belt-white', 'Belt — White'],
+    ['--belt-blue', 'Belt — Blue'],
+    ['--belt-purple', 'Belt — Purple'],
+    ['--belt-brown', 'Belt — Brown'],
+    ['--belt-black', 'Belt — Black'],
+  ];
+
+  function renderSwatches(list, targetId, withRole) {
+    const el = document.getElementById(targetId);
+    el.innerHTML = list.map(([varName, label, role]) => {
+      const hex = tok(varName);
+      return `<div class="swatch">
+        <div class="swatch__color" style="background:${hex};"></div>
+        <div class="swatch__meta">
+          <div class="name">${label}</div>
+          <div class="hex">${varName} · ${hex}</div>
+          ${withRole ? `<div class="role">${role || ''}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+  renderSwatches(coreTokens, 'core-swatches', true);
+  renderSwatches(beltTokens, 'belt-swatches', false);
+
+  // ---- type scale readout ---------------------------------------------
+  const scale = ['--fs-xs','--fs-sm','--fs-base','--fs-md','--fs-lg','--fs-xl','--fs-2xl','--fs-3xl','--fs-4xl'];
+  document.getElementById('type-scale').innerHTML = scale.map(v => {
+    const px = (parseFloat(tok(v)) * 16).toFixed(0);
+    return `<div class="type-row">
+      <span class="tag">${v}</span>
+      <span class="tag">${px}px</span>
+      <span class="sample" style="font-family:var(--font-display); text-transform:uppercase; letter-spacing:var(--tracking-tight); font-size:${tok(v)};">Prodigy</span>
+    </div>`;
+  }).join('');
+
+  // ---- contrast checker (WCAG relative luminance) ----------------------
+  function hexToRgb(hex) {
+    hex = hex.trim().replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+    const num = parseInt(hex, 16);
+    return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+  }
+  function relLuminance([r, g, b]) {
+    const chan = (c) => {
+      c /= 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    };
+    const [rl, gl, bl] = [chan(r), chan(g), chan(b)];
+    return 0.2126 * rl + 0.7152 * gl + 0.0722 * bl;
+  }
+  function contrast(hex1, hex2) {
+    const l1 = relLuminance(hexToRgb(hex1));
+    const l2 = relLuminance(hexToRgb(hex2));
+    const [lighter, darker] = l1 > l2 ? [l1, l2] : [l2, l1];
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  const pairs = [
+    ['Muted text on light page', tok('--grey'), tok('--page')],
+    ['Body text (ink) on light page', tok('--ink'), tok('--page')],
+    ['Bone on Ink Navy', tok('--bone'), tok('--navy')],
+    ['Muted (#A9AFB8) on Ink Navy', '#A9AFB8', tok('--navy')],
+    ['Gold on Ink Navy (primary btn / badge)', tok('--gold'), tok('--navy')],
+    ['Bone on Footer', tok('--bone'), tok('--footer')],
+    ['Gold on Footer', tok('--gold'), tok('--footer')],
+    ['Ink on Grey-light line', tok('--ink'), tok('--grey-light')],
+  ];
+
+  const tbody = document.getElementById('contrast-body');
+  tbody.innerHTML = pairs.map(([label, fg, bg]) => {
+    const ratio = contrast(fg, bg);
+    const r = ratio.toFixed(2);
+    const passAA = ratio >= 4.5;
+    const passUI = ratio >= 3;
+    return `<tr>
+      <td>${label}</td>
+      <td><span class="swatch-chip" style="background:${fg}"></span>${fg}</td>
+      <td><span class="swatch-chip" style="background:${bg}"></span>${bg}</td>
+      <td><strong>${r}:1</strong></td>
+      <td><span class="${passAA ? 'pass' : 'fail'}">${r}:1</span></td>
+      <td><span class="${passUI ? 'pass' : 'fail'}">${r}:1</span></td>
+    </tr>`;
+  }).join('');
+
+  console.log('[brand contrast]', pairs.map(([label, fg, bg]) => `${label}: ${contrast(fg,bg).toFixed(2)}:1`));
+
+  // ---- inline the badge mark 3x + recolour via CSS ----------------------
+  // NOTE: the colour override has to land on the <svg> element itself, not
+  // an ancestor. The mark's own `color="#E8A33D"` presentation attribute is
+  // a specified value for that element, so plain CSS inheritance from a
+  // wrapping <div> never reaches it (a first draft of this demo tried that
+  // and silently rendered gold 3x — inline style / a CSS rule targeting the
+  // <svg> directly beats the presentation attribute; targeting an ancestor
+  // does not, regardless of specificity).
+  fetch('../assets/logo.svg').then(r => r.text()).then(svgText => {
+    const el = document.getElementById('mark-recolor-demo');
+    const variants = [
+      { color: null, caption: 'default (gold)' },
+      { color: '#F5F3EE', caption: 'recoloured to Bone (CSS color, on the &lt;svg&gt;)' },
+      { color: '#FFFFFF', caption: 'recoloured to White (CSS color, on the &lt;svg&gt;)' },
+    ];
+    el.innerHTML = variants.map(v =>
+      `<div class="logo-cell"><div style="width:96px;height:96px;">${svgText}</div><div class="cap">${v.caption}</div></div>`
+    ).join('');
+    el.querySelectorAll('.logo-cell').forEach((cell, i) => {
+      const svg = cell.querySelector('svg');
+      svg.style.width = '100%';
+      svg.style.height = '100%';
+      if (variants[i].color) svg.style.color = variants[i].color;
+    });
+  });
+
+  fetch('../assets/wordmark.svg').then(r => r.text()).then(svgText => {
+    const el = document.getElementById('wordmark-recolor-demo');
+    el.innerHTML = svgText;
+    const svg = el.querySelector('svg');
+    svg.style.color = '#0B1220';
+    svg.style.height = '84px';
+    svg.style.width = 'auto';
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1380 150" role="img" aria-label="Prodigy Athletics" color="#F5F3EE">
+  <title>Prodigy Athletics</title>
+  <!-- Horizontal lockup, rectilinear block-stencil letterforms drawn as path geometry.
+       No <text>, no font dependency, no external fonts.
+       Fill is currentColor; the color="#F5F3EE" presentation attribute above is the
+       DEFAULT only (Bone White, the primary lockup colour per docs/DESIGN.md, meant
+       to sit on Ink Navy). Presentation attributes lose to a real CSS rule/inline
+       style, so a page can recolour this mark -- but the override must target the
+       <svg> element itself (e.g. `.wordmark svg{color:...}` or `svg.style.color=`),
+       not an ancestor: this element already has a specified `color`, so plain
+       inheritance from a parent never overrides it. -->
+  <g fill="currentColor">
+    <path transform="translate(13,15)" d="M0,0 L26,0 L26,120 L0,120 Z M0,0 L84,0 L84,26 L0,26 Z M58,0 L84,0 L84,76 L58,76 Z M0,50 L84,50 L84,76 L0,76 Z"/>
+    <path transform="translate(111,15)" d="M0,0 L26,0 L26,120 L0,120 Z M0,0 L84,0 L84,26 L0,26 Z M58,0 L84,0 L84,76 L58,76 Z M0,50 L84,50 L84,76 L0,76 Z M52,70 L78,70 L84,120 L58,120 Z"/>
+    <path transform="translate(209,15)" d="M0,0 L80,0 L80,26 L0,26 Z M0,94 L80,94 L80,120 L0,120 Z M0,26 L26,26 L26,94 L0,94 Z M54,26 L80,26 L80,94 L54,94 Z"/>
+    <path transform="translate(303,15)" d="M0,0 L26,0 L26,120 L0,120 Z M0,0 L78,0 L78,26 L0,26 Z M0,94 L78,94 L78,120 L0,120 Z M52,26 L78,26 L78,94 L52,94 Z"/>
+    <path transform="translate(395,15)" d="M0,0 L26,0 L26,120 L0,120 Z"/>
+    <path transform="translate(435,15)" d="M0,0 L80,0 L80,26 L0,26 Z M0,94 L80,94 L80,120 L0,120 Z M0,26 L26,26 L26,94 L0,94 Z M54,60 L80,60 L80,94 L54,94 Z M40,54 L80,54 L80,80 L40,80 Z"/>
+    <path transform="translate(529,15)" d="M0,0 L26,0 L50,60 L24,60 Z M60,60 L34,60 L58,0 L84,0 Z M29,54 L55,54 L55,120 L29,120 Z"/>
+    <path transform="translate(663,15)" fill-rule="evenodd" d="M0,120 L31,0 L57,0 L88,120 L62,120 L58,96 L30,96 L26,120 Z M44,24 L51,70 L37,70 Z"/>
+    <path transform="translate(765,15)" d="M0,0 L74,0 L74,26 L0,26 Z M24,0 L50,0 L50,120 L24,120 Z"/>
+    <path transform="translate(853,15)" d="M0,0 L26,0 L26,120 L0,120 Z M48,0 L74,0 L74,120 L48,120 Z M0,47 L74,47 L74,73 L0,73 Z"/>
+    <path transform="translate(941,15)" d="M0,0 L26,0 L26,120 L0,120 Z M0,94 L60,94 L60,120 L0,120 Z"/>
+    <path transform="translate(1015,15)" d="M0,0 L26,0 L26,120 L0,120 Z M0,0 L62,0 L62,26 L0,26 Z M0,47 L56,47 L56,73 L0,73 Z M0,94 L62,94 L62,120 L0,120 Z"/>
+    <path transform="translate(1091,15)" d="M0,0 L74,0 L74,26 L0,26 Z M24,0 L50,0 L50,120 L24,120 Z"/>
+    <path transform="translate(1179,15)" d="M0,0 L26,0 L26,120 L0,120 Z"/>
+    <path transform="translate(1219,15)" d="M0,0 L26,0 L26,120 L0,120 Z M0,0 L66,0 L66,26 L0,26 Z M0,94 L66,94 L66,120 L0,120 Z"/>
+    <path transform="translate(1299,15)" d="M0,0 L68,0 L68,26 L0,26 Z M0,0 L26,0 L26,60 L0,60 Z M0,47 L68,47 L68,73 L0,73 Z M42,60 L68,60 L68,120 L42,120 Z M0,94 L68,94 L68,120 L0,120 Z"/>
+  </g>
+</svg>

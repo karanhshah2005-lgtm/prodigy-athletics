@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 246 246" role="img" aria-label="Prodigy Athletics" color="#E8A33D">
+  <title>Prodigy Athletics — monogram</title>
+  <!--
+    Original mark, ours to propose (client has no existing logo — see docs/AGENT-CONTEXT.md).
+    A bold "P" whose bowl is cut as an angular, faceted loop — reads as a cinched
+    grappling-belt knot without going tribal/flames/blackletter. Two shapes only:
+      1. a solid navy roundel (full-bleed circle, no thin ring to vanish at 16px)
+      2. one <path fill-rule="evenodd"> for the P (outer silhouette + one faceted
+         counter/hole) — a handful of straight edges, no curves, no thin strokes.
+    fill="currentColor" on the mark path; color="#E8A33D" above is the DEFAULT
+    (Prodigy Gold on Ink Navy) and is a low-specificity presentation attribute, so
+    a page that inlines this SVG can override it with real CSS -- but the rule (or
+    inline style) must target the <svg> element itself, e.g. `.mark svg{color:...}`
+    or set `.style.color` on the svg node directly. A `color` set on an ANCESTOR
+    does NOT reach it: this element already has a specified value (this attribute),
+    so plain CSS inheritance never kicks in. The navy backing circle stays fixed —
+    only the mark itself recolours.
+    Survives small embroidery (stem/ring stroke ≈15% of the mark's width) and heavy
+    sublimation (two flat shapes, one colour each, no gradients/thin details).
+  -->
+  <circle cx="123" cy="123" r="123" fill="#0B1220"/>
+  <path
+    fill="currentColor"
+    fill-rule="evenodd"
+    transform="translate(8,3)"
+    d="M40,200 L40,40 L150,40 L190,80 L190,88 L150,128 L78,128 L78,200 Z
+       M78,66 L148,66 L168,84 L148,102 L78,102 Z"/>
+</svg>

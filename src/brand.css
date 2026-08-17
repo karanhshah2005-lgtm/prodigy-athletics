@@ -1,0 +1,332 @@
+/* ==========================================================================
+   Prodigy Athletics — brand foundation
+   PROPOSED palette/type (see docs/AGENT-CONTEXT.md + docs/DESIGN.md §7 Brand).
+   Static, zero-dependency, no build step, no external fonts (docs/AGENT-CONTEXT.md
+   rule 4). System font stacks only — must degrade gracefully everywhere.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Tokens
+   -------------------------------------------------------------------------- */
+:root {
+  /* --- Raw palette (PROPOSED, docs/DESIGN.md §7) --- */
+  --navy: #0B1220;        /* Ink Navy — ground */
+  --bone: #F5F3EE;        /* Bone White — primary lockup, body text on dark */
+  --gold: #E8A33D;        /* Prodigy Gold — single hot accent */
+  --gold-dark: #C6852B;   /* hover/active state for gold, same hue stepped down */
+  --ink: #1A1A1A;         /* near-black neutral */
+  --grey: #5A5A5A;        /* mid neutral — passes AA on the light page surface */
+  --grey-light: #DBDBDB;  /* light neutral — hairlines on light surfaces */
+  --page: #F5F5F5;        /* light page surface (distinct from Bone White lockup colour) */
+  --white: #FFFFFF;
+  --footer: #151517;      /* near-black footer ground */
+
+  /* RGB triples for rgba() mixes (hover washes etc.) without color-mix() */
+  --navy-rgb: 11, 18, 32;
+  --gold-rgb: 232, 163, 61;
+  --bone-rgb: 245, 243, 238;
+  --ink-rgb: 26, 26, 26;
+
+  /* --- Belt colours: a SEPARATE, locked, semantic system encoding rank.
+     Never spend these on marketing chrome — see docs/AGENT-CONTEXT.md.
+     Purple is the one belt that reads differently under different lighting/
+     screens; #5B2C8F is a defensible mid-tone (not too blue, not too pink)
+     and is pinned here rather than left to drift per-component. --- */
+  --belt-white: #EDEBE4;
+  --belt-blue: #1D4E9B;
+  --belt-purple: #5B2C8F; /* pinned mid-tone, see note above */
+  --belt-brown: #5C3A21;
+  --belt-black: #1B1B1B;
+
+  /* --- Type stacks: no external fonts. Body/UI face is Barlow — the one
+     typographic fact actually observed (shared with SAU, so co-branded
+     collateral composes at zero cost). Display is a tight condensed
+     athletic sans, uppercase, tight tracking; must degrade to system-ui. --- */
+  --font-body: Barlow, 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Barlow Condensed', 'Arial Narrow', Impact, 'Segoe UI', system-ui, sans-serif;
+
+  /* --- Type scale (1.25 ratio, 16px base) --- */
+  --fs-xs: 0.75rem;    /* 12px */
+  --fs-sm: 0.875rem;   /* 14px */
+  --fs-base: 1rem;     /* 16px */
+  --fs-md: 1.125rem;   /* 18px */
+  --fs-lg: 1.375rem;   /* 22px */
+  --fs-xl: 1.75rem;    /* 28px */
+  --fs-2xl: 2.25rem;   /* 36px */
+  --fs-3xl: 3rem;      /* 48px */
+  --fs-4xl: 4rem;      /* 64px */
+
+  --tracking-tight: -0.02em;  /* headlines/display */
+  --tracking-wide: 0.04em;    /* buttons */
+  --tracking-wider: 0.14em;   /* eyebrow / all-caps micro-labels */
+
+  --leading-tight: 1.05;
+  --leading-base: 1.5;
+
+  /* --- Spacing scale (4px base) --- */
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.5rem;   /* 8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.5rem;   /* 24px */
+  --space-6: 2rem;     /* 32px */
+  --space-7: 3rem;     /* 48px */
+  --space-8: 4rem;     /* 64px */
+  --space-9: 6rem;     /* 96px */
+
+  /* --- Radii --- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+
+  /* --- Shadows (ground colour navy-based; reads fine on both surfaces) --- */
+  --shadow-sm: 0 1px 2px rgba(var(--navy-rgb), 0.10);
+  --shadow-md: 0 4px 16px rgba(var(--navy-rgb), 0.16);
+  --shadow-lg: 0 16px 40px rgba(var(--navy-rgb), 0.24);
+
+  /* --- Motion --- */
+  --transition-fast: 150ms ease;
+  --transition-base: 220ms ease;
+
+  /* --- Semantic surface tokens — LIGHT is the default at :root.
+     Consumers should style off --bg/--fg/--muted/--line/--accent/--surface,
+     never off raw palette vars, so components work on either surface. --- */
+  --bg: var(--page);
+  --fg: var(--ink);
+  --muted: var(--grey);       /* #5A5A5A on #F5F5F5 = 6.3:1, passes AA (checked below) */
+  --line: var(--grey-light);
+  --accent: var(--gold);
+  --surface: var(--white);
+}
+
+/* --------------------------------------------------------------------------
+   2. Base reset
+   -------------------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  color-scheme: light dark;
+}
+
+body {
+  min-height: 100dvh;
+  font-family: var(--font-body);
+  font-size: var(--fs-base);
+  line-height: var(--leading-base);
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img, picture, svg, video { display: block; max-width: 100%; }
+input, button, textarea, select { font: inherit; color: inherit; }
+button { background: none; border: none; cursor: pointer; }
+a { color: inherit; }
+ul[role='list'], ol[role='list'] { list-style: none; padding: 0; }
+:target { scroll-margin-block: var(--space-6); }
+
+/* --------------------------------------------------------------------------
+   3. Base typography
+   -------------------------------------------------------------------------- */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-tight);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+}
+h1 { font-size: var(--fs-4xl); }
+h2 { font-size: var(--fs-3xl); }
+h3 { font-size: var(--fs-2xl); }
+h4 { font-size: var(--fs-xl); }
+h5 { font-size: var(--fs-lg); }
+h6 { font-size: var(--fs-md); }
+
+small, .text-muted { color: var(--muted); }
+
+.eyebrow {
+  display: inline-block;
+  font-family: var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* Type-scale utilities, for anything that isn't a semantic heading */
+.text-xs { font-size: var(--fs-xs); }
+.text-sm { font-size: var(--fs-sm); }
+.text-base { font-size: var(--fs-base); }
+.text-md { font-size: var(--fs-md); }
+.text-lg { font-size: var(--fs-lg); }
+.text-xl { font-size: var(--fs-xl); }
+.text-2xl { font-size: var(--fs-2xl); }
+.text-3xl { font-size: var(--fs-3xl); }
+.text-4xl { font-size: var(--fs-4xl); }
+
+/* --------------------------------------------------------------------------
+   4. Surfaces — swap the semantic tokens, everything downstream follows
+   -------------------------------------------------------------------------- */
+.surface-dark,
+.nav-dark {
+  --bg: var(--navy);
+  --fg: var(--bone);
+  --muted: #A9AFB8;              /* on #0B1220 = 8.5:1, passes AAA (checked below) */
+  --line: rgba(var(--bone-rgb), 0.14);
+  --accent: var(--gold);
+  --surface: #121A2C;            /* a hair lighter than navy, for cards on this surface */
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.surface-light {
+  --bg: var(--page);
+  --fg: var(--ink);
+  --muted: var(--grey);
+  --line: var(--grey-light);
+  --accent: var(--gold);
+  --surface: var(--white);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* Footer ground — near-black, still a dark surface (bone fg, gold accent),
+   just a deeper --bg than the nav/hero navy. Compose as:
+   <footer class="surface-dark" style="--bg:var(--footer)"> */
+.nav-dark {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+}
+.nav-dark a { color: var(--fg); text-decoration: none; }
+.nav-dark a:hover,
+.nav-dark a[aria-current='page'] { color: var(--gold); }
+
+/* --------------------------------------------------------------------------
+   5. Layout utilities
+   -------------------------------------------------------------------------- */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: var(--space-5);
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-5);
+}
+@media (min-width: 1024px) {
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   6. Focus ring — one visible, token-driven ring everywhere
+   -------------------------------------------------------------------------- */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* --------------------------------------------------------------------------
+   7. Buttons
+   -------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  font-weight: 700;
+  font-size: var(--fs-md);
+  line-height: 1;
+  padding: 0.9em 1.7em;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast),
+              border-color var(--transition-fast), transform var(--transition-fast);
+}
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* Primary — the gold/navy pairing (8.7:1 either direction, see report) so it
+   works as a solid CTA on any surface, not only when placed on navy. */
+.btn--primary {
+  background: var(--gold);
+  color: var(--navy);
+  border-color: var(--gold);
+}
+.btn--primary:hover { background: var(--gold-dark); border-color: var(--gold-dark); }
+
+/* Secondary — outline, inherits the surface's own fg/bg so it inverts cleanly
+   on both light and dark without a separate dark variant. */
+.btn--secondary {
+  background: transparent;
+  color: var(--fg);
+  border-color: var(--fg);
+}
+.btn--secondary:hover { background: var(--fg); color: var(--bg); }
+
+/* Ghost — no border/fill, accent-coloured text, faint accent wash on hover */
+.btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent);
+  padding-inline: 0.85em;
+}
+.btn--ghost:hover { background: rgba(var(--gold-rgb), 0.12); }
+
+/* --------------------------------------------------------------------------
+   8. Badges
+   -------------------------------------------------------------------------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  line-height: 1;
+  padding: 0.4em 0.75em;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.badge--sale        { background: var(--gold); color: var(--navy); }
+.badge--new          { background: var(--navy); color: var(--gold); border: 1px solid var(--gold); }
+.badge--bestseller   { background: var(--ink); color: var(--bone); }
+/* Sample data must be visibly labelled as sample data (docs/AGENT-CONTEXT.md) —
+   deliberately understated/dashed so it never gets mistaken for a real claim. */
+.badge--sample {
+  background: transparent;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+}

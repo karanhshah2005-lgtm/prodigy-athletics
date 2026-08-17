@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prodigy Athletics — Studio</title>
+<meta name="description" content="Upload artwork, preview it on real rashguard styles, export mockups and a factory cut sheet.">
+<link rel="stylesheet" href="src/brand.css">
+<link rel="stylesheet" href="src/ui/studio.css">
+</head>
+<body class="surface-dark studio-body">
+
+<header class="topbar">
+  <div class="topbar-left">
+    <span class="wordmark">PRODIGY ATHLETICS <span>&mdash; STUDIO</span></span>
+  </div>
+  <div class="topbar-right">
+    <button type="button" id="sampleDataBtn" class="badge badge--sample topbar-sample-pill" data-action="load-sample-data" title="Fill the current garment with sample artwork">Sample data</button>
+    <a class="topbar-store-link" href="index.html">&larr; Store</a>
+  </div>
+</header>
+
+<nav class="tab-strip" id="tabStrip" aria-label="Studio sections"></nav>
+
+<main class="studio-shell">
+  <nav class="icon-rail" id="iconRail" aria-label="Studio panels"></nav>
+
+  <section class="contextual-panel" id="contextualPanel" aria-label="Panel"></section>
+
+  <section class="canvas-region" id="canvasRegion">
+    <div class="view-switcher" id="viewSwitcher" role="tablist" aria-label="Canvas view"></div>
+    <div class="canvas-stage-wrap">
+      <div class="canvas-stage" id="canvasStage">
+        <div class="canvas-shadow-note" id="canvasNote" hidden></div>
+        <div id="svgHost" class="svg-host"></div>
+        <div id="overlayHost" class="overlay-host" aria-hidden="true"></div>
+        <div id="dragLayer" class="drag-layer" aria-hidden="true"></div>
+      </div>
+    </div>
+    <div class="cutsheet-notes" id="cutsheetNotes" hidden></div>
+  </section>
+
+  <aside class="scenes-rail" id="scenesRail" aria-label="Export scenes"></aside>
+</main>
+
+<div class="crop-modal-backdrop" id="cropModal" hidden>
+  <div class="crop-modal" role="dialog" aria-modal="true" aria-label="Crop artwork">
+    <h3>Crop artwork</h3>
+    <div class="crop-body">
+      <div class="crop-stage-wrap">
+        <div class="crop-stage" id="cropStage">
+          <img id="cropImg" alt="Uploaded artwork">
+          <div class="crop-box" id="cropBox">
+            <div class="crop-handle" data-corner="nw"></div>
+            <div class="crop-handle" data-corner="ne"></div>
+            <div class="crop-handle" data-corner="se"></div>
+            <div class="crop-handle" data-corner="sw"></div>
+          </div>
+        </div>
+      </div>
+      <div class="crop-side">
+        <label class="crop-square-toggle"><input type="checkbox" id="cropSquare" checked> Square crop</label>
+        <div class="crop-preview-label">Live preview</div>
+        <div class="crop-preview" id="cropPreview"></div>
+      </div>
+    </div>
+    <div class="crop-actions">
+      <button type="button" class="btn btn--secondary" id="cropCancel">Cancel</button>
+      <button type="button" class="btn btn--secondary" id="cropFull">Use full image</button>
+      <button type="button" class="btn btn--primary" id="cropApply">Apply crop</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastHost" class="toast-host" aria-live="polite"></div>
+
+<input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>
+
+<script type="module" src="src/ui/studio.js"></script>
+</body>
+</html>

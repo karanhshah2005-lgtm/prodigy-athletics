@@ -1,0 +1,1091 @@
+/**
+ * studio.js — Prodigy Athletics Studio UI.
+ * Owns: studio.html / studio.js / studio.css only. Consumes src/render/*.js as a
+ * library — never edits it. See docs/AGENT-CONTEXT.md for the module contract.
+ */
+
+import {
+  renderGarment, renderRanked, slotsFor, STYLES, BELT_HEX, BASE_PRESETS, estimateRankCoverage,
+} from '../render/garment.js';
+import { fileToArt, artPatternDef, artPatternRef, DEFAULT_TRANSFORM, demoArt } from '../render/art.js';
+import { svgToPng, downloadBlob, composeGrid } from '../render/export.js';
+
+// panel.js (cut sheet) may still be mid-write by another agent — load it lazily
+// and degrade gracefully if it isn't there yet (per task brief).
+let panelModulePromise = null;
+function loadPanelModule() {
+  if (!panelModulePromise) {
+    panelModulePromise = import('../render/panel.js').catch((e) => {
+      console.warn('panel.js not available yet — cut sheet view will retry on next open.', e);
+      return null;
+    });
+  }
+  return panelModulePromise;
+}
+
+// ───────────────────────────── state ─────────────────────────────
+
+const state = {
+  style: 'ss',
+  view: 'front',           // 'front' | 'back' — drives slotsFor(); art is stored per this
+  canvasTab: 'front',      // 'front' | 'back' | 'cutsheet' — what the canvas currently shows
+  baseColor: BASE_PRESETS.black,
+  aop: false,
+  ranked: { on: false, belt: 'blue', body: 'black' },
+  art: {},                 // { [slotKey]: { art, transform:{scale,rotate,x,y}, tile } } — for state.style
+  activeSlot: 'all',
+  activePanel: 'style',    // style | art | colour | ranked | scenes | export
+  sheetOpen: false,        // mobile bottom-sheet visibility
+  scenesSelected: { front: true, back: true, cutsheet: false, grid: false, set: false },
+};
+
+const SCENES = [
+  { key: 'front', label: 'Front' },
+  { key: 'back', label: 'Back' },
+  { key: 'cutsheet', label: 'Cut sheet' },
+  { key: 'grid', label: 'Colourway grid' },
+  { key: 'set', label: 'Set view' },
+];
+
+const RAIL_ITEMS = [
+  { key: 'style', label: 'Style', icon: '\u{1F455}' },
+  { key: 'art', label: 'Art', icon: '\u{1F5BC}' },
+  { key: 'colour', label: 'Colour', icon: '●' },
+  { key: 'ranked', label: 'Ranked', icon: '\u{1F94B}' },
+  { key: 'export', label: 'Export', icon: '⬇' },
+];
+const TAB_ITEMS = [RAIL_ITEMS[0], RAIL_ITEMS[1], RAIL_ITEMS[2], RAIL_ITEMS[3], { key: 'scenes', label: 'Scenes', icon: '▦' }, RAIL_ITEMS[4]];
+
+const gridSetCache = { grid: null, set: null };
+let gridSetDebounce = null;
+
+// ───────────────────────────── DOM refs ─────────────────────────────
+
+const iconRailEl = document.getElementById('iconRail');
+const tabStripEl = document.getElementById('tabStrip');
+const contextualPanelEl = document.getElementById('contextualPanel');
+const viewSwitcherEl = document.getElementById('viewSwitcher');
+const canvasStageEl = document.getElementById('canvasStage');
+const svgHostEl = document.getElementById('svgHost');
+const overlayHostEl = document.getElementById('overlayHost');
+const dragLayerEl = document.getElementById('dragLayer');
+const cutsheetNotesEl = document.getElementById('cutsheetNotes');
+const scenesRailEl = document.getElementById('scenesRail');
+const toastHostEl = document.getElementById('toastHost');
+const fileInputEl = document.getElementById('fileInput');
+
+const cropModalEl = document.getElementById('cropModal');
+const cropImgEl = document.getElementById('cropImg');
+const cropStageEl = document.getElementById('cropStage');
+const cropBoxEl = document.getElementById('cropBox');
+const cropSquareEl = document.getElementById('cropSquare');
+const cropPreviewEl = document.getElementById('cropPreview');
+const cropCancelEl = document.getElementById('cropCancel');
+const cropFullEl = document.getElementById('cropFull');
+const cropApplyEl = document.getElementById('cropApply');
+
+// ───────────────────────────── small utils ─────────────────────────────
+
+function clamp(n, lo, hi) { return Math.min(hi, Math.max(lo, n)); }
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function shortLabel(label) { return label.replace(/\s*\([^)]*\)\s*/g, '').toUpperCase(); }
+function isPanelSlot(slotDef) { return !!slotDef && slotDef.piece && slotDef.piece !== 'whole garment' && !slotDef.zone; }
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  toastHostEl.appendChild(t);
+  setTimeout(() => t.remove(), 3400);
+}
+
+// ───────────────────────────── slot / art helpers ─────────────────────────────
+
+function visibleSlots(style = state.style, view = state.view) {
+  const list = slotsFor(style, view);
+  if (!state.aop) return list;
+  return list.filter((s) => s.key === 'all' || s.zone);
+}
+
+function ensureActiveSlot() {
+  const vis = visibleSlots();
+  if (!vis.some((s) => s.key === state.activeSlot)) {
+    state.activeSlot = vis[0] ? vis[0].key : 'all';
+  }
+}
+
+function rankedAutoSlotKeys() {
+  const fam = STYLES[state.style] && STYLES[state.style].family;
+  if (fam === 'rashguard') return new Set(['sleeveL', 'sleeveR', 'collar']);
+  if (fam === 'shorts' || fam === 'spats') return new Set(['waistband']);
+  return new Set();
+}
+
+function setStyle(newStyle) {
+  if (!STYLES[newStyle] || newStyle === state.style) return;
+  const keep = ['all', 'chest', 'upperBack'];
+  const newKeys = new Set([...slotsFor(newStyle, 'front'), ...slotsFor(newStyle, 'back')].map((s) => s.key));
+  const newArt = {};
+  for (const k of keep) if (state.art[k] && newKeys.has(k)) newArt[k] = state.art[k];
+  state.style = newStyle;
+  state.art = newArt;
+  invalidateGridSetCache();
+  render();
+}
+
+function setCanvasTab(tab) {
+  state.canvasTab = tab;
+  if (tab === 'front' || tab === 'back') state.view = tab;
+  render();
+}
+
+/** Build concatenated <pattern> defs + a slots paint map for one style/view, from an art bucket. */
+function buildDefsAndSlots(style, view, uid, artBucket) {
+  const bucket = artBucket || state.art;
+  const list = slotsFor(style, view);
+  let defs = '';
+  const slots = {};
+  for (const s of list) {
+    const entry = bucket[s.key];
+    if (!entry || !entry.art) continue;
+    defs += artPatternDef({ uid, key: s.key, art: entry.art, transform: entry.transform || DEFAULT_TRANSFORM, tile: entry.tile !== false, bbox: s.bbox });
+    slots[s.key] = artPatternRef({ uid, key: s.key });
+  }
+  return { defs, slots };
+}
+
+function buildGarmentSvg({ style, view, uid, size = 1000, detail = 'full', artBucket }) {
+  const { defs, slots } = buildDefsAndSlots(style, view, uid, artBucket);
+  if (state.ranked.on) {
+    return renderRanked({ style, view, belt: state.ranked.belt, body: state.ranked.body, uid, size, detail, defs, slots });
+  }
+  return renderGarment({ style, view, baseColor: state.baseColor, slots, uid, size, detail, defs });
+}
+
+function assignArtToActiveSlot(art) {
+  const slotDef = visibleSlots().find((s) => s.key === state.activeSlot) || slotsFor(state.style, state.view)[0];
+  if (slotDef) state.activeSlot = slotDef.key;
+  state.art[state.activeSlot] = { art, transform: { ...DEFAULT_TRANSFORM }, tile: !isPanelSlot(slotDef) && slotDef && slotDef.key !== 'all' ? false : true };
+  invalidateGridSetCache();
+  render();
+}
+
+function loadSampleData() {
+  const demo = demoArt('geo');
+  const slotDef = visibleSlots().find((s) => s.key === state.activeSlot) || slotsFor(state.style, state.view)[0];
+  state.activeSlot = slotDef ? slotDef.key : 'all';
+  state.art[state.activeSlot] = { art: demo, transform: { ...DEFAULT_TRANSFORM }, tile: !isPanelSlot(slotDef) && slotDef.key !== 'all' ? false : true };
+  if (STYLES[state.style].family === 'rashguard') {
+    const zoneKey = state.view === 'front' ? 'chest' : 'upperBack';
+    if (zoneKey !== state.activeSlot) {
+      state.art[zoneKey] = { art: demoArt('mark'), transform: { ...DEFAULT_TRANSFORM }, tile: false };
+    }
+  }
+  state.ranked.on = true;
+  state.ranked.belt = 'blue';
+  invalidateGridSetCache();
+  showToast('Sample data loaded — placeholder artwork, not a client asset.');
+  render();
+}
+
+// ───────────────────────────── coverage estimator ─────────────────────────────
+
+function hexToRgb(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return [0, 0, 0];
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0; const l = (max + min) / 2;
+  const d = max - min;
+  let s = 0;
+  if (d) {
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)); break;
+      case g: h = (b - r) / d + 2; break;
+      default: h = (r - g) / d + 4; break;
+    }
+    h *= 60;
+  }
+  return [h, s, l];
+}
+function colorMatchesBelt(r, g, b, beltRgb) {
+  const [h1, s1, l1] = rgbToHsl(r, g, b);
+  const [h2, s2, l2] = rgbToHsl(beltRgb[0], beltRgb[1], beltRgb[2]);
+  const dl = Math.abs(l1 - l2);
+  if (s2 < 0.14) return dl < 0.15 && s1 < 0.22; // achromatic belt (white / black)
+  let dh = Math.abs(h1 - h2); if (dh > 180) dh = 360 - dh;
+  return dh < 16 && dl < 0.16 && s1 > 0.12;
+}
+
+async function computeCoveragePct() {
+  const uid = 'cov-' + Math.random().toString(36).slice(2, 8);
+  const { defs, slots } = buildDefsAndSlots(state.style, 'front', uid);
+  const svg = renderRanked({ style: state.style, view: 'front', belt: state.ranked.belt, body: state.ranked.body, uid, size: 200, detail: 'lite', defs, slots });
+  const blob = await svgToPng(svg, { width: 200, height: 200 });
+  const bitmap = await createImageBitmap(blob);
+  const c = document.createElement('canvas');
+  c.width = 200; c.height = 200;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0);
+  if (bitmap.close) bitmap.close();
+  const { data } = ctx.getImageData(0, 0, 200, 200);
+  const beltRgb = hexToRgb(BELT_HEX[state.ranked.belt]);
+  let total = 0, match = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < 200) continue; // skip the faint contact shadow / edge stroke
+    total++;
+    if (colorMatchesBelt(data[i], data[i + 1], data[i + 2], beltRgb)) match++;
+  }
+  c.width = c.height = 0;
+  if (!total) throw new Error('no opaque pixels sampled');
+  return Math.round((match / total) * 100);
+}
+
+function fallbackCoveragePct() {
+  const rankKeys = [...rankedAutoSlotKeys()];
+  const painted = rankKeys.filter((k) => !(state.art[k] && state.art[k].art));
+  const frac = estimateRankCoverage({ style: state.style, slotsPainted: painted });
+  return Math.round(frac * 100);
+}
+
+let coverageToken = 0;
+async function refreshCoverage() {
+  const pctEl0 = document.getElementById('coveragePct');
+  if (!pctEl0) return;
+  const myToken = ++coverageToken;
+  let pct;
+  try { pct = await computeCoveragePct(); }
+  catch (e) { console.warn('pixel coverage estimate failed, using geometry fallback', e); pct = fallbackCoveragePct(); }
+  if (myToken !== coverageToken) return; // superseded by a newer request
+  const pctEl = document.getElementById('coveragePct');
+  if (pctEl) pctEl.textContent = `approx. ${pct}%`;
+}
+
+// ───────────────────────────── export scenes ─────────────────────────────
+
+function setPairStyles() {
+  if (state.style === 'shorts' || state.style === 'spats') return { top: 'ss', bottom: state.style };
+  return { top: state.style, bottom: 'shorts' };
+}
+
+async function buildGridBlob(cellSize) {
+  const belts = ['white', 'blue', 'purple', 'brown', 'black'];
+  const svgs = belts.map((b) => {
+    const uid = 'grid-' + b;
+    const { defs, slots } = buildDefsAndSlots(state.style, 'front', uid);
+    return renderRanked({ style: state.style, view: 'front', belt: b, body: state.ranked.body, uid, size: 500, detail: 'lite', defs, slots });
+  });
+  return composeGrid(svgs, { cols: 5, cellSize, labels: belts.map(cap), title: `${STYLES[state.style].short} — ranked colourways` });
+}
+
+function garmentSvgFor(style, uid, cellSize, artBucket) {
+  const { defs, slots } = buildDefsAndSlots(style, 'front', uid, artBucket);
+  return state.ranked.on
+    ? renderRanked({ style, view: 'front', belt: state.ranked.belt, body: state.ranked.body, uid, size: cellSize, detail: 'lite', defs, slots })
+    : renderGarment({ style, view: 'front', baseColor: state.baseColor, slots, uid, size: cellSize, detail: 'lite', defs });
+}
+
+async function buildSetBlob(cellSize) {
+  const { top, bottom } = setPairStyles();
+  const allEntry = state.art.all;
+  const artBucket = allEntry && allEntry.art ? { all: allEntry } : {};
+  const svgTop = garmentSvgFor(top, 'set-top', cellSize, artBucket);
+  const svgBottom = garmentSvgFor(bottom, 'set-bottom', cellSize, artBucket);
+  return composeGrid([svgTop, svgBottom], { cols: 2, cellSize, labels: [STYLES[top].short, STYLES[bottom].short], title: `${STYLES[top].short} + ${STYLES[bottom].short} set` });
+}
+
+function invalidateGridSetCache() {
+  if (gridSetCache.grid) URL.revokeObjectURL(gridSetCache.grid);
+  if (gridSetCache.set) URL.revokeObjectURL(gridSetCache.set);
+  gridSetCache.grid = null;
+  gridSetCache.set = null;
+}
+
+function scheduleGridSetThumb(key) {
+  if (gridSetDebounce) clearTimeout(gridSetDebounce);
+  gridSetDebounce = setTimeout(async () => {
+    try {
+      const blob = key === 'grid' ? await buildGridBlob(90) : await buildSetBlob(90);
+      const url = URL.createObjectURL(blob);
+      if (gridSetCache[key]) URL.revokeObjectURL(gridSetCache[key]);
+      gridSetCache[key] = url;
+    } catch (e) { console.warn('scene thumbnail build failed:', key, e); }
+    render();
+  }, 300);
+}
+
+function sceneThumbHTML(key) {
+  if (key === 'front' || key === 'back') {
+    return buildGarmentSvg({ style: state.style, view: key, uid: 'sc-' + key, size: 140, detail: 'lite' });
+  }
+  if (key === 'cutsheet') {
+    return `<span class="loading-txt">CUT<br>SHEET</span>`;
+  }
+  if (key === 'grid' || key === 'set') {
+    if (gridSetCache[key]) return `<img src="${gridSetCache[key]}" alt="">`;
+    scheduleGridSetThumb(key);
+    return `<span class="loading-txt">&hellip;</span>`;
+  }
+  return '';
+}
+
+async function buildSceneBlob(key) {
+  if (key === 'front' || key === 'back') {
+    const svg = buildGarmentSvg({ style: state.style, view: key, uid: 'exp-' + key, size: 1000, detail: 'full' });
+    return svgToPng(svg, { width: 2400 });
+  }
+  if (key === 'cutsheet') {
+    const mod = await loadPanelModule();
+    if (!mod) throw new Error('cut sheet module is not ready yet');
+    const uid = 'exp-sheet';
+    const { defs, slots } = buildDefsAndSlots(state.style, state.view, uid);
+    const svg = mod.renderCutSheet({ style: state.style, slots, baseColor: state.baseColor, uid, defs });
+    return svgToPng(svg, { width: 2600 });
+  }
+  if (key === 'grid') return buildGridBlob(700);
+  if (key === 'set') return buildSetBlob(700);
+  throw new Error('unknown scene ' + key);
+}
+
+async function exportSelected() {
+  const chosen = SCENES.filter((s) => state.scenesSelected[s.key]);
+  const setStatus = (msg, busy) => {
+    document.querySelectorAll('.export-status').forEach((el) => {
+      el.textContent = msg;
+      el.classList.toggle('busy', !!busy);
+    });
+  };
+  if (!chosen.length) { setStatus('Pick at least one scene to export.', false); return; }
+  for (let i = 0; i < chosen.length; i++) {
+    const s = chosen[i];
+    setStatus(`Exporting ${s.label} (${i + 1} / ${chosen.length})…`, true);
+    await new Promise((r) => setTimeout(r, 20)); // let the status line paint before the heavy work
+    try {
+      const blob = await buildSceneBlob(s.key);
+      downloadBlob(blob, `prodigy-${state.style}-${s.key}.png`);
+    } catch (e) {
+      console.error('export failed:', s.key, e);
+      setStatus(`Could not export ${s.label}: ${e.message}`, false);
+      showToast(`Export failed: ${s.label}`);
+      return;
+    }
+  }
+  setStatus(`Done — exported ${chosen.length} scene${chosen.length > 1 ? 's' : ''}.`, false);
+}
+
+// ───────────────────────────── panel builders ─────────────────────────────
+
+function buildStylePanel() {
+  const styles = ['ls', 'ss', 'shorts', 'spats'];
+  const cards = styles.map((k) => {
+    const svg = renderGarment({ style: k, size: 120, detail: 'lite', uid: 'thumb-' + k });
+    const active = state.style === k ? 'active' : '';
+    return `<button type="button" class="style-card ${active}" data-action="set-style" data-style="${k}">${svg}<div class="style-card-label">${esc(STYLES[k].short)}</div></button>`;
+  }).join('');
+  return `
+    <div class="panel-section">
+      <div class="panel-title">Style</div>
+      <div class="style-grid">${cards}</div>
+    </div>
+    <div class="panel-section">
+      <label class="toggle-row"><input type="checkbox" data-action="toggle-aop" ${state.aop ? 'checked' : ''}> All-over print</label>
+      <div class="panel-note">Floods the whole garment with one artwork — the default for sublimation. Named pieces still layer on top of it.</div>
+    </div>`;
+}
+
+function buildActiveSlotControls(slotDef, entry) {
+  if (!slotDef) return `<div class="slot-empty-note">No print area selected.</div>`;
+  if (!entry || !entry.art) {
+    return `<div class="slot-empty-note">No artwork yet. Upload a file or try a sample above — it will appear here.</div>`;
+  }
+  const t = entry.transform;
+  const scalePct = Math.round(t.scale * 100);
+  const panel = isPanelSlot(slotDef);
+  return `
+    <div class="control-row">
+      <div class="control-label"><span>Scale</span></div>
+      <div class="control-inline">
+        <input type="range" id="scaleRange" min="10" max="300" step="1" value="${scalePct}">
+        <input type="number" id="scaleNum" min="10" max="300" value="${scalePct}"> %
+      </div>
+    </div>
+    <div class="control-row">
+      <div class="control-label"><span>Rotation</span></div>
+      <div class="dial-wrap">
+        <div class="rotate-dial" id="rotateDial"><div class="dial-knob" id="dialKnob" style="transform:rotate(${t.rotate}deg)"></div></div>
+        <div class="control-inline"><input type="number" id="rotateNum" value="${Math.round(t.rotate)}"><span>&deg;</span></div>
+      </div>
+    </div>
+    <div class="control-row">
+      <div class="control-label"><span>Position</span></div>
+      <div class="panel-note" style="margin-top:0">Drag the artwork directly on the canvas.</div>
+      <button type="button" class="btn btn--secondary btn-block" data-action="recenter">Back to centre</button>
+    </div>
+    ${panel ? `<label class="toggle-row"><input type="checkbox" data-action="toggle-tile" ${entry.tile !== false ? 'checked' : ''}> Tile artwork</label>` : ''}
+    <button type="button" class="btn btn--secondary btn-block" data-action="remove-art" style="margin-top:14px;">Remove art</button>`;
+}
+
+function buildArtPanel() {
+  const vis = visibleSlots();
+  const rows = vis.map((s) => {
+    const entry = state.art[s.key];
+    const active = s.key === state.activeSlot ? 'active' : '';
+    const thumb = entry && entry.art ? `<img src="${entry.art.dataUrl}" alt="">` : 'empty';
+    return `<button type="button" class="slot-row ${active}" data-action="set-active-slot" data-key="${s.key}">
+      <span class="slot-thumb">${thumb}</span>
+      <span class="slot-meta">
+        <span class="slot-name">${esc(s.label)}</span><br>
+        <span class="slot-size">${s.printPx[0]} &times; ${s.printPx[1]} px</span>
+      </span>
+    </button>`;
+  }).join('');
+
+  const activeSlotDef = vis.find((s) => s.key === state.activeSlot);
+  const activeEntry = state.art[state.activeSlot];
+
+  return `
+    <div class="panel-section">
+      <div class="panel-title">Print areas</div>
+      <div class="slot-list">${rows}</div>
+      <div class="upload-zone" id="uploadZone" data-action="browse">
+        Drop image here or <b>browse</b>
+        <div class="hint">PNG &middot; JPG &middot; WebP &middot; SVG</div>
+      </div>
+      <div class="sample-buttons">
+        <button type="button" data-action="use-demo" data-kind="geo">Try a sample — Geo</button>
+        <button type="button" data-action="use-demo" data-kind="camo">Try a sample — Camo</button>
+        <button type="button" data-action="use-demo" data-kind="mark">Try a sample — Mark</button>
+      </div>
+    </div>
+    <div class="panel-section active-slot-controls">
+      <div class="panel-title">${activeSlotDef ? esc(activeSlotDef.label) : 'Selected area'}</div>
+      ${buildActiveSlotControls(activeSlotDef, activeEntry)}
+    </div>`;
+}
+
+function buildColourPanel() {
+  const presetEntries = Object.entries(BASE_PRESETS);
+  const isCustom = !presetEntries.some(([, hex]) => hex.toLowerCase() === state.baseColor.toLowerCase());
+  const swatches = presetEntries.map(([name, hex]) => {
+    const active = !isCustom && hex.toLowerCase() === state.baseColor.toLowerCase();
+    return `<button type="button" class="swatch ${active ? 'active' : ''}" style="background:${hex}" title="${esc(cap(name))}" data-action="set-basecolor" data-color="${hex}"></button>`;
+  }).join('');
+  const rankedNote = state.ranked.on
+    ? `<div class="panel-note warn">Ranked mode is on — body colour comes from the Belt/Body picker in the Ranked panel while it's active.</div>` : '';
+  return `
+    <div class="panel-section">
+      <div class="panel-title">Base colour</div>
+      <div class="swatch-row">${swatches}</div>
+      <div class="custom-color-row">
+        <input type="color" id="customColorInput" value="${/^#([0-9a-f]{6})$/i.test(state.baseColor) ? state.baseColor : '#14161b'}">
+        <span>Custom</span>
+      </div>
+      <div class="panel-note">Sublimation prints on white polyester — the base colour is part of the artwork, so any colour costs the same.</div>
+      ${rankedNote}
+    </div>`;
+}
+
+function buildRankedPanel() {
+  const belts = ['white', 'blue', 'purple', 'brown', 'black'];
+  const beltChips = belts.map((b) => `<button type="button" class="belt-swatch ${state.ranked.belt === b ? 'active' : ''}" data-action="set-belt" data-belt="${b}">
+      <span class="chip" style="background:${BELT_HEX[b]}"></span>${cap(b)}
+    </button>`).join('');
+  const coverageBlock = state.ranked.on
+    ? `<div class="coverage-box">
+        <div class="coverage-pct" id="coveragePct">approx. &hellip;%</div>
+        <div class="coverage-label">rank colour — IBJJF Art. 8.1.14 requires at least 10%.</div>
+      </div>`
+    : `<div class="coverage-box"><div class="panel-note" style="margin:0">Turn on Ranked mode to see the coverage estimate.</div></div>`;
+  return `
+    <div class="panel-section">
+      <label class="toggle-row"><input type="checkbox" data-action="toggle-ranked" ${state.ranked.on ? 'checked' : ''}> Ranked mode</label>
+      <div class="panel-note">The client's one confirmed product: a belt-ranked short-sleeve line in five colours.</div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-title">Belt colour</div>
+      <div class="belt-row">${beltChips}</div>
+      <div class="panel-title">Body</div>
+      <div class="body-row">
+        <button type="button" class="body-btn ${state.ranked.body === 'black' ? 'active' : ''}" data-action="set-body" data-body="black">Black</button>
+        <button type="button" class="body-btn ${state.ranked.body === 'white' ? 'active' : ''}" data-action="set-body" data-body="white">White</button>
+      </div>
+      <div class="panel-note">Auto-flips: a black belt on a black body switches the body to white, and a white belt on a white body switches it to black, so the rank colour stays legible.</div>
+    </div>
+    <div class="panel-section">
+      ${coverageBlock}
+      <details class="rule-details">
+        <summary>Rule text</summary>
+        <div class="rule-quote">&ldquo;Both genders must wear a shirt of elastic material (skin tight) long enough to cover the torso all the way to the waistband of the shorts, colored black, white, or black and white, and with at least 10% of the rank color(belt) to which the athlete belongs.&rdquo;</div>
+        <a href="https://ibjjf.com/books-videos" target="_blank" rel="noopener">IBJJF books &amp; videos</a>
+      </details>
+      <details class="myth-details">
+        <summary>Common myths</summary>
+        <ul>
+          <li>There's no IBJJF rule capping sponsor logos at 50% on a rashguard — the patch-size rules are for the gi, not rashguards.</li>
+          <li>There's no rule text specifying rashguard sleeve length, or banning sleeveless designs.</li>
+        </ul>
+      </details>
+    </div>`;
+}
+
+function renderScenesPickerHTML() {
+  const rows = SCENES.map((s) => {
+    const checked = state.scenesSelected[s.key] ? 'checked' : '';
+    return `<label class="scene-row">
+      <input type="checkbox" data-action="toggle-scene" data-scene="${s.key}" ${checked}>
+      <span class="scene-thumb">${sceneThumbHTML(s.key)}</span>
+      <span class="scene-label">${esc(s.label)}</span>
+    </label>`;
+  }).join('');
+  return `<div class="panel-section" style="border-top:none;margin-top:0;padding-top:0;">
+    <div class="panel-title">Scenes</div>
+    <div class="scene-list">${rows}</div>
+  </div>`;
+}
+
+function renderExportActionHTML() {
+  return `<div class="panel-section" style="border-top:none;margin-top:0;padding-top:0;">
+    <div class="panel-title">Export</div>
+    <button type="button" class="btn btn--primary btn-block" data-action="export-selected">Export selected</button>
+    <div class="export-status"></div>
+    <div class="panel-note">PNGs are web previews at 2000&ndash;3000 px; the cut sheet is what goes to the factory.</div>
+  </div>`;
+}
+
+function renderPanelBody(tab) {
+  switch (tab) {
+    case 'style': return buildStylePanel();
+    case 'art': return buildArtPanel();
+    case 'colour': return buildColourPanel();
+    case 'ranked': return buildRankedPanel();
+    case 'scenes': return renderScenesPickerHTML();
+    case 'export': return renderExportActionHTML();
+    default: return buildStylePanel();
+  }
+}
+
+// ───────────────────────────── canvas ─────────────────────────────
+
+function renderEmptyOverlays() {
+  const vis = visibleSlots();
+  const rankAuto = rankedAutoSlotKeys();
+  let html = '';
+  for (const s of vis) {
+    const entry = state.art[s.key];
+    const hasArt = !!(entry && entry.art);
+    const isRankAuto = state.ranked.on && rankAuto.has(s.key) && !hasArt;
+    if (hasArt || isRankAuto) continue;
+    const [x, y, w, h] = s.bbox;
+    const isActive = s.key === state.activeSlot;
+    html += `<div class="empty-slot-overlay ${isActive ? 'is-active' : ''}" style="left:${x / 10}%;top:${y / 10}%;width:${w / 10}%;height:${h / 10}%">
+      <span>${esc(shortLabel(s.label))}<br>${s.printPx[0]} &times; ${s.printPx[1]} px</span>
+    </div>`;
+  }
+  overlayHostEl.innerHTML = html;
+}
+
+function renderGarmentCanvas({ overlays = true } = {}) {
+  cutsheetNotesEl.hidden = true;
+  cutsheetNotesEl.innerHTML = '';
+  const svg = buildGarmentSvg({ style: state.style, view: state.view, uid: 'studio', size: 1000, detail: 'full' });
+  svgHostEl.innerHTML = svg;
+  const activeEntry = state.art[state.activeSlot];
+  dragLayerEl.classList.toggle('draggable', !!(activeEntry && activeEntry.art));
+  if (overlays) renderEmptyOverlays();
+}
+
+async function renderCutSheetView() {
+  overlayHostEl.innerHTML = '';
+  dragLayerEl.classList.remove('draggable');
+  const mod = await loadPanelModule();
+  if (state.canvasTab !== 'cutsheet') return; // user navigated away while we awaited
+  if (!mod) {
+    svgHostEl.innerHTML = `<div class="slot-empty-note" style="padding:24px;text-align:center;">Cut sheet module loading&hellip;</div>`;
+    cutsheetNotesEl.hidden = true;
+    return;
+  }
+  const uid = 'sheet';
+  const { defs, slots } = buildDefsAndSlots(state.style, state.view, uid);
+  let svg;
+  try {
+    svg = mod.renderCutSheet({ style: state.style, slots, baseColor: state.baseColor, uid, defs });
+  } catch (e) {
+    console.error('renderCutSheet failed:', e);
+    svgHostEl.innerHTML = `<div class="slot-empty-note" style="padding:24px;">Could not render the cut sheet.</div>`;
+    return;
+  }
+  svgHostEl.innerHTML = svg;
+  let warnings = [];
+  try { warnings = mod.seamStraddleWarnings({ style: state.style, slots }) || []; } catch (e) { console.warn('seamStraddleWarnings failed:', e); }
+  if (warnings.length) {
+    cutsheetNotesEl.hidden = false;
+    cutsheetNotesEl.innerHTML = warnings.map((w) => `<div class="warn-item">${esc(w)}</div>`).join('');
+  } else {
+    cutsheetNotesEl.hidden = true;
+    cutsheetNotesEl.innerHTML = '';
+  }
+}
+
+function updateCanvas(opts) {
+  if (state.canvasTab === 'cutsheet') renderCutSheetView();
+  else renderGarmentCanvas(opts);
+}
+
+let canvasRaf = null;
+function scheduleCanvasOnly() {
+  if (canvasRaf) cancelAnimationFrame(canvasRaf);
+  canvasRaf = requestAnimationFrame(() => { canvasRaf = null; updateCanvas({ overlays: false }); });
+}
+
+// ───────────────────────────── continuous controls (no full re-render) ─────────────────────────────
+
+function bindScaleControls(container) {
+  const range = container.querySelector('#scaleRange');
+  const num = container.querySelector('#scaleNum');
+  if (!range || !num) return;
+  const apply = (pct) => {
+    pct = clamp(Math.round(pct), 10, 300);
+    const entry = state.art[state.activeSlot];
+    if (!entry) return;
+    entry.transform.scale = pct / 100;
+    range.value = String(pct);
+    num.value = String(pct);
+    scheduleCanvasOnly();
+  };
+  range.addEventListener('input', () => apply(Number(range.value)));
+  num.addEventListener('input', () => { if (num.value !== '') apply(Number(num.value)); });
+  range.addEventListener('change', invalidateGridSetCache);
+  num.addEventListener('change', invalidateGridSetCache);
+}
+
+function bindRotateControls(container) {
+  const dial = container.querySelector('#rotateDial');
+  const knob = container.querySelector('#dialKnob');
+  const num = container.querySelector('#rotateNum');
+  if (!dial || !num) return;
+  const setDeg = (deg) => {
+    deg = ((Math.round(deg) % 360) + 360) % 360;
+    const entry = state.art[state.activeSlot];
+    if (!entry) return;
+    entry.transform.rotate = deg;
+    num.value = String(deg);
+    if (knob) knob.style.transform = `rotate(${deg}deg)`;
+    scheduleCanvasOnly();
+  };
+  num.addEventListener('input', () => { if (num.value !== '') setDeg(Number(num.value)); });
+  num.addEventListener('change', invalidateGridSetCache);
+  let dragging = false;
+  const angleFromEvent = (e) => {
+    const r = dial.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    return Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI + 90;
+  };
+  dial.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    try { dial.setPointerCapture(e.pointerId); } catch { /* noop */ }
+    dial.classList.add('dragging');
+    setDeg(angleFromEvent(e));
+  });
+  dial.addEventListener('pointermove', (e) => { if (dragging) setDeg(angleFromEvent(e)); });
+  const end = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    dial.classList.remove('dragging');
+    try { dial.releasePointerCapture(e.pointerId); } catch { /* noop */ }
+    invalidateGridSetCache();
+  };
+  dial.addEventListener('pointerup', end);
+  dial.addEventListener('pointercancel', end);
+}
+
+function updateSwatchActiveClasses(container) {
+  container.querySelectorAll('.swatch').forEach((sw) => {
+    sw.classList.toggle('active', sw.dataset.color && sw.dataset.color.toLowerCase() === state.baseColor.toLowerCase());
+  });
+}
+
+function bindColorControls(container) {
+  const input = container.querySelector('#customColorInput');
+  if (!input) return;
+  input.addEventListener('input', () => {
+    state.baseColor = input.value;
+    updateSwatchActiveClasses(container);
+    scheduleCanvasOnly();
+  });
+  input.addEventListener('change', invalidateGridSetCache);
+}
+
+function bindContinuousControls(container) {
+  bindScaleControls(container);
+  bindRotateControls(container);
+  bindColorControls(container);
+}
+
+// ───────────────────────────── position drag on canvas (persistent element) ─────────────────────────────
+
+function initDragLayer() {
+  let dragging = false, startX = 0, startY = 0, startTX = 0, startTY = 0;
+  dragLayerEl.addEventListener('pointerdown', (e) => {
+    if (state.canvasTab === 'cutsheet') return;
+    const entry = state.art[state.activeSlot];
+    if (!entry || !entry.art) return;
+    dragging = true;
+    try { dragLayerEl.setPointerCapture(e.pointerId); } catch { /* noop */ }
+    dragLayerEl.classList.add('dragging');
+    startX = e.clientX; startY = e.clientY;
+    startTX = entry.transform.x; startTY = entry.transform.y;
+    e.preventDefault();
+  });
+  dragLayerEl.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const rect = canvasStageEl.getBoundingClientRect();
+    const px = rect.width || 1;
+    const entry = state.art[state.activeSlot];
+    if (!entry) return;
+    entry.transform.x = startTX + (e.clientX - startX) * 1000 / px;
+    entry.transform.y = startTY + (e.clientY - startY) * 1000 / px;
+    scheduleCanvasOnly();
+  });
+  const end = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    dragLayerEl.classList.remove('dragging');
+    try { dragLayerEl.releasePointerCapture(e.pointerId); } catch { /* noop */ }
+    invalidateGridSetCache();
+  };
+  dragLayerEl.addEventListener('pointerup', end);
+  dragLayerEl.addEventListener('pointercancel', end);
+}
+
+// ───────────────────────────── crop modal ─────────────────────────────
+
+let cropSession = null;
+
+function openCropModal(art) {
+  cropSession = { art, box: { x: 0, y: 0, w: 10, h: 10 } };
+  cropImgEl.src = art.dataUrl;
+  cropModalEl.hidden = false;
+  cropSquareEl.checked = true;
+  const onReady = () => { initCropBox(); updateCropPreview(); };
+  if (cropImgEl.complete && cropImgEl.naturalWidth) onReady();
+  else cropImgEl.onload = onReady;
+}
+
+function closeCropModal() {
+  cropModalEl.hidden = true;
+  cropSession = null;
+  cropImgEl.removeAttribute('src');
+}
+
+function initCropBox() {
+  const rect = cropStageEl.getBoundingClientRect();
+  const w = rect.width || 300, h = rect.height || 300;
+  const square = cropSquareEl.checked;
+  const size = Math.min(w, h) * 0.8;
+  const bw = square ? size : w * 0.7;
+  const bh = square ? size : h * 0.7;
+  cropSession.box = { x: (w - bw) / 2, y: (h - bh) / 2, w: bw, h: bh };
+  paintCropBox();
+}
+
+function paintCropBox() {
+  const { x, y, w, h } = cropSession.box;
+  cropBoxEl.style.left = x + 'px';
+  cropBoxEl.style.top = y + 'px';
+  cropBoxEl.style.width = w + 'px';
+  cropBoxEl.style.height = h + 'px';
+}
+
+function cropRectToImagePixels() {
+  const rect = cropStageEl.getBoundingClientRect();
+  const scaleX = cropSession.art.w / (rect.width || 1);
+  const scaleY = cropSession.art.h / (rect.height || 1);
+  const { x, y, w, h } = cropSession.box;
+  return { sx: x * scaleX, sy: y * scaleY, sw: w * scaleX, sh: h * scaleY };
+}
+
+function cropToArt() {
+  const { sx, sy, sw, sh } = cropRectToImagePixels();
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(sw));
+  c.height = Math.max(1, Math.round(sh));
+  const ctx = c.getContext('2d');
+  ctx.drawImage(cropImgEl, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  const dataUrl = c.toDataURL('image/png');
+  const result = { dataUrl, w: c.width, h: c.height, name: cropSession.art.name || 'cropped.png', type: 'image/png', warnings: [] };
+  c.width = c.height = 0;
+  return result;
+}
+
+function updateCropPreview() {
+  if (!cropSession) return;
+  const cropped = cropToArt();
+  const uid = 'crop-preview';
+  const slotDef = visibleSlots().find((s) => s.key === state.activeSlot) || slotsFor(state.style, state.view)[0];
+  const bucket = { ...state.art, [state.activeSlot]: { art: cropped, transform: { ...DEFAULT_TRANSFORM }, tile: isPanelSlot(slotDef) || (slotDef && slotDef.key === 'all') } };
+  const { defs, slots } = buildDefsAndSlots(state.style, state.view, uid, bucket);
+  const svg = state.ranked.on
+    ? renderRanked({ style: state.style, view: state.view, belt: state.ranked.belt, body: state.ranked.body, uid, size: 260, detail: 'lite', defs, slots })
+    : renderGarment({ style: state.style, view: state.view, baseColor: state.baseColor, slots, uid, size: 260, detail: 'lite', defs });
+  cropPreviewEl.innerHTML = svg;
+}
+
+function initCropModal() {
+  cropBoxEl.addEventListener('pointerdown', (e) => {
+    if (e.target.classList.contains('crop-handle')) return;
+    const rect = cropStageEl.getBoundingClientRect();
+    const startX = e.clientX, startY = e.clientY;
+    const orig = { ...cropSession.box };
+    try { cropBoxEl.setPointerCapture(e.pointerId); } catch { /* noop */ }
+    const move = (ev) => {
+      const nx = clamp(orig.x + (ev.clientX - startX), 0, rect.width - orig.w);
+      const ny = clamp(orig.y + (ev.clientY - startY), 0, rect.height - orig.h);
+      cropSession.box.x = nx; cropSession.box.y = ny;
+      paintCropBox(); updateCropPreview();
+    };
+    const up = (ev) => {
+      cropBoxEl.removeEventListener('pointermove', move);
+      cropBoxEl.removeEventListener('pointerup', up);
+      try { cropBoxEl.releasePointerCapture(ev.pointerId); } catch { /* noop */ }
+    };
+    cropBoxEl.addEventListener('pointermove', move);
+    cropBoxEl.addEventListener('pointerup', up);
+  });
+
+  cropBoxEl.querySelectorAll('.crop-handle').forEach((handle) => {
+    handle.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      const corner = handle.dataset.corner;
+      const rect = cropStageEl.getBoundingClientRect();
+      const startX = e.clientX, startY = e.clientY;
+      const orig = { ...cropSession.box };
+      try { handle.setPointerCapture(e.pointerId); } catch { /* noop */ }
+      const move = (ev) => {
+        const dx = ev.clientX - startX, dy = ev.clientY - startY;
+        const square = cropSquareEl.checked;
+        let { x, y, w, h } = orig;
+        if (corner === 'se') { w = orig.w + dx; h = square ? w : orig.h + dy; }
+        else if (corner === 'ne') { w = orig.w + dx; h = square ? w : orig.h - dy; y = square ? orig.y + orig.h - h : orig.y + dy; }
+        else if (corner === 'sw') { w = orig.w - dx; h = square ? w : orig.h + dy; x = orig.x + dx; }
+        else { w = orig.w - dx; h = square ? w : orig.h - dy; x = orig.x + dx; y = square ? orig.y + orig.h - h : orig.y + dy; }
+        w = clamp(w, 24, rect.width); h = clamp(h, 24, rect.height);
+        x = clamp(x, 0, rect.width - w); y = clamp(y, 0, rect.height - h);
+        cropSession.box = { x, y, w, h };
+        paintCropBox(); updateCropPreview();
+      };
+      const up = (ev) => {
+        handle.removeEventListener('pointermove', move);
+        handle.removeEventListener('pointerup', up);
+        try { handle.releasePointerCapture(ev.pointerId); } catch { /* noop */ }
+      };
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', up);
+    });
+  });
+
+  cropSquareEl.addEventListener('change', () => {
+    if (!cropSession) return;
+    if (cropSquareEl.checked) {
+      const { x, y, w, h } = cropSession.box;
+      const s = Math.min(w, h);
+      cropSession.box = { x, y, w: s, h: s };
+    }
+    paintCropBox(); updateCropPreview();
+  });
+
+  cropCancelEl.addEventListener('click', closeCropModal);
+  cropFullEl.addEventListener('click', () => {
+    if (!cropSession) return;
+    assignArtToActiveSlot(cropSession.art);
+    closeCropModal();
+  });
+  cropApplyEl.addEventListener('click', () => {
+    if (!cropSession) return;
+    const cropped = cropToArt();
+    assignArtToActiveSlot(cropped);
+    closeCropModal();
+  });
+}
+
+// ───────────────────────────── uploads ─────────────────────────────
+
+async function handleUploadedFile(file) {
+  try {
+    const art = await fileToArt(file);
+    if (art.warnings && art.warnings.length) showToast(art.warnings[0]);
+    openCropModal(art);
+  } catch (e) {
+    console.error('upload failed:', e);
+    showToast(e.message || 'Could not read that file.');
+  }
+}
+
+function initUploadHandlers() {
+  fileInputEl.addEventListener('change', () => {
+    const file = fileInputEl.files && fileInputEl.files[0];
+    if (file) handleUploadedFile(file);
+    fileInputEl.value = '';
+  });
+  contextualPanelEl.addEventListener('dragover', (e) => {
+    const zone = e.target.closest('#uploadZone');
+    if (!zone) return;
+    e.preventDefault();
+    zone.classList.add('dragover');
+  });
+  contextualPanelEl.addEventListener('dragleave', (e) => {
+    const zone = e.target.closest('#uploadZone');
+    if (zone) zone.classList.remove('dragover');
+  });
+  contextualPanelEl.addEventListener('drop', (e) => {
+    const zone = e.target.closest('#uploadZone');
+    if (!zone) return;
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) handleUploadedFile(file);
+  });
+}
+
+// ───────────────────────────── rails + master render ─────────────────────────────
+
+function renderIconRail() {
+  iconRailEl.innerHTML = RAIL_ITEMS.map((it) => `<button type="button" class="rail-btn ${state.activePanel === it.key ? 'active' : ''}" data-action="set-panel" data-panel="${it.key}"><span class="rail-ico">${it.icon}</span>${esc(it.label)}</button>`).join('');
+}
+function renderTabStrip() {
+  tabStripEl.innerHTML = TAB_ITEMS.map((it) => `<button type="button" class="tab-btn ${state.activePanel === it.key ? 'active' : ''}" data-action="set-panel" data-panel="${it.key}">${esc(it.label)}</button>`).join('');
+}
+function renderViewSwitcher() {
+  const tabs = [['front', 'Front'], ['back', 'Back'], ['cutsheet', 'Cut sheet']];
+  viewSwitcherEl.innerHTML = tabs.map(([k, l]) => `<button type="button" role="tab" aria-selected="${state.canvasTab === k}" class="${state.canvasTab === k ? 'active' : ''}" data-action="set-canvas-tab" data-tab="${k}">${l}</button>`).join('');
+}
+function renderScenesRailBody() { return renderScenesPickerHTML() + renderExportActionHTML(); }
+
+function render() {
+  ensureActiveSlot();
+  renderIconRail();
+  renderTabStrip();
+  renderViewSwitcher();
+  contextualPanelEl.innerHTML = renderPanelBody(state.activePanel);
+  contextualPanelEl.classList.toggle('sheet-open', state.sheetOpen);
+  bindContinuousControls(contextualPanelEl);
+  scenesRailEl.innerHTML = renderScenesRailBody();
+  bindContinuousControls(scenesRailEl);
+  updateCanvas({ overlays: true });
+  if (state.ranked.on) refreshCoverage();
+}
+
+// ───────────────────────────── event delegation ─────────────────────────────
+
+function onGlobalClick(e) {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  switch (el.dataset.action) {
+    case 'set-panel': {
+      const panel = el.dataset.panel;
+      const wasOpenSame = state.activePanel === panel && state.sheetOpen;
+      state.activePanel = panel;
+      state.sheetOpen = !wasOpenSame;
+      render();
+      break;
+    }
+    case 'close-sheet':
+      state.sheetOpen = false;
+      render();
+      break;
+    case 'set-style':
+      setStyle(el.dataset.style);
+      break;
+    case 'set-active-slot':
+      state.activeSlot = el.dataset.key;
+      render();
+      break;
+    case 'browse':
+      fileInputEl.click();
+      break;
+    case 'use-demo':
+      assignArtToActiveSlot(demoArt(el.dataset.kind));
+      break;
+    case 'recenter': {
+      const entry = state.art[state.activeSlot];
+      if (entry) { entry.transform.x = 0; entry.transform.y = 0; }
+      invalidateGridSetCache();
+      render();
+      break;
+    }
+    case 'remove-art':
+      delete state.art[state.activeSlot];
+      invalidateGridSetCache();
+      render();
+      break;
+    case 'set-basecolor':
+      state.baseColor = el.dataset.color;
+      invalidateGridSetCache();
+      render();
+      break;
+    case 'set-belt':
+      state.ranked.belt = el.dataset.belt;
+      invalidateGridSetCache();
+      render();
+      break;
+    case 'set-body':
+      state.ranked.body = el.dataset.body;
+      invalidateGridSetCache();
+      render();
+      break;
+    case 'set-canvas-tab':
+      setCanvasTab(el.dataset.tab);
+      break;
+    case 'export-selected':
+      exportSelected();
+      break;
+    case 'load-sample-data':
+      loadSampleData();
+      break;
+    default: break;
+  }
+}
+
+function onGlobalChange(e) {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  switch (el.dataset.action) {
+    case 'toggle-aop':
+      state.aop = el.checked;
+      render();
+      break;
+    case 'toggle-tile': {
+      const entry = state.art[state.activeSlot];
+      if (entry) entry.tile = el.checked;
+      invalidateGridSetCache();
+      render();
+      break;
+    }
+    case 'toggle-ranked':
+      state.ranked.on = el.checked;
+      invalidateGridSetCache();
+      render();
+      break;
+    case 'toggle-scene':
+      state.scenesSelected[el.dataset.scene] = el.checked;
+      render();
+      break;
+    default: break;
+  }
+}
+
+// ───────────────────────────── init ─────────────────────────────
+
+document.addEventListener('click', onGlobalClick);
+document.addEventListener('change', onGlobalChange);
+initDragLayer();
+initCropModal();
+initUploadHandlers();
+render();

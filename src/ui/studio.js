@@ -225,26 +225,46 @@ function colorMatchesBelt(r, g, b, beltRgb) {
   return dh < 16 && dl < 0.16 && s1 > 0.12;
 }
 
+
+/** Same two auto-flip rules as garment.js renderRanked — keeps the control honest. */
+function effectiveBody(belt, body) {
+  if (belt === 'black' && body === 'black') return 'white';
+  if (belt === 'white' && body === 'white') return 'black';
+  return body;
+}
+
 async function computeCoveragePct() {
-  const uid = 'cov-' + Math.random().toString(36).slice(2, 8);
-  const { defs, slots } = buildDefsAndSlots(state.style, 'front', uid);
-  const svg = renderRanked({ style: state.style, view: 'front', belt: state.ranked.belt, body: state.ranked.body, uid, size: 200, detail: 'lite', defs, slots });
-  const blob = await svgToPng(svg, { width: 200, height: 200 });
-  const bitmap = await createImageBitmap(blob);
-  const c = document.createElement('canvas');
-  c.width = 200; c.height = 200;
-  const ctx = c.getContext('2d');
-  ctx.drawImage(bitmap, 0, 0);
-  if (bitmap.close) bitmap.close();
-  const { data } = ctx.getImageData(0, 0, 200, 200);
-  const beltRgb = hexToRgb(BELT_HEX[state.ranked.belt]);
+  // Belt-INDEPENDENT area estimate: render an unshaded (detail:'flat') mask of the
+  // same construction with the rank-coloured slots painted a marker colour and
+  // everything else dark, then count marker pixels over garment pixels — front and
+  // back both, since the rule is about the garment's surface, not one photo of it.
+  // (Colour-matching the shaded render was biased: multiply shading darkened white
+  // sleeves out of the match window and under-reported white/blue belts.)
+  const MARK = '#FF00FF';
+  const rankKeys = [...rankedAutoSlotKeys()].filter((k) => !(state.art[k] && state.art[k].art));
+  const markSlots = {};
+  for (const k of rankKeys) markSlots[k] = MARK;
+  // user-art slots occlude rank colour: paint them dark so they never count
+  for (const k of Object.keys(state.art)) if (state.art[k] && state.art[k].art && k !== 'all') markSlots[k] = '#101010';
   let total = 0, match = 0;
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] < 200) continue; // skip the faint contact shadow / edge stroke
-    total++;
-    if (colorMatchesBelt(data[i], data[i + 1], data[i + 2], beltRgb)) match++;
+  for (const view of ['front', 'back']) {
+    const uid = 'cov-' + view;
+    const svg = renderGarment({ style: state.style, view, baseColor: '#101010', slots: markSlots, uid, size: 200, detail: 'flat' });
+    const blob = await svgToPng(svg, { width: 200, height: 200 });
+    const bitmap = await createImageBitmap(blob);
+    const c = document.createElement('canvas');
+    c.width = 200; c.height = 200;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0);
+    if (bitmap.close) bitmap.close();
+    const { data } = ctx.getImageData(0, 0, 200, 200);
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 200) continue;
+      total++;
+      if (data[i] > 200 && data[i + 1] < 80 && data[i + 2] > 200) match++;
+    }
+    c.width = c.height = 0;
   }
-  c.width = c.height = 0;
   if (!total) throw new Error('no opaque pixels sampled');
   return Math.round((match / total) * 100);
 }
@@ -498,6 +518,7 @@ function buildRankedPanel() {
   const beltChips = belts.map((b) => `<button type="button" class="belt-swatch ${state.ranked.belt === b ? 'active' : ''}" data-action="set-belt" data-belt="${b}">
       <span class="chip" style="background:${BELT_HEX[b]}"></span>${cap(b)}
     </button>`).join('');
+  const effBody = effectiveBody(state.ranked.belt, state.ranked.body);
   const coverageBlock = state.ranked.on
     ? `<div class="coverage-box">
         <div class="coverage-pct" id="coveragePct">approx. &hellip;%</div>
@@ -514,8 +535,8 @@ function buildRankedPanel() {
       <div class="belt-row">${beltChips}</div>
       <div class="panel-title">Body</div>
       <div class="body-row">
-        <button type="button" class="body-btn ${state.ranked.body === 'black' ? 'active' : ''}" data-action="set-body" data-body="black">Black</button>
-        <button type="button" class="body-btn ${state.ranked.body === 'white' ? 'active' : ''}" data-action="set-body" data-body="white">White</button>
+        <button type="button" class="body-btn ${effBody === 'black' ? 'active' : ''}" data-action="set-body" data-body="black">Black${effBody === 'black' && state.ranked.body !== 'black' ? ' (auto)' : ''}</button>
+        <button type="button" class="body-btn ${effBody === 'white' ? 'active' : ''}" data-action="set-body" data-body="white">White${effBody === 'white' && state.ranked.body !== 'white' ? ' (auto)' : ''}</button>
       </div>
       <div class="panel-note">Auto-flips: a black belt on a black body switches the body to white, and a white belt on a white body switches it to black, so the rank colour stays legible.</div>
     </div>
@@ -661,9 +682,20 @@ function bindScaleControls(container) {
     scheduleCanvasOnly();
   };
   range.addEventListener('input', () => apply(Number(range.value)));
-  num.addEventListener('input', () => { if (num.value !== '') apply(Number(num.value)); });
+  // While typing: only push in-range values to the model, and never rewrite the
+  // field under the user's cursor (typing "150" used to become "300").
+  num.addEventListener('input', () => {
+    const v = Number(num.value);
+    if (num.value === '' || !Number.isFinite(v) || v < 10 || v > 300) return;
+    const entry = state.art[state.activeSlot];
+    if (!entry) return;
+    entry.transform.scale = v / 100;
+    range.value = String(Math.round(v));
+    scheduleCanvasOnly();
+  });
+  // On commit (blur / Enter): clamp once and normalise the display.
+  num.addEventListener('change', () => { apply(Number(num.value) || 100); invalidateGridSetCache(); });
   range.addEventListener('change', invalidateGridSetCache);
-  num.addEventListener('change', invalidateGridSetCache);
 }
 
 function bindRotateControls(container) {

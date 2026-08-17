@@ -379,11 +379,12 @@ function renderRashguard(h, { style, view, baseColor, slots, size, detail, defs 
   const collar = S('collar');
   const all = S('all');
   const outline = style === 'ls' ? (front ? GAR_LS_F : GAR_LS_B) : (front ? GAR_SS_F : GAR_SS_B);
+  const flat = detail === 'flat';
   const fill = (clip, p) => p ? `<g clip-path="${url(clip)}"><rect width="1000" height="1000" fill="${p}"/></g>` : '';
 
   return `${svgOpen(size, u)}
   <defs>${rashguardDefs(h, { style, view, detail })}${defs}</defs>
-  <ellipse cx="500" cy="838" rx="205" ry="17" fill="#000" opacity=".14" filter="${url('s2')}"/>
+  ${flat ? '' : `<ellipse cx="500" cy="838" rx="205" ry="17" fill="#000" opacity=".14" filter="${url('s2')}"/>`}
   <g clip-path="${url('cGar')}">
     <rect width="1000" height="1000" fill="${baseColor}"/>
     ${all ? `<rect width="1000" height="1000" fill="${all}"/>` : ''}
@@ -392,11 +393,11 @@ function renderRashguard(h, { style, view, baseColor, slots, size, detail, defs 
     ${fill('cVR', vr)}
     ${fill('cCol', collar)}
     ${zone ? `<g clip-path="${url('cTor')}">${fill('cZone', zone)}</g>` : ''}
-    ${rashguardShading(h, { view, style })}
-    ${grainLayer(h, detail)}
-    ${rashguardSeams({ view, style })}
+    ${flat ? '' : rashguardShading(h, { view, style })}
+    ${flat ? '' : grainLayer(h, detail)}
+    ${flat ? '' : rashguardSeams({ view, style })}
   </g>
-  <path d="${outline}" fill="none" stroke="#000" stroke-opacity=".20" stroke-width="2.5"/>
+  ${flat ? '' : `<path d="${outline}" fill="none" stroke="#000" stroke-opacity=".20" stroke-width="2.5"/>`}
 </svg>`;
 }
 
@@ -404,6 +405,7 @@ function renderRashguard(h, { style, view, baseColor, slots, size, detail, defs 
 
 function renderShorts(h, { view, baseColor, slots, size, detail, defs }) {
   const { u, id, url } = h;
+  const flat = detail === 'flat';
   const front = view === 'front';
   const S = k => paint(slots[k]);
   const vl = front ? S('frontR') : S('backL');
@@ -446,12 +448,12 @@ function renderShorts(h, { view, baseColor, slots, size, detail, defs }) {
     ${defs}
   </defs>
   <g transform="${SHORTS_XF}">
-    <ellipse cx="500" cy="580" rx="180" ry="14" fill="#000" opacity=".14" filter="${url('s2')}"/>
+    ${flat ? '' : `<ellipse cx="500" cy="580" rx="180" ry="14" fill="#000" opacity=".14" filter="${url('s2')}"/>`}
     <g clip-path="${url('cG')}">
       <rect width="1000" height="1000" fill="${baseColor}"/>
       ${all ? `<rect width="1000" height="1000" fill="${all}"/>` : ''}
       ${fill('cL', vl)}${fill('cR', vr)}${fill('cB', band)}
-      <g style="mix-blend-mode:multiply">
+      ${flat ? '' : `<g style="mix-blend-mode:multiply">
         <rect width="1000" height="1000" fill="${url('x')}"/><rect width="1000" height="1000" fill="${url('y')}"/>
         ${front ? shadeFront : shadeBack}
         <rect x="344" y="208" width="312" height="36" fill="#000" opacity=".14"/>
@@ -466,9 +468,9 @@ function renderShorts(h, { view, baseColor, slots, size, detail, defs }) {
       <g ${SEAM_STYLE}>
         <path d="M 344 244 L 656 244"/>
         ${seams}
-      </g>
+      </g>`}
     </g>
-    <path d="${SHORTS}" fill="none" stroke="#000" stroke-opacity=".20" stroke-width="2.5"/>
+    ${flat ? '' : `<path d="${SHORTS}" fill="none" stroke="#000" stroke-opacity=".20" stroke-width="2.5"/>`}
   </g>
 </svg>`;
 }
@@ -477,6 +479,7 @@ function renderShorts(h, { view, baseColor, slots, size, detail, defs }) {
 
 function renderSpats(h, { view, baseColor, slots, size, detail, defs }) {
   const { u, id, url } = h;
+  const flat = detail === 'flat';
   const front = view === 'front';
   const S = k => paint(slots[k]);
   const vl = front ? S('legR') : S('legL');
@@ -522,12 +525,12 @@ function renderSpats(h, { view, baseColor, slots, size, detail, defs }) {
       <stop offset=".72" stop-color="#000" stop-opacity=".04"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></linearGradient>
     ${defs}
   </defs>
-  <ellipse cx="500" cy="898" rx="150" ry="14" fill="#000" opacity=".14" filter="${url('s2')}"/>
+  ${flat ? '' : `<ellipse cx="500" cy="898" rx="150" ry="14" fill="#000" opacity=".14" filter="${url('s2')}"/>`}
   <g clip-path="${url('cG')}">
     <rect width="1000" height="1000" fill="${baseColor}"/>
     ${all ? `<rect width="1000" height="1000" fill="${all}"/>` : ''}
     ${fill('cL', vl)}${fill('cR', vr)}${fill('cB', band)}
-    <g style="mix-blend-mode:multiply">
+    ${flat ? '' : `<g style="mix-blend-mode:multiply">
       <g clip-path="${url('cL')}"><rect width="1000" height="1000" fill="${url('legL')}"/></g>
       <g clip-path="${url('cR')}"><rect width="1000" height="1000" fill="${url('legR')}"/></g>
       <rect width="1000" height="1000" fill="${url('gY')}"/>
@@ -544,9 +547,9 @@ function renderSpats(h, { view, baseColor, slots, size, detail, defs }) {
     <g ${SEAM_STYLE}>
       <path d="M 343 248 C 448 262 552 262 657 248"/>
       ${seams}
-    </g>
+    </g>`}
   </g>
-  <path d="${SPATS}" fill="none" stroke="#000" stroke-opacity=".20" stroke-width="2.5"/>
+  ${flat ? '' : `<path d="${SPATS}" fill="none" stroke="#000" stroke-opacity=".20" stroke-width="2.5"/>`}
 </svg>`;
 }
 

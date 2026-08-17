@@ -1,0 +1,127 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>panel.js test — print panel / cut sheet</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin: 0; background: #54565c; font: 13px/1.5 system-ui, sans-serif; padding: 20px 20px 80px; }
+  h1 { color: #fff; font-size: 18px; letter-spacing: .5px; margin: 0 0 4px; }
+  p.lede { color: #c7c8cc; margin: 0 0 24px; max-width: 760px; }
+  .card { background: #fff; border-radius: 6px; max-width: 1900px; margin: 0 auto 28px; padding: 16px 16px 20px; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+  .card h2 { font: 700 13px/1 ui-monospace, Consolas, monospace; letter-spacing: 1.5px; margin: 0 0 4px; color: #111; }
+  .card .setup { font: 12px system-ui, sans-serif; color: #777; margin: 0 0 12px; }
+  svg { display: block; width: 100%; height: auto; border: 1px solid #eee; }
+  .below { display: flex; gap: 24px; margin-top: 14px; flex-wrap: wrap; }
+  .below > div { flex: 1 1 320px; min-width: 280px; }
+  .below h3 { font: 700 11px ui-monospace, Consolas, monospace; letter-spacing: 1px; color: #888; margin: 0 0 6px; text-transform: uppercase; }
+  table { border-collapse: collapse; font: 12px ui-monospace, Consolas, monospace; width: 100%; }
+  table td, table th { text-align: left; padding: 3px 8px 3px 0; border-bottom: 1px solid #eee; }
+  ul.warnings { margin: 0; padding-left: 18px; }
+  ul.warnings li { margin: 0 0 6px; color: #7a4b00; }
+  ul.warnings.empty li { color: #999; font-style: italic; }
+  .err { color: #b00020; font: 12px ui-monospace, monospace; white-space: pre-wrap; }
+</style>
+
+<h1>panel.js — print panel / cut sheet test</h1>
+<p class="lede">
+  Four styles, four different paint setups, exercising <code>renderCutSheet</code>,
+  <code>cutSheetPieces</code> and <code>seamStraddleWarnings</code> together.
+  LS uses a demo &lt;pattern&gt; passed through <code>defs</code> with <code>slots.all</code>
+  (full all-over print). SS uses named slots only, in flat colours, with every slot painted.
+  Shorts uses named slots with only some pieces painted (to show warnings firing selectively).
+  Spats uses two different named colours on the two leg pieces (mismatched sides).
+</p>
+
+<div id="root"></div>
+
+<script type="module">
+  import { renderCutSheet, cutSheetPieces, seamStraddleWarnings } from '../src/render/panel.js';
+
+  const root = document.getElementById('root');
+
+  const DEMO_PATTERN = (uid) => `
+    <pattern id="${uid}-art" width="150" height="150" patternUnits="userSpaceOnUse">
+      <rect width="150" height="150" fill="#141642"/>
+      <circle cx="75" cy="75" r="54" fill="none" stroke="#ff2e63" stroke-width="13"/>
+      <circle cx="75" cy="75" r="27" fill="#00d9c0"/>
+      <path d="M0 0 L150 150 M150 0 L0 150" stroke="#ffb703" stroke-width="8"/>
+      <rect width="150" height="15" fill="#ff2e63"/>
+    </pattern>`;
+
+  const CASES = [
+    {
+      title: 'LONG-SLEEVE — all-over print via defs + slots.all',
+      setup: `slots = { all: 'url(#ls1-art)' }, defs = demo <pattern>, baseColor default`,
+      build() {
+        const uid = 'ls1';
+        const slots = { all: `url(#${uid}-art)` };
+        return { style: 'ls', slots, uid, defs: DEMO_PATTERN(uid) };
+      },
+    },
+    {
+      title: 'SHORT-SLEEVE — every named slot painted, flat colours',
+      setup: `slots = { front:'#0B1220', back:'#0B1220', sleeveL:'#E8A33D', sleeveR:'#E8A33D', collar:'#E8A33D' }`,
+      build() {
+        const uid = 'ss1';
+        const slots = {
+          front: '#0B1220', back: '#0B1220',
+          sleeveL: '#E8A33D', sleeveR: '#E8A33D',
+          collar: '#E8A33D',
+        };
+        return { style: 'ss', slots, uid, baseColor: '#F5F3EE' };
+      },
+    },
+    {
+      title: 'SHORTS — only some panels painted',
+      setup: `slots = { frontL:'#E8A33D', frontR:'#E8A33D', waistband:'#0B1220' } — back panels left at baseColor`,
+      build() {
+        const uid = 'shorts1';
+        const slots = { frontL: '#E8A33D', frontR: '#E8A33D', waistband: '#0B1220' };
+        return { style: 'shorts', slots, uid };
+      },
+    },
+    {
+      title: 'SPATS — mismatched leg colours',
+      setup: `slots = { legL:'#004ABE', legR:'#E8A33D' } — deliberately different sides`,
+      build() {
+        const uid = 'spats1';
+        const slots = { legL: '#004ABE', legR: '#E8A33D' };
+        return { style: 'spats', slots, uid };
+      },
+    },
+  ];
+
+  for (const c of CASES) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    try {
+      const args = c.build();
+      const svg = renderCutSheet(args);
+      const pieces = cutSheetPieces(args.style);
+      const warnings = seamStraddleWarnings({ style: args.style, slots: args.slots });
+
+      const pieceRows = pieces.map(p => `<tr><td>${p.name}</td><td>×${p.qty}</td><td>${p.w}×${p.h}</td></tr>`).join('');
+      const warningItems = warnings.length
+        ? warnings.map(w => `<li>${w}</li>`).join('')
+        : `<li>(none)</li>`;
+
+      card.innerHTML = `
+        <h2>${c.title}</h2>
+        <p class="setup">${c.setup}</p>
+        ${svg}
+        <div class="below">
+          <div>
+            <h3>cutSheetPieces(${JSON.stringify(args.style)})</h3>
+            <table><tr><th>piece</th><th>qty</th><th>w×h</th></tr>${pieceRows}</table>
+          </div>
+          <div>
+            <h3>seamStraddleWarnings(…)</h3>
+            <ul class="warnings ${warnings.length ? '' : 'empty'}">${warningItems}</ul>
+          </div>
+        </div>`;
+    } catch (err) {
+      card.innerHTML = `<h2>${c.title}</h2><p class="err">${err.stack || err}</p>`;
+      console.error(err);
+    }
+    root.appendChild(card);
+  }
+</script>

@@ -1,0 +1,101 @@
+<!doctype html>
+<meta charset="utf-8"><title>export test</title>
+<style>body{margin:0;background:#333;color:#eee;font:13px system-ui;padding:10px}
+img,canvas{background:#fff;width:300px;height:300px;display:inline-block;margin:4px;border:1px solid #666}
+#log{white-space:pre;font:12px ui-monospace;background:#111;padding:8px;margin-top:8px}</style>
+<div>
+  <div>1 = live DOM SVG &nbsp; 2 = SVG rasterised via img+canvas &nbsp; 3 = same but with embedded data-URL raster art</div>
+  <span id="live"></span>
+  <canvas id="c1" width="600" height="600"></canvas>
+  <canvas id="c2" width="600" height="600"></canvas>
+</div>
+<div id="log"></div>
+<script>
+const log = m => document.getElementById('log').textContent += m + '\n';
+
+/* a tiny raster PNG (checkerboard) as a data URL, standing in for an upload */
+function makeArtDataURL(){
+  const c=document.createElement('canvas');c.width=c.height=120;const x=c.getContext('2d');
+  x.fillStyle='#141642';x.fillRect(0,0,120,120);
+  x.fillStyle='#ff2e63';x.beginPath();x.arc(60,60,44,0,7);x.fill();
+  x.fillStyle='#00d9c0';x.beginPath();x.arc(60,60,20,0,7);x.fill();
+  x.strokeStyle='#ffb703';x.lineWidth=8;x.beginPath();x.moveTo(0,0);x.lineTo(120,120);x.moveTo(120,0);x.lineTo(0,120);x.stroke();
+  return c.toDataURL('image/png');
+}
+
+function buildSVG(artURL){
+  // deliberately exercises: clipPath, feGaussianBlur, feTurbulence,
+  // mix-blend-mode multiply + screen + overlay, and an <image> fill
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 600 600" width="600" height="600">
+    <defs>
+      <clipPath id="c"><circle cx="300" cy="300" r="240"/></clipPath>
+      <filter id="b" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="30"/></filter>
+      <filter id="g" x="0" y="0" width="600" height="600" filterUnits="userSpaceOnUse">
+        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" seed="5" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .3 0"/>
+      </filter>
+      ${artURL?`<pattern id="art" width="120" height="120" patternUnits="userSpaceOnUse">
+        <image href="${artURL}" xlink:href="${artURL}" width="120" height="120"/></pattern>`:''}
+    </defs>
+    <rect width="600" height="600" fill="#fff"/>
+    <g clip-path="url(#c)">
+      <rect width="600" height="600" fill="${artURL?'url(#art)':'#2b6cf6'}"/>
+      <g style="mix-blend-mode:multiply">
+        <ellipse cx="300" cy="440" rx="200" ry="90" fill="#000" opacity=".75" filter="url(#b)"/>
+      </g>
+      <g style="mix-blend-mode:screen">
+        <ellipse cx="230" cy="200" rx="120" ry="90" fill="#fff" opacity=".8" filter="url(#b)"/>
+      </g>
+      <g style="mix-blend-mode:overlay" opacity=".6"><rect width="600" height="600" filter="url(#g)"/></g>
+    </g>
+  </svg>`;
+}
+
+function rasterise(svgStr, canvas){
+  return new Promise((res,rej)=>{
+    const blob = new Blob([svgStr], {type:'image/svg+xml;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = ()=>{
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      URL.revokeObjectURL(url);
+      // probe: can we read pixels back (taint check) and is there shading variation?
+      try{
+        const d = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+        // sample the highlight zone vs the shadow zone
+        const at=(x,y)=>{const i=(y*canvas.width+x)*4;return [d[i],d[i+1],d[i+2]];};
+        res({tainted:false, hi:at(230,200), lo:at(300,440), mid:at(300,300)});
+      }catch(e){ res({tainted:true, err:e.name}); }
+    };
+    img.onerror = e => rej(new Error('img load failed'));
+    img.src = url;
+  });
+}
+
+(async()=>{
+  // 1. live DOM version for visual comparison
+  document.getElementById('live').innerHTML = buildSVG(null).replace('width="600" height="600"','width="300" height="300"');
+
+  try{
+    const r1 = await rasterise(buildSVG(null), document.getElementById('c1'));
+    log('VECTOR-ONLY  tainted='+r1.tainted+'  highlight='+JSON.stringify(r1.hi)+'  shadow='+JSON.stringify(r1.lo)+'  mid='+JSON.stringify(r1.mid));
+    if(!r1.tainted){
+      const spread = Math.abs(r1.hi[0]-r1.lo[0]) + Math.abs(r1.hi[1]-r1.lo[1]) + Math.abs(r1.hi[2]-r1.lo[2]);
+      log('  -> blend/filter spread = '+spread+'  '+(spread>60?'BLEND MODES SURVIVED':'*** FLAT — blend modes LOST ***'));
+    }
+  }catch(e){ log('VECTOR-ONLY FAILED: '+e.message); }
+
+  try{
+    const art = makeArtDataURL();
+    const r2 = await rasterise(buildSVG(art), document.getElementById('c2'));
+    log('WITH DATA-URL ART  tainted='+r2.tainted+(r2.err?' ('+r2.err+')':'')+'  highlight='+JSON.stringify(r2.hi)+'  shadow='+JSON.stringify(r2.lo));
+    if(!r2.tainted){
+      const spread = Math.abs(r2.hi[0]-r2.lo[0]) + Math.abs(r2.hi[1]-r2.lo[1]) + Math.abs(r2.hi[2]-r2.lo[2]);
+      log('  -> blend/filter spread = '+spread+'  '+(spread>60?'BLEND MODES SURVIVED':'*** FLAT — blend modes LOST ***'));
+      log('  -> toDataURL export OK, length='+document.getElementById('c2').toDataURL('image/png').length);
+    }
+  }catch(e){ log('WITH ART FAILED: '+e.message); }
+})();
+</script>

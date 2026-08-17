@@ -72,3 +72,28 @@ the shading code is style-agnostic apart from the two sleeve clips.
   shading opacity when the artwork's mean luminance is high.
 - Torso is marginally wide at the hem versus a real rashguard.
 - The chest-logo placeholder is a pentagon; replace with the real mark once supplied.
+
+## Export path — VERIFIED, and the one rule you must not break
+
+Tested end-to-end in Chrome (`docs/export-test.html`, screenshot-verified):
+
+- `mix-blend-mode: multiply / screen / overlay` **survives** serialise → `Blob` →
+  `<img>` → `ctx.drawImage` → canvas. Measured channel spread between the highlight and
+  shadow zones was 591 (vector art) and 534 (raster art); a flat result would be <60.
+  The rasterised output is visually identical to the live DOM render.
+- `feGaussianBlur` and `feTurbulence` also survive.
+- `getImageData` and `toDataURL('image/png')` both succeed — **canvas is not tainted** —
+  and produced a 417 KB PNG.
+
+**The rule: read uploads with `FileReader.readAsDataURL()` and embed the resulting
+`data:` URL directly into the SVG.** Do *not* use `URL.createObjectURL()` for artwork that
+must be exported — a `blob:` URL taints the canvas and `toDataURL` will throw
+`SecurityError`, silently killing export. Set both `href` and `xlink:href` on `<image>`
+so the serialised SVG rasterises reliably.
+
+Export at 2000–3000 px by giving the serialised SVG explicit `width`/`height` attributes
+(not just a `viewBox`) and sizing the canvas to match.
+
+Caveat: if this is ever published as a Claude Artifact, page-initiated downloads are
+blocked for viewers. On GitHub Pages / any normal static host, downloads work fine —
+build for the static host and treat the Artifact as preview-only.

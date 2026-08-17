@@ -1,0 +1,228 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Garment proto</title>
+<style>
+  body{margin:0;background:#e9e9ec;font:13px system-ui;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px}
+  .tile{background:#fff;border-radius:8px;overflow:hidden;position:relative}
+  .tile b{position:absolute;left:10px;top:8px;font:600 11px system-ui;color:#9aa;z-index:2}
+  svg{display:block;width:100%;height:auto}
+</style>
+<script>
+/* ================= GEOMETRY — front view, viewBox 0 0 1000 1000 ================= */
+/* compression fit: defined deltoid, tapered sleeve, slight waist draw-in */
+
+const TORSO = `M 438 224 C 470 246 530 246 562 224
+  C 600 230 626 242 648 262
+  C 666 308 672 360 671 414
+  C 677 502 673 600 660 692
+  C 655 744 650 782 646 804
+  C 549 822 451 822 354 804
+  C 350 782 345 744 340 692
+  C 327 600 323 502 329 414
+  C 328 360 334 308 352 262
+  C 374 242 400 230 438 224 Z`;
+
+const SLEEVE_L_LS = `M 352 262
+  C 334 308 328 360 329 414
+  C 284 470 236 606 202 726
+  C 180 722 158 716 136 706
+  L 148 626
+  C 188 462 258 320 352 262 Z`;
+
+const SLEEVE_R_LS = `M 648 262
+  C 666 308 672 360 671 414
+  C 716 470 764 606 798 726
+  C 820 722 842 716 864 706
+  L 852 626
+  C 812 462 742 320 648 262 Z`;
+
+const SLEEVE_L_SS = `M 352 262
+  C 334 306 329 366 330 426
+  C 300 456 258 502 206 404
+  L 308 470 Z`;                       /* placeholder, replaced below */
+
+/* short sleeve: cut perpendicular to arm axis, mid-bicep */
+const SS_L = `M 352 262
+  C 296 294 242 344 204 404
+  L 306 470
+  C 312 452 318 436 330 424
+  C 329 368 334 308 352 262 Z`;
+const SS_R = `M 648 262
+  C 704 294 758 344 796 404
+  L 694 470
+  C 688 452 682 436 670 424
+  C 671 368 666 308 648 262 Z`;
+
+const STYLES = {
+  ls: {sleeveL:SLEEVE_L_LS, sleeveR:SLEEVE_R_LS,
+       garment:`M 438 224 C 470 246 530 246 562 224
+         C 600 230 626 242 648 262
+         C 742 320 812 462 852 626 L 864 706
+         C 842 716 820 722 798 726
+         C 764 606 716 470 671 414
+         C 677 502 673 600 660 692
+         C 655 744 650 782 646 804
+         C 549 822 451 822 354 804
+         C 350 782 345 744 340 692
+         C 327 600 323 502 329 414
+         C 284 470 236 606 202 726
+         C 180 722 158 716 136 706 L 148 626
+         C 188 462 258 320 352 262
+         C 374 242 400 230 438 224 Z`,
+       seams:`<path d="M 202 726 C 180 722 158 716 136 706" stroke-opacity=".40"/>
+              <path d="M 798 726 C 820 722 842 716 864 706" stroke-opacity=".40"/>`},
+  ss: {sleeveL:SS_L, sleeveR:SS_R,
+       garment:`M 438 224 C 470 246 530 246 562 224
+         C 600 230 626 242 648 262
+         C 704 294 758 344 796 404
+         L 694 470
+         C 688 452 682 436 670 424
+         C 677 502 673 600 660 692
+         C 655 744 650 782 646 804
+         C 549 822 451 822 354 804
+         C 350 782 345 744 340 692
+         C 327 600 323 502 330 424
+         C 318 436 312 452 306 470
+         L 204 404
+         C 242 344 296 294 352 262
+         C 374 242 400 230 438 224 Z`,
+       seams:`<path d="M 796 404 L 694 470" stroke-opacity=".40"/>
+              <path d="M 204 404 L 306 470" stroke-opacity=".40"/>`},
+};
+
+let UID = 0;
+function garment({base='#14161b', art=null, artOn='sleeves', label='', style='ls', logo=false}){
+  const S = STYLES[style];
+  const u = 'g'+(UID++);
+  const id = n => `${u}-${n}`, url = n => `url(#${id(n)})`;
+  const onSleeves = artOn==='sleeves'||artOn==='full';
+  const onBody    = artOn==='body'||artOn==='full';
+
+  const defs = `<defs>
+    <clipPath id="${id('cGar')}"><path d="${S.garment}"/></clipPath>
+    <clipPath id="${id('cTor')}"><path d="${TORSO}"/></clipPath>
+    <clipPath id="${id('cSlL')}"><path d="${S.sleeveL}"/></clipPath>
+    <clipPath id="${id('cSlR')}"><path d="${S.sleeveR}"/></clipPath>
+
+    <filter id="${id('soft')}"  x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="26"/></filter>
+    <filter id="${id('soft2')}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="11"/></filter>
+    <filter id="${id('soft3')}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="4"/></filter>
+    <filter id="${id('grain')}" x="0" y="0" width="1000" height="1000" filterUnits="userSpaceOnUse">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" seed="7" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .26 0"/>
+    </filter>
+
+    <linearGradient id="${id('tX')}" x1="325" y1="0" x2="675" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0"   stop-color="#000" stop-opacity=".52"/>
+      <stop offset=".15" stop-color="#000" stop-opacity=".13"/>
+      <stop offset=".40" stop-color="#000" stop-opacity="0"/>
+      <stop offset=".66" stop-color="#000" stop-opacity=".05"/>
+      <stop offset=".87" stop-color="#000" stop-opacity=".25"/>
+      <stop offset="1"   stop-color="#000" stop-opacity=".58"/>
+    </linearGradient>
+    <linearGradient id="${id('tY')}" x1="0" y1="224" x2="0" y2="822" gradientUnits="userSpaceOnUse">
+      <stop offset="0"   stop-color="#000" stop-opacity=".20"/>
+      <stop offset=".16" stop-color="#000" stop-opacity="0"/>
+      <stop offset=".70" stop-color="#000" stop-opacity=".05"/>
+      <stop offset="1"   stop-color="#000" stop-opacity=".28"/>
+    </linearGradient>
+    <radialGradient id="${id('chest')}" cx="470" cy="386" r="225" gradientUnits="userSpaceOnUse">
+      <stop offset="0"   stop-color="#fff" stop-opacity=".28"/>
+      <stop offset=".55" stop-color="#fff" stop-opacity=".06"/>
+      <stop offset="1"   stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="${id('aL')}" x1="140" y1="560" x2="332" y2="372" gradientUnits="userSpaceOnUse">
+      <stop offset="0"   stop-color="#000" stop-opacity=".58"/>
+      <stop offset=".26" stop-color="#000" stop-opacity=".07"/>
+      <stop offset=".52" stop-color="#000" stop-opacity="0"/>
+      <stop offset=".80" stop-color="#000" stop-opacity=".26"/>
+      <stop offset="1"   stop-color="#000" stop-opacity=".56"/>
+    </linearGradient>
+    <linearGradient id="${id('aR')}" x1="860" y1="560" x2="668" y2="372" gradientUnits="userSpaceOnUse">
+      <stop offset="0"   stop-color="#000" stop-opacity=".62"/>
+      <stop offset=".26" stop-color="#000" stop-opacity=".13"/>
+      <stop offset=".54" stop-color="#000" stop-opacity="0"/>
+      <stop offset=".80" stop-color="#000" stop-opacity=".22"/>
+      <stop offset="1"   stop-color="#000" stop-opacity=".54"/>
+    </linearGradient>
+    ${art?`<pattern id="${id('art')}" width="150" height="150" patternUnits="userSpaceOnUse">
+      <rect width="150" height="150" fill="#141642"/>
+      <circle cx="75" cy="75" r="54" fill="none" stroke="#ff2e63" stroke-width="13"/>
+      <circle cx="75" cy="75" r="27" fill="#00d9c0"/>
+      <path d="M0 0 L150 150 M150 0 L0 150" stroke="#ffb703" stroke-width="8"/>
+      <rect width="150" height="15" fill="#ff2e63"/></pattern>`:''}
+  </defs>`;
+
+  const A = art ? url('art') : null;
+
+  return `<div class="tile"><b>${label}</b><svg viewBox="0 0 1000 1000">${defs}
+    <ellipse cx="500" cy="838" rx="205" ry="17" fill="#000" opacity=".14" filter="${url('soft2')}"/>
+    <g clip-path="${url('cGar')}">
+      <rect width="1000" height="1000" fill="${base}"/>
+      ${A&&onBody   ?`<g clip-path="${url('cTor')}"><rect width="1000" height="1000" fill="${A}"/></g>`:''}
+      ${A&&onSleeves?`<g clip-path="${url('cSlL')}"><rect width="1000" height="1000" fill="${A}"/></g>
+                      <g clip-path="${url('cSlR')}"><rect width="1000" height="1000" fill="${A}"/></g>`:''}
+      ${logo?`<g opacity=".95"><path d="M452 330 l30 -22 30 22 -12 34 h-36 Z" fill="#e8b33a"/></g>`:''}
+
+      <g style="mix-blend-mode:multiply">
+        <g clip-path="${url('cTor')}">
+          <rect width="1000" height="1000" fill="${url('tX')}"/>
+          <rect width="1000" height="1000" fill="${url('tY')}"/>
+          <!-- pec undershadow -->
+          <ellipse cx="420" cy="470" rx="80" ry="24" fill="#000" opacity=".42" filter="${url('soft2')}"/>
+          <ellipse cx="580" cy="470" rx="80" ry="24" fill="#000" opacity=".42" filter="${url('soft2')}"/>
+          <!-- sternum -->
+          <rect x="495" y="318" width="10" height="248" fill="#000" opacity=".28" filter="${url('soft3')}"/>
+          <!-- abdominals -->
+          <g filter="${url('soft3')}" opacity=".6">
+            <rect x="497" y="562" width="6" height="200" fill="#000" opacity=".30"/>
+            <rect x="412" y="594" width="176" height="6" fill="#000" opacity=".22"/>
+            <rect x="416" y="652" width="168" height="6" fill="#000" opacity=".19"/>
+            <rect x="424" y="708" width="152" height="5" fill="#000" opacity=".13"/>
+          </g>
+          <!-- serratus / lat -->
+          <ellipse cx="334" cy="440" rx="34" ry="78" fill="#000" opacity=".58" filter="${url('soft2')}"/>
+          <ellipse cx="666" cy="440" rx="34" ry="78" fill="#000" opacity=".58" filter="${url('soft2')}"/>
+          <ellipse cx="500" cy="820" rx="168" ry="20" fill="#000" opacity=".32" filter="${url('soft3')}"/>
+        </g>
+        <g clip-path="${url('cSlL')}"><rect width="1000" height="1000" fill="${url('aL')}"/></g>
+        <g clip-path="${url('cSlR')}"><rect width="1000" height="1000" fill="${url('aR')}"/></g>
+        <g clip-path="${url('cGar')}" filter="${url('soft2')}">
+          <ellipse cx="366" cy="300" rx="62" ry="20" fill="#000" opacity=".22" transform="rotate(-32 366 300)"/>
+          <ellipse cx="634" cy="300" rx="62" ry="20" fill="#000" opacity=".22" transform="rotate(32 634 300)"/>
+        </g>
+      </g>
+
+      <g style="mix-blend-mode:screen" clip-path="${url('cGar')}">
+        <g clip-path="${url('cTor')}"><rect width="1000" height="1000" fill="${url('chest')}"/></g>
+        <ellipse cx="268" cy="486" rx="22" ry="126" fill="#fff" opacity=".16" transform="rotate(30 268 486)" filter="${url('soft2')}"/>
+        <ellipse cx="732" cy="486" rx="22" ry="126" fill="#fff" opacity=".12" transform="rotate(-30 732 486)" filter="${url('soft2')}"/>
+        <ellipse cx="424" cy="286" rx="80" ry="20" fill="#fff" opacity=".13" filter="${url('soft2')}"/>
+        <!-- deltoid cap highlight -->
+        <ellipse cx="352" cy="330" rx="34" ry="52" fill="#fff" opacity=".10" transform="rotate(-24 352 330)" filter="${url('soft2')}"/>
+        <ellipse cx="648" cy="330" rx="34" ry="52" fill="#fff" opacity=".08" transform="rotate(24 648 330)" filter="${url('soft2')}"/>
+      </g>
+
+      <g style="mix-blend-mode:overlay" opacity=".5"><rect width="1000" height="1000" filter="${url('grain')}"/></g>
+
+      <g fill="none" stroke="#000" stroke-opacity=".26" stroke-width="2.2" stroke-linecap="round">
+        <path d="M 438 226 C 398 300 356 362 329 414"/>
+        <path d="M 562 226 C 602 300 644 362 671 414"/>
+        ${S.seams}
+        <path d="M 354 804 C 451 822 549 822 646 804" stroke-opacity=".32"/>
+        <path d="M 438 224 C 470 246 530 246 562 224" stroke-opacity=".45" stroke-width="3"/>
+        <path d="M 433 238 C 470 262 530 262 567 238" stroke-opacity=".20"/>
+      </g>
+    </g>
+    <path d="${S.garment}" fill="none" stroke="#000" stroke-opacity=".20" stroke-width="2.5"/>
+  </svg></div>`;
+}
+
+addEventListener('DOMContentLoaded',()=>{
+  document.body.innerHTML =
+    garment({base:'#14161b', label:'LS black', logo:true}) +
+    garment({base:'#14161b', style:'ss', label:'SS black', logo:true}) +
+    garment({base:'#14161b', art:1, artOn:'sleeves', label:'LS art sleeves', logo:true}) +
+    garment({base:'#14161b', art:1, artOn:'full', label:'LS full print'});
+});
+</script>

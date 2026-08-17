@@ -1,0 +1,284 @@
+<!doctype html>
+<meta charset="utf-8"><title>Garment proto 3</title>
+<style>
+  body{margin:0;background:#e9e9ec;font:13px system-ui;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px}
+  .tile{background:#fff;border-radius:8px;overflow:hidden;position:relative}
+  .tile b{position:absolute;left:10px;top:8px;font:600 11px system-ui;color:#9aa;z-index:2}
+  svg{display:block;width:100%;height:auto}
+</style>
+<script>
+/* ---------------- shared torso / sleeves (from v2) ---------------- */
+const TORSO = `M 438 224 C 470 246 530 246 562 224
+  C 600 230 626 242 648 262 C 666 308 672 360 671 414
+  C 677 502 673 600 660 692 C 655 744 650 782 646 804
+  C 549 822 451 822 354 804 C 350 782 345 744 340 692
+  C 327 600 323 502 329 414 C 328 360 334 308 352 262
+  C 374 242 400 230 438 224 Z`;
+/* back: collar sits higher and flatter */
+const TORSO_B = `M 436 232 C 470 220 530 220 564 232
+  C 601 236 626 244 648 262 C 666 308 672 360 671 414
+  C 677 502 673 600 660 692 C 655 744 650 782 646 804
+  C 549 822 451 822 354 804 C 350 782 345 744 340 692
+  C 327 600 323 502 329 414 C 328 360 334 308 352 262
+  C 374 244 399 236 436 232 Z`;
+
+const SL_L = `M 352 262 C 334 308 328 360 329 414
+  C 284 470 236 606 202 726 C 180 722 158 716 136 706
+  L 148 626 C 188 462 258 320 352 262 Z`;
+const SL_R = `M 648 262 C 666 308 672 360 671 414
+  C 716 470 764 606 798 726 C 820 722 842 716 864 706
+  L 852 626 C 812 462 742 320 648 262 Z`;
+
+const GAR_LS = `M 438 224 C 470 246 530 246 562 224
+  C 600 230 626 242 648 262 C 742 320 812 462 852 626 L 864 706
+  C 842 716 820 722 798 726 C 764 606 716 470 671 414
+  C 677 502 673 600 660 692 C 655 744 650 782 646 804
+  C 549 822 451 822 354 804 C 350 782 345 744 340 692
+  C 327 600 323 502 329 414 C 284 470 236 606 202 726
+  C 180 722 158 716 136 706 L 148 626 C 188 462 258 320 352 262
+  C 374 242 400 230 438 224 Z`;
+const GAR_LS_B = GAR_LS.replace('M 438 224 C 470 246 530 246 562 224','M 436 232 C 470 220 530 220 564 232');
+
+/* ---------------- spats ---------------- */
+const SPATS = `M 352 198 L 648 198
+  C 661 240 665 270 662 300
+  C 656 420 640 560 620 700
+  C 610 790 604 850 600 884
+  L 522 884
+  C 518 780 512 640 504 520
+  C 502 470 501 430 500 396
+  C 499 430 498 470 496 520
+  C 488 640 482 780 478 884
+  L 400 884
+  C 396 850 390 790 380 700
+  C 360 560 344 420 338 300
+  C 335 270 339 240 352 198 Z`;
+const SPATS_LEG_L = `M 338 300 C 344 420 360 560 380 700
+  C 390 790 396 850 400 884 L 478 884
+  C 482 780 488 640 496 520 C 498 470 499 430 500 396
+  C 460 380 400 340 338 300 Z`;
+const SPATS_LEG_R = `M 662 300 C 656 420 640 560 620 700
+  C 610 790 604 850 600 884 L 522 884
+  C 518 780 512 640 504 520 C 502 470 501 430 500 396
+  C 540 380 600 340 662 300 Z`;
+const SPATS_BAND = `M 352 198 L 648 198 C 652 214 655 230 657 248
+  C 552 262 448 262 343 248 C 345 230 348 214 352 198 Z`;
+
+/* ---------------- fight shorts ---------------- */
+const SHORTS = `M 344 208 L 656 208
+  C 668 268 672 340 668 404
+  C 662 470 652 528 646 566
+  L 528 566
+  C 522 512 512 466 500 430
+  C 488 466 478 512 472 566
+  L 354 566
+  C 348 528 338 470 332 404
+  C 328 340 332 268 344 208 Z`;
+const SHORTS_L = `M 344 208 C 332 268 328 340 332 404
+  C 338 470 348 528 354 566 L 472 566
+  C 478 512 488 466 500 430 C 480 350 430 260 344 208 Z`;
+const SHORTS_R = `M 656 208 C 668 268 672 340 668 404
+  C 662 470 652 528 646 566 L 528 566
+  C 522 512 512 466 500 430 C 520 350 570 260 656 208 Z`;
+
+let UID=0;
+function svgWrap(label, inner){return `<div class="tile"><b>${label}</b><svg viewBox="0 0 1000 1000">${inner}</svg></div>`}
+
+function commonDefs(id,url,art){return `
+  <filter id="${id('s1')}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="26"/></filter>
+  <filter id="${id('s2')}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="11"/></filter>
+  <filter id="${id('s3')}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="4"/></filter>
+  <filter id="${id('grain')}" x="0" y="0" width="1000" height="1000" filterUnits="userSpaceOnUse">
+    <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" seed="7" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .26 0"/></filter>
+  ${art?`<pattern id="${id('art')}" width="150" height="150" patternUnits="userSpaceOnUse">
+    <rect width="150" height="150" fill="#141642"/>
+    <circle cx="75" cy="75" r="54" fill="none" stroke="#ff2e63" stroke-width="13"/>
+    <circle cx="75" cy="75" r="27" fill="#00d9c0"/>
+    <path d="M0 0 L150 150 M150 0 L0 150" stroke="#ffb703" stroke-width="8"/>
+    <rect width="150" height="15" fill="#ff2e63"/></pattern>`:''}`}
+
+/* ============ BACK VIEW top ============ */
+function backTop({base='#14161b', art=null, label='back'}){
+  const u='b'+(UID++), id=n=>`${u}-${n}`, url=n=>`url(#${id(n)})`;
+  const A = art?url('art'):null;
+  return svgWrap(label,`
+  <defs>
+    <clipPath id="${id('cG')}"><path d="${GAR_LS_B}"/></clipPath>
+    <clipPath id="${id('cT')}"><path d="${TORSO_B}"/></clipPath>
+    <clipPath id="${id('cL')}"><path d="${SL_L}"/></clipPath>
+    <clipPath id="${id('cR')}"><path d="${SL_R}"/></clipPath>
+    ${commonDefs(id,url,art)}
+    <linearGradient id="${id('tX')}" x1="325" y1="0" x2="675" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000" stop-opacity=".50"/><stop offset=".16" stop-color="#000" stop-opacity=".12"/>
+      <stop offset=".42" stop-color="#000" stop-opacity="0"/><stop offset=".66" stop-color="#000" stop-opacity=".05"/>
+      <stop offset=".86" stop-color="#000" stop-opacity=".24"/><stop offset="1" stop-color="#000" stop-opacity=".56"/></linearGradient>
+    <linearGradient id="${id('tY')}" x1="0" y1="224" x2="0" y2="822" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000" stop-opacity=".16"/><stop offset=".18" stop-color="#000" stop-opacity="0"/>
+      <stop offset=".70" stop-color="#000" stop-opacity=".06"/><stop offset="1" stop-color="#000" stop-opacity=".28"/></linearGradient>
+    <radialGradient id="${id('lt')}" cx="480" cy="400" r="230" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".6" stop-color="#fff" stop-opacity=".05"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <linearGradient id="${id('aL')}" x1="140" y1="560" x2="332" y2="372" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000" stop-opacity=".58"/><stop offset=".26" stop-color="#000" stop-opacity=".07"/>
+      <stop offset=".52" stop-color="#000" stop-opacity="0"/><stop offset=".80" stop-color="#000" stop-opacity=".26"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".56"/></linearGradient>
+    <linearGradient id="${id('aR')}" x1="860" y1="560" x2="668" y2="372" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000" stop-opacity=".62"/><stop offset=".26" stop-color="#000" stop-opacity=".13"/>
+      <stop offset=".54" stop-color="#000" stop-opacity="0"/><stop offset=".80" stop-color="#000" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".54"/></linearGradient>
+  </defs>
+  <ellipse cx="500" cy="838" rx="205" ry="17" fill="#000" opacity=".14" filter="${url('s2')}"/>
+  <g clip-path="${url('cG')}">
+    <rect width="1000" height="1000" fill="${base}"/>
+    ${A?`<g clip-path="${url('cL')}"><rect width="1000" height="1000" fill="${A}"/></g>
+        <g clip-path="${url('cR')}"><rect width="1000" height="1000" fill="${A}"/></g>`:''}
+    <g style="mix-blend-mode:multiply">
+      <g clip-path="${url('cT')}">
+        <rect width="1000" height="1000" fill="${url('tX')}"/><rect width="1000" height="1000" fill="${url('tY')}"/>
+        <!-- spine groove -->
+        <rect x="494" y="270" width="12" height="470" fill="#000" opacity=".30" filter="${url('s3')}"/>
+        <!-- scapulae -->
+        <ellipse cx="424" cy="382" rx="62" ry="44" fill="#000" opacity=".26" transform="rotate(-14 424 382)" filter="${url('s2')}"/>
+        <ellipse cx="576" cy="382" rx="62" ry="44" fill="#000" opacity=".26" transform="rotate(14 576 382)" filter="${url('s2')}"/>
+        <!-- lat V-taper: dark wedges pulling in toward the waist -->
+        <path d="M 329 400 C 380 520 440 620 470 760 L 330 800 Z" fill="#000" opacity=".34" filter="${url('s1')}"/>
+        <path d="M 671 400 C 620 520 560 620 530 760 L 670 800 Z" fill="#000" opacity=".34" filter="${url('s1')}"/>
+        <!-- trap shadow under collar -->
+        <ellipse cx="500" cy="268" rx="120" ry="30" fill="#000" opacity=".22" filter="${url('s2')}"/>
+        <ellipse cx="500" cy="820" rx="168" ry="20" fill="#000" opacity=".30" filter="${url('s3')}"/>
+      </g>
+      <g clip-path="${url('cL')}"><rect width="1000" height="1000" fill="${url('aL')}"/></g>
+      <g clip-path="${url('cR')}"><rect width="1000" height="1000" fill="${url('aR')}"/></g>
+    </g>
+    <g style="mix-blend-mode:screen" clip-path="${url('cG')}">
+      <g clip-path="${url('cT')}"><rect width="1000" height="1000" fill="${url('lt')}"/></g>
+      <ellipse cx="440" cy="352" rx="52" ry="34" fill="#fff" opacity=".12" filter="${url('s2')}"/>
+      <ellipse cx="268" cy="486" rx="22" ry="126" fill="#fff" opacity=".16" transform="rotate(30 268 486)" filter="${url('s2')}"/>
+      <ellipse cx="732" cy="486" rx="22" ry="126" fill="#fff" opacity=".12" transform="rotate(-30 732 486)" filter="${url('s2')}"/>
+    </g>
+    <g style="mix-blend-mode:overlay" opacity=".5"><rect width="1000" height="1000" filter="${url('grain')}"/></g>
+    <g fill="none" stroke="#000" stroke-opacity=".26" stroke-width="2.2" stroke-linecap="round">
+      <path d="M 436 234 C 398 302 356 362 329 414"/>
+      <path d="M 564 234 C 602 302 644 362 671 414"/>
+      <path d="M 202 726 C 180 722 158 716 136 706" stroke-opacity=".40"/>
+      <path d="M 798 726 C 820 722 842 716 864 706" stroke-opacity=".40"/>
+      <path d="M 354 804 C 451 822 549 822 646 804" stroke-opacity=".32"/>
+      <path d="M 436 232 C 470 220 530 220 564 232" stroke-opacity=".45" stroke-width="3"/>
+    </g>
+  </g>
+  <path d="${GAR_LS_B}" fill="none" stroke="#000" stroke-opacity=".20" stroke-width="2.5"/>`);
+}
+
+/* ============ SPATS ============ */
+function spats({base='#14161b', art=null, artOn='legs', label='spats'}){
+  const u='s'+(UID++), id=n=>`${u}-${n}`, url=n=>`url(#${id(n)})`;
+  const A = art?url('art'):null;
+  return svgWrap(label,`
+  <defs>
+    <clipPath id="${id('cG')}"><path d="${SPATS}"/></clipPath>
+    <clipPath id="${id('cL')}"><path d="${SPATS_LEG_L}"/></clipPath>
+    <clipPath id="${id('cR')}"><path d="${SPATS_LEG_R}"/></clipPath>
+    <clipPath id="${id('cB')}"><path d="${SPATS_BAND}"/></clipPath>
+    ${commonDefs(id,url,art)}
+    <linearGradient id="${id('legL')}" x1="338" y1="600" x2="500" y2="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000" stop-opacity=".58"/><stop offset=".28" stop-color="#000" stop-opacity=".06"/>
+      <stop offset=".54" stop-color="#000" stop-opacity="0"/><stop offset=".82" stop-color="#000" stop-opacity=".30"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".62"/></linearGradient>
+    <linearGradient id="${id('legR')}" x1="662" y1="600" x2="500" y2="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000" stop-opacity=".58"/><stop offset=".28" stop-color="#000" stop-opacity=".06"/>
+      <stop offset=".54" stop-color="#000" stop-opacity="0"/><stop offset=".82" stop-color="#000" stop-opacity=".30"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".62"/></linearGradient>
+    <linearGradient id="${id('gY')}" x1="0" y1="198" x2="0" y2="884" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000" stop-opacity=".24"/><stop offset=".14" stop-color="#000" stop-opacity="0"/>
+      <stop offset=".72" stop-color="#000" stop-opacity=".04"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></linearGradient>
+  </defs>
+  <ellipse cx="500" cy="898" rx="150" ry="14" fill="#000" opacity=".14" filter="${url('s2')}"/>
+  <g clip-path="${url('cG')}">
+    <rect width="1000" height="1000" fill="${base}"/>
+    ${A?`<g clip-path="${url('cL')}"><rect width="1000" height="1000" fill="${A}"/></g>
+        <g clip-path="${url('cR')}"><rect width="1000" height="1000" fill="${A}"/></g>`:''}
+    <g style="mix-blend-mode:multiply">
+      <g clip-path="${url('cL')}"><rect width="1000" height="1000" fill="${url('legL')}"/></g>
+      <g clip-path="${url('cR')}"><rect width="1000" height="1000" fill="${url('legR')}"/></g>
+      <rect width="1000" height="1000" fill="${url('gY')}"/>
+      <!-- crotch / inner-thigh shadow -->
+      <ellipse cx="500" cy="430" rx="64" ry="90" fill="#000" opacity=".50" filter="${url('s1')}"/>
+      <!-- quad separation -->
+      <ellipse cx="404" cy="520" rx="16" ry="120" fill="#000" opacity=".20" transform="rotate(6 404 520)" filter="${url('s2')}"/>
+      <ellipse cx="596" cy="520" rx="16" ry="120" fill="#000" opacity=".20" transform="rotate(-6 596 520)" filter="${url('s2')}"/>
+      <!-- knee crease -->
+      <ellipse cx="430" cy="668" rx="60" ry="16" fill="#000" opacity=".22" filter="${url('s2')}"/>
+      <ellipse cx="570" cy="668" rx="60" ry="16" fill="#000" opacity=".22" filter="${url('s2')}"/>
+      <!-- waistband shadow -->
+      <g clip-path="${url('cB')}"><rect width="1000" height="1000" fill="#000" opacity=".16"/></g>
+      <ellipse cx="500" cy="258" rx="170" ry="14" fill="#000" opacity=".26" filter="${url('s3')}"/>
+    </g>
+    <g style="mix-blend-mode:screen">
+      <ellipse cx="452" cy="500" rx="26" ry="150" fill="#fff" opacity=".15" transform="rotate(3 452 500)" filter="${url('s1')}"/>
+      <ellipse cx="548" cy="500" rx="26" ry="150" fill="#fff" opacity=".13" transform="rotate(-3 548 500)" filter="${url('s1')}"/>
+      <ellipse cx="500" cy="228" rx="130" ry="18" fill="#fff" opacity=".10" filter="${url('s2')}"/>
+    </g>
+    <g style="mix-blend-mode:overlay" opacity=".5"><rect width="1000" height="1000" filter="${url('grain')}"/></g>
+    <g fill="none" stroke="#000" stroke-opacity=".28" stroke-width="2.2" stroke-linecap="round">
+      <path d="M 343 248 C 448 262 552 262 657 248"/>
+      <path d="M 400 884 L 478 884" stroke-opacity=".38"/>
+      <path d="M 522 884 L 600 884" stroke-opacity=".38"/>
+    </g>
+  </g>
+  <path d="${SPATS}" fill="none" stroke="#000" stroke-opacity=".20" stroke-width="2.5"/>`);
+}
+
+/* ============ SHORTS ============ */
+function shorts({base='#14161b', art=null, label='shorts'}){
+  const u='h'+(UID++), id=n=>`${u}-${n}`, url=n=>`url(#${id(n)})`;
+  const A = art?url('art'):null;
+  return svgWrap(label,`
+  <defs>
+    <clipPath id="${id('cG')}"><path d="${SHORTS}"/></clipPath>
+    <clipPath id="${id('cL')}"><path d="${SHORTS_L}"/></clipPath>
+    <clipPath id="${id('cR')}"><path d="${SHORTS_R}"/></clipPath>
+    ${commonDefs(id,url,art)}
+    <linearGradient id="${id('x')}" x1="330" y1="0" x2="670" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000" stop-opacity=".52"/><stop offset=".18" stop-color="#000" stop-opacity=".10"/>
+      <stop offset=".44" stop-color="#000" stop-opacity="0"/><stop offset=".70" stop-color="#000" stop-opacity=".08"/>
+      <stop offset=".88" stop-color="#000" stop-opacity=".28"/><stop offset="1" stop-color="#000" stop-opacity=".56"/></linearGradient>
+    <linearGradient id="${id('y')}" x1="0" y1="208" x2="0" y2="566" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000" stop-opacity=".22"/><stop offset=".2" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".26"/></linearGradient>
+  </defs>
+  <ellipse cx="500" cy="580" rx="180" ry="16" fill="#000" opacity=".14" filter="${url('s2')}"/>
+  <g clip-path="${url('cG')}">
+    <rect width="1000" height="1000" fill="${base}"/>
+    ${A?`<rect width="1000" height="1000" fill="${A}"/>`:''}
+    <g style="mix-blend-mode:multiply">
+      <rect width="1000" height="1000" fill="${url('x')}"/><rect width="1000" height="1000" fill="${url('y')}"/>
+      <ellipse cx="500" cy="470" rx="70" ry="110" fill="#000" opacity=".42" filter="${url('s1')}"/>
+      <ellipse cx="392" cy="330" rx="40" ry="70" fill="#000" opacity=".26" filter="${url('s1')}"/>
+      <ellipse cx="608" cy="330" rx="40" ry="70" fill="#000" opacity=".26" filter="${url('s1')}"/>
+      <rect x="344" y="208" width="312" height="34" fill="#000" opacity=".14"/>
+      <ellipse cx="500" cy="556" rx="150" ry="16" fill="#000" opacity=".22" filter="${url('s3')}"/>
+    </g>
+    <g style="mix-blend-mode:screen">
+      <ellipse cx="430" cy="380" rx="46" ry="120" fill="#fff" opacity=".13" filter="${url('s1')}"/>
+      <ellipse cx="570" cy="380" rx="46" ry="120" fill="#fff" opacity=".11" filter="${url('s1')}"/>
+      <ellipse cx="500" cy="226" rx="140" ry="14" fill="#fff" opacity=".10" filter="${url('s2')}"/>
+    </g>
+    <g style="mix-blend-mode:overlay" opacity=".5"><rect width="1000" height="1000" filter="${url('grain')}"/></g>
+    <g fill="none" stroke="#000" stroke-opacity=".28" stroke-width="2.2" stroke-linecap="round">
+      <path d="M 344 242 L 656 242"/>
+      <path d="M 500 430 C 512 466 522 512 528 566" stroke-opacity=".34"/>
+      <path d="M 500 430 C 488 466 478 512 472 566" stroke-opacity=".34"/>
+    </g>
+  </g>
+  <path d="${SHORTS}" fill="none" stroke="#000" stroke-opacity=".20" stroke-width="2.5"/>`);
+}
+
+addEventListener('DOMContentLoaded',()=>{
+  document.body.innerHTML =
+    backTop({base:'#14161b', label:'LS BACK'}) +
+    backTop({base:'#14161b', art:1, label:'LS BACK art sleeves'}) +
+    spats({base:'#14161b', art:1, label:'SPATS art'}) +
+    shorts({base:'#14161b', art:1, label:'SHORTS art'});
+});
+</script>

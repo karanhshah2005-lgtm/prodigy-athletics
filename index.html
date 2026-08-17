@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prodigy Athletics — Rashguards, Ranked Sets &amp; Custom Gear (Sample Storefront)</title>
+<meta name="description" content="Sample storefront for Prodigy Athletics, a Canadian jiu-jitsu apparel company. Every product image on this page is generated, not photographed. Catalog and prices are placeholders.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="src/brand.css">
+<link rel="stylesheet" href="src/ui/store.css">
+</head>
+<body class="store">
+
+<!-- 1. Announcement bar -->
+<div class="annbar surface-dark" id="annbar" role="note">
+  Sample storefront — catalog, prices and copy are placeholders pending brand assets.
+  <button class="annbar__close" id="annbarClose" aria-label="Dismiss this message">&times;</button>
+</div>
+
+<!-- 2. Nav -->
+<header class="nav surface-dark" id="siteNav">
+  <div class="wrap nav__top">
+    <div class="nav__side">
+      <button class="icon-btn" id="hamburgerBtn" aria-label="Open menu" aria-haspopup="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+    <a href="index.html" class="nav__word" aria-label="Prodigy Athletics — home">
+      <img src="assets/wordmark.svg" alt="Prodigy Athletics" style="height:20px;width:auto"
+           onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'PRODIGY ATHLETICS'}))">
+    </a>
+    <div class="nav__side right">
+      <button class="icon-btn" id="searchBtn" aria-label="Search and filter">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <a href="studio.html" class="nav__studio">Studio</a>
+      <button class="icon-btn" id="cartBtn" aria-label="Open cart">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        <span class="cart-count" id="cartCount">0</span>
+      </button>
+    </div>
+  </div>
+  <nav class="nav__row" aria-label="Primary">
+    <ul id="navRowList"></ul>
+  </nav>
+</header>
+
+<!-- 3. Hero -->
+<section class="hero surface-dark">
+  <div class="hero__bg" id="heroBg" aria-hidden="true"></div>
+  <div class="wrap hero__inner">
+    <h1 class="hero__claim">MADE BY <span class="accent">PRACTITIONERS.</span><br>BUILT FOR THE MATS.</h1>
+    <p class="hero__sub">Prodigy Athletics is a Canadian jiu-jitsu apparel company relaunching its rashguard line. This sample storefront previews the range — every product shown here is rendered by our design tool, not photographed, so the catalog can exist before a single unit is sewn.</p>
+    <div class="hero__cta">
+      <a href="#shop" class="btn btn--primary">Shop rashguards</a>
+      <a href="studio.html" class="btn btn--secondary">Design your own</a>
+    </div>
+  </div>
+</section>
+
+<!-- 4. Category tiles -->
+<div class="wrap">
+  <div class="tiles-heading">
+    <h2>Shop by category</h2>
+    <p>Six ways into the range — every tile below is a live render, not a photo.</p>
+  </div>
+  <div class="tiles" id="tiles"></div>
+</div>
+
+<!-- 5+6. The grid + filter rail -->
+<section class="shop wrap" id="shop">
+  <button class="filter-toggle" id="filterToggleBtn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="12" y1="18" x2="20" y2="18"/><circle cx="6" cy="12" r="1.6" fill="currentColor"/><circle cx="10" cy="18" r="1.6" fill="currentColor"/></svg>
+    Filter
+  </button>
+  <div class="shop-layout">
+    <aside class="filter-rail" id="filterRailDesktop" aria-label="Filter products"></aside>
+    <div>
+      <div class="grid-heading">
+        <h1 id="gridCountHeading"><span class="count" id="gridCount">24 products</span></h1>
+        <div class="sort">
+          <label for="sortSelect" class="visually-hidden">Sort</label>
+          <select id="sortSelect">
+            <option value="featured">Sort: Featured</option>
+            <option value="price-asc">Price: Low to high</option>
+            <option value="price-desc">Price: High to low</option>
+            <option value="name-asc">Name: A–Z</option>
+          </select>
+        </div>
+      </div>
+      <p class="perf-note" id="perfNote"></p>
+      <div class="grid" id="grid"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8. Studio cross-sell -->
+<section class="studio-band surface-dark">
+  <div class="wrap">
+    <div class="studio-band__head">
+      <h2>Design your own. See it before it's made.</h2>
+      <p>Most custom-rashguard pages take an upload and give you nothing back but a confirmation email. The Studio previews your artwork live, on every cut, and hands you the factory-ready cut sheet — before you commit to a minimum order.</p>
+    </div>
+    <div class="studio-steps">
+      <div class="studio-step">
+        <div class="studio-step__num">1</div>
+        <h3>Upload</h3>
+        <p>Drop in your artwork or logo. It's read straight into the browser — nothing leaves your machine until you export.</p>
+      </div>
+      <div class="studio-step">
+        <div class="studio-step__num">2</div>
+        <h3>Preview on every cut</h3>
+        <p>Long sleeve, short sleeve, shorts, spats, ranked belts — see it placed on each one instantly, front and back.</p>
+      </div>
+      <div class="studio-step">
+        <div class="studio-step__num">3</div>
+        <h3>Factory cut sheet</h3>
+        <p>Export the flat pattern pieces with cut lines and bleed, ready to send to a sublimation printer.</p>
+      </div>
+    </div>
+    <div class="studio-band__cta">
+      <a href="studio.html" class="btn btn--primary">Open the Studio</a>
+    </div>
+  </div>
+</section>
+
+<!-- 9. Footer -->
+<footer class="footer surface-dark" style="--bg:var(--footer, #151517)">
+  <div class="wrap">
+    <div class="footer-cols">
+      <div class="footer-col">
+        <h4>Shop</h4>
+        <ul id="footerShopList"></ul>
+      </div>
+      <div class="footer-col">
+        <h4>Help</h4>
+        <ul>
+          <li><a href="#" data-acc-note="shipping">Shipping (sample)</a></li>
+          <li><a href="#" data-acc-note="returns">Returns (sample)</a></li>
+          <li><a href="#" data-acc-note="fit">Sizing &amp; fit</a></li>
+          <li><a href="studio.html">Studio / custom orders</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>About</h4>
+        <p>Prodigy Athletics is a Canadian jiu-jitsu apparel company. Sample site.</p>
+        <p><a href="https://instagram.com/prodigy_athletics_canada" target="_blank" rel="noopener">@prodigy_athletics_canada</a></p>
+      </div>
+      <div class="footer-col">
+        <h4>&nbsp;</h4>
+        <p>Sample storefront built with generated product renders — no photography.</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; Prodigy Athletics — sample storefront, not a live store.</span>
+      <span>Checkout is not connected. Nothing here can be purchased.</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ── Drawers ─────────────────────────────────────────────────────────── -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+
+<div class="drawer drawer--left" id="navDrawer" aria-hidden="true">
+  <div class="drawer__head"><h2>Menu</h2><button class="drawer__close" data-close-drawer aria-label="Close menu">&times;</button></div>
+  <div class="drawer__body">
+    <ul class="drawer-nav-tree" id="drawerNavTree"></ul>
+  </div>
+</div>
+
+<div class="drawer drawer--left" id="searchDrawer" aria-hidden="true">
+  <div class="drawer__head"><h2>Search</h2><button class="drawer__close" data-close-drawer aria-label="Close search">&times;</button></div>
+  <div class="drawer__body">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Search rashguards, camo, ranked…" autocomplete="off">
+    </div>
+    <p class="search-hint" id="searchHint">Type to filter the grid live. This is a client-side filter over sample data, not a real search index.</p>
+  </div>
+</div>
+
+<div class="drawer drawer--right" id="cartDrawer" aria-hidden="true">
+  <div class="drawer__head"><h2>Cart</h2><button class="drawer__close" data-close-drawer aria-label="Close cart">&times;</button></div>
+  <div class="drawer__body" id="cartDrawerBody"></div>
+</div>
+
+<div class="drawer drawer--left" id="filterDrawer" aria-hidden="true">
+  <div class="drawer__head"><h2>Filter</h2><button class="drawer__close" data-close-drawer aria-label="Close filter">&times;</button></div>
+  <div class="drawer__body" id="filterDrawerBody"></div>
+</div>
+
+<!-- ── PDP modal ───────────────────────────────────────────────────────── -->
+<div class="pdp-overlay" id="pdpOverlay">
+  <div class="pdp" id="pdpRoot" role="dialog" aria-modal="true" aria-labelledby="pdpTitle">
+    <button class="pdp__close" id="pdpClose" aria-label="Close">&times;</button>
+    <div class="pdp__body" id="pdpBody"></div>
+  </div>
+</div>
+
+<script type="module" src="src/ui/store.js"></script>
+</body>
+</html>

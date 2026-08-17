@@ -1,0 +1,129 @@
+<!doctype html>
+<meta charset="utf-8"><title>Print panel proto</title>
+<style>
+  body{margin:0;background:#54565c;font:13px system-ui;padding:14px}
+  .sheet{background:#fff;border-radius:4px;max-width:1180px;margin:0 auto;padding:0}
+  svg{display:block;width:100%;height:auto}
+</style>
+<script>
+/* ================= FLAT PATTERN PIECES (raglan LS rashguard) =================
+   Piece-local coordinates; each piece is placed with a <g transform>.
+   cut  = the sewing cut line
+   bleed= cut line offset outward (sublimation overprint, ~8mm scaled)
+================================================================================ */
+
+const PIECES = {
+  frontBody: {
+    name:'FRONT BODY', qty:1, w:380, h:610,
+    cut:`M 128 26 C 152 6 228 6 252 26
+         C 232 58 148 58 128 26 Z`,          /* placeholder, unused */
+    outline:`M 128 26
+      C 155 54 225 54 252 26
+      C 300 78 340 150 358 216
+      C 366 330 364 460 356 584
+      C 246 600 134 600 24 584
+      C 16 460 14 330 22 216
+      C 40 150 80 78 128 26 Z`,
+    seams:[
+      {d:`M 128 26 C 155 54 225 54 252 26`, label:'neckline'},
+      {d:`M 128 26 C 100 66 62 140 22 216`, label:'raglan L'},
+      {d:`M 252 26 C 280 66 318 140 358 216`, label:'raglan R'},
+      {d:`M 24 584 C 134 600 246 600 356 584`, label:'hem'},
+    ],
+  },
+  backBody: {
+    name:'BACK BODY', qty:1, w:380, h:610,
+    outline:`M 126 18
+      C 155 34 225 34 254 18
+      C 302 70 340 148 358 216
+      C 366 330 364 460 356 584
+      C 246 600 134 600 24 584
+      C 16 460 14 330 22 216
+      C 40 148 78 70 126 18 Z`,
+    seams:[
+      {d:`M 126 18 C 155 34 225 34 254 18`, label:'neckline'},
+      {d:`M 126 18 C 98 62 60 140 22 216`, label:'raglan L'},
+      {d:`M 254 18 C 282 62 320 140 358 216`, label:'raglan R'},
+      {d:`M 24 584 C 134 600 246 600 356 584`, label:'hem'},
+    ],
+  },
+  sleeve: {
+    name:'SLEEVE', qty:2, w:270, h:560,
+    /* raglan sleeve: cap edge at top-left is the seam that meets the body */
+    outline:`M 150 8
+      C 196 52 226 128 240 206
+      C 246 320 240 430 228 512
+      C 190 526 152 528 112 520
+      C 96 430 80 320 70 206
+      C 82 128 108 52 150 8 Z`,
+    seams:[
+      {d:`M 150 8 C 108 52 82 128 70 206`, label:'raglan seam (to body)'},
+      {d:`M 150 8 C 196 52 226 128 240 206`, label:'shoulder cap'},
+      {d:`M 112 520 C 152 528 190 526 228 512`, label:'cuff'},
+    ],
+  },
+  collar: {
+    name:'COLLAR BINDING', qty:1, w:520, h:64,
+    outline:`M 8 12 L 512 12 L 512 52 L 8 52 Z`,
+    seams:[{d:`M 8 32 L 512 32`, label:'fold'}],
+  },
+};
+
+/* outward offset for bleed — cheap approximation: scale about the piece centre */
+function bleedPath(p, amt=1.035){
+  return `<g transform="translate(${p.w/2} ${p.h/2}) scale(${amt}) translate(${-p.w/2} ${-p.h/2})">
+            <path d="${p.outline}" fill="none" stroke="#e0245e" stroke-width="2"
+                  stroke-dasharray="9 7" vector-effect="non-scaling-stroke"/></g>`;
+}
+
+let UID=0;
+function piece(p, x, y, artId, scale=1){
+  const u='p'+(UID++), id=n=>`${u}-${n}`, url=n=>`url(#${id(n)})`;
+  return `<g transform="translate(${x} ${y}) scale(${scale})">
+    <defs><clipPath id="${id('c')}"><path d="${p.outline}"/></clipPath></defs>
+    ${bleedPath(p)}
+    <g clip-path="${url('c')}">
+      <rect width="${p.w}" height="${p.h}" fill="#14161b"/>
+      <rect width="${p.w}" height="${p.h}" fill="url(#${artId})"/>
+    </g>
+    <path d="${p.outline}" fill="none" stroke="#111" stroke-width="2.4" vector-effect="non-scaling-stroke"/>
+    ${p.seams.map(s=>`<path d="${s.d}" fill="none" stroke="#fff" stroke-opacity=".75"
+        stroke-width="1.6" stroke-dasharray="5 5" vector-effect="non-scaling-stroke"/>`).join('')}
+    <text x="${p.w/2}" y="${p.h+30}" text-anchor="middle"
+      font-family="ui-monospace,monospace" font-size="15" fill="#111" letter-spacing="1.5">
+      ${p.name}${p.qty>1?`  ×${p.qty}`:''}</text>
+  </g>`;
+}
+
+addEventListener('DOMContentLoaded',()=>{
+  const art = `<pattern id="ART" width="150" height="150" patternUnits="userSpaceOnUse">
+      <rect width="150" height="150" fill="#141642"/>
+      <circle cx="75" cy="75" r="54" fill="none" stroke="#ff2e63" stroke-width="13"/>
+      <circle cx="75" cy="75" r="27" fill="#00d9c0"/>
+      <path d="M0 0 L150 150 M150 0 L0 150" stroke="#ffb703" stroke-width="8"/>
+      <rect width="150" height="15" fill="#ff2e63"/></pattern>`;
+
+  document.body.innerHTML = `<div class="sheet"><svg viewBox="0 0 1180 820">
+    <defs>${art}</defs>
+    <rect width="1180" height="820" fill="#fff"/>
+
+    <text x="40" y="46" font-family="ui-monospace,monospace" font-size="19" letter-spacing="2" fill="#111">
+      PRINT PANEL / CUT SHEET &#8212; LONG-SLEEVE RASHGUARD</text>
+    <text x="40" y="70" font-family="ui-monospace,monospace" font-size="12" fill="#666">
+      Sublimation layout. Artwork prints FLAT on the roll, then pieces are cut and sewn.
+      Solid = cut line &#183; dashed pink = bleed &#183; dashed white = seam</text>
+    <line x1="40" y1="88" x2="1140" y2="88" stroke="#ddd"/>
+
+    ${piece(PIECES.frontBody, 60, 120, 'ART', .95)}
+    ${piece(PIECES.backBody, 460, 120, 'ART', .95)}
+    ${piece(PIECES.sleeve,   840, 120, 'ART', .95)}
+    ${piece(PIECES.collar,   60, 730, 'ART', .95)}
+
+    <g transform="translate(640 742)" font-family="ui-monospace,monospace" font-size="12" fill="#444">
+      <text y="0">BLEED   8 mm past every cut line</text>
+      <text y="20">FABRIC  100% polyester, sublimation-ready, white base</text>
+      <text y="40">NOTE    cross-seam alignment is confirmed at sampling, not here</text>
+    </g>
+  </svg></div>`;
+});
+</script>

@@ -169,7 +169,7 @@ function currentList() { return sortProducts(PRODUCTS.filter(p => matchesFilters
 // ───────────────────────────── card markup ─────────────────────────────
 
 function badgesMarkup(product) {
-  const cls = { New: 'badge--new', 'Best seller': 'badge--bestseller', Sale: 'badge--sale' };
+  const cls = { New: 'badge--new', 'Best seller': 'badge--bestseller', Flagship: 'badge--bestseller', Sale: 'badge--sale' };
   const specific = (product.badges || []).map(b => {
     if (b === 'Sale' && product.price.compareAt) {
       const save = product.price.compareAt - product.price.amount;
@@ -265,7 +265,9 @@ function renderGrid() {
     window.__prodigyStore = window.__prodigyStore || {};
     window.__prodigyStore.lastGridPaintMs = paintMs;
     const svgCount = cards.reduce((n, el) => n + el.querySelectorAll('svg').length, 0);
-    perfNoteEl.textContent = `Grid rendered ${cards.length} product cards (${svgCount} SVGs) in ${paintMs} ms.`;
+    perfNoteEl.textContent = new URLSearchParams(location.search).has('debug')
+      ? `Grid rendered ${cards.length} product cards (${svgCount} SVGs) in ${paintMs} ms.`
+      : `All ${cards.length} product images are rendered live in your browser — no product photography.`;
     if (paintMs > 400) rasterizeGrid(cards, list);
   }));
 }
@@ -411,7 +413,16 @@ function wireFilterContainer(container) {
   });
   container.addEventListener('input', (e) => {
     const range = e.target.closest('[data-price-range]');
-    if (range) { state.filters.priceMax = Number(range.value); renderFilters(); renderGrid(); }
+    if (!range) return;
+    // Keep the slider element persistent while dragging / arrow-keying: update the
+    // model + label + grid only; the full facet rebuild waits for 'change'.
+    state.filters.priceMax = Number(range.value);
+    const lbl = range.parentElement && range.parentElement.querySelector('.text-sm');
+    if (lbl) lbl.textContent = `Up to $${state.filters.priceMax} sample`;
+    renderGrid();
+  });
+  container.addEventListener('change', (e) => {
+    if (e.target.closest('[data-price-range]')) renderFilters();
   });
 }
 function toggleFilter(dim, value) {
@@ -571,12 +582,29 @@ const pdpBody = document.getElementById('pdpBody');
 document.getElementById('pdpClose').addEventListener('click', closePDP);
 pdpOverlay.addEventListener('click', (e) => { if (e.target === pdpOverlay) closePDP(); });
 
+let pdpReturnFocus = null;
 function openPDP(product) {
+  pdpReturnFocus = document.activeElement;
   state.pdp = { product, activeThumb: 'front', size: SIZE_LIST[2] };
   renderPDP();
   pdpOverlay.classList.add('is-open');
+  const closeBtn = document.getElementById('pdpClose');
+  if (closeBtn) closeBtn.focus();
 }
-function closePDP() { pdpOverlay.classList.remove('is-open'); state.pdp = null; }
+function closePDP() {
+  pdpOverlay.classList.remove('is-open'); state.pdp = null;
+  if (pdpReturnFocus && typeof pdpReturnFocus.focus === 'function') pdpReturnFocus.focus();
+  pdpReturnFocus = null;
+}
+// keep Tab inside the open dialog
+pdpOverlay.addEventListener('keydown', (e) => {
+  if (e.key !== 'Tab' || !pdpOverlay.classList.contains('is-open')) return;
+  const f = [...pdpOverlay.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter(el => !el.disabled && el.offsetParent !== null);
+  if (!f.length) return;
+  const first = f[0], last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
 
 function renderPDP() {
   const { product, activeThumb } = state.pdp;
@@ -638,9 +666,9 @@ function renderPDP() {
 
   pdpBody.innerHTML = `
     <div class="pdp__thumbs">
-      <button class="pdp__thumb ${activeThumb === 'front' ? 'is-active' : ''}" data-thumb="front">${thumbFront}</button>
-      <button class="pdp__thumb ${activeThumb === 'back' ? 'is-active' : ''}" data-thumb="back">${thumbBack}</button>
-      <button class="pdp__thumb ${activeThumb === 'detail' ? 'is-active' : ''}" data-thumb="detail">${thumbDetail}</button>
+      <button class="pdp__thumb ${activeThumb === 'front' ? 'is-active' : ''}" data-thumb="front" aria-label="Front view">${thumbFront}</button>
+      <button class="pdp__thumb ${activeThumb === 'back' ? 'is-active' : ''}" data-thumb="back" aria-label="Back view">${thumbBack}</button>
+      <button class="pdp__thumb ${activeThumb === 'detail' ? 'is-active' : ''}" data-thumb="detail" aria-label="Detail view">${thumbDetail}</button>
     </div>
     <div class="pdp__main">${main}</div>
     <div class="pdp__info">

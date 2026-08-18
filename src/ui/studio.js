@@ -398,7 +398,7 @@ async function exportSelected() {
       return;
     }
   }
-  setStatus(`Done — exported ${chosen.length} scene${chosen.length > 1 ? 's' : ''}.`, false);
+  setStatus(`Sent ${chosen.length} PNG${chosen.length > 1 ? 's' : ''} to your browser downloads — check the download bar.`, false);
 }
 
 // ───────────────────────────── panel builders ─────────────────────────────
@@ -606,7 +606,10 @@ function renderEmptyOverlays() {
     if (hasArt || isRankAuto) continue;
     const [x, y, w, h] = s.bbox;
     const isActive = s.key === state.activeSlot;
-    html += `<div class="empty-slot-overlay ${isActive ? 'is-active' : ''}" style="left:${x / 10}%;top:${y / 10}%;width:${w / 10}%;height:${h / 10}%">
+    // 'all' spans the whole garment; pin its label to the top-left corner so it never
+    // collides with the panel labels centred inside their own boxes.
+    const anchorCls = s.key === 'all' ? ' is-whole' : '';
+    html += `<div class="empty-slot-overlay ${isActive ? 'is-active' : ''}${anchorCls}" style="left:${x / 10}%;top:${y / 10}%;width:${w / 10}%;height:${h / 10}%">
       <span>${esc(shortLabel(s.label))}<br>${s.printPx[0]} &times; ${s.printPx[1]} px</span>
     </div>`;
   }

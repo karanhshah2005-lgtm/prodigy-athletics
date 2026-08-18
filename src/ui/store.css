@@ -411,3 +411,7 @@ blockquote.rule { border-left: 3px solid var(--accent, #E8A33D); margin: 8px 0; 
 @media (max-width: 460px) {
   .hero__bg svg { width: 420px; }
 }
+
+/* skip link (a11y) */
+.skip-link { position: absolute; left: 8px; top: -48px; z-index: 1000; background: var(--accent, #E8A33D); color: var(--navy, #0B1220); padding: 8px 12px; border-radius: 6px; font-weight: 600; text-decoration: none; }
+.skip-link:focus { top: 8px; outline: 2px solid var(--navy, #0B1220); }

@@ -504,6 +504,9 @@ details.rule-details summary, details.myth-details summary { cursor: pointer; co
     z-index: 200;
   }
   .contextual-panel.sheet-open { transform: translateY(0); }
+  /* partial-height snap so a slice of the preview stays visible; visible grab handle */
+  .contextual-panel.sheet-open { max-height: 55vh; }
+  .contextual-panel::before { content: ''; display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--muted, #A9AFB8); margin: 6px auto 8px; opacity: .6; }
   .scenes-rail { display: none; }
   .canvas-stage { width: min(70vh, 100vw - 32px); }
 }
@@ -514,3 +517,7 @@ details.rule-details summary, details.myth-details summary { cursor: pointer; co
 
 /* prevent any horizontal overflow at narrow widths */
 html, body { max-width: 100%; }
+
+/* whole-garment ('all') overlay: label pinned top-left, panels keep centred labels */
+.empty-slot-overlay.is-whole { align-items: flex-start; justify-content: flex-start; text-align: left; }
+.empty-slot-overlay.is-whole > span { background: rgba(11,18,32,.75); padding: 3px 6px; border-radius: 4px; }

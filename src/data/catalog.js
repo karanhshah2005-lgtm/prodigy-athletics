@@ -12,13 +12,13 @@
  *   pairId: string | null,                      // links an LS/SS sleeve-length sibling pair
  *   isSet: boolean, partner: { style, slots } | null,   // "Set:" two-garment merchandising
  *   price: { sample:true, amount, currency:'CAD', compareAt? },
- *   badges: [ 'New' | 'Best seller' | 'Sale' ],
+ *   badges: [ 'New' | 'Flagship' | 'Sale' ],   // never 'Best seller' — no sales history exists
  *   colorways: [hex,...],                       // dots; belts for ranked, recolors otherwise
  * }
  *
  * The ranked short-sleeve rashguard (white/blue/purple/brown/black) is the client's ONE
  * confirmed real product (see DESIGN.md OBSERVED section) — it is the hero, first in the
- * list and carries the only "Best seller" badge.
+ * list and carries the only "Flagship" badge (the one confirmed real line).
  */
 
 import { BELT_HEX } from '../render/garment.js';
@@ -60,7 +60,7 @@ export const PRODUCTS = Object.freeze([
     id: 'ranked-ss', name: 'Ranked Short-Sleeve Rashguard', style: 'ss', theme: 'Ranked', gender: 'Unisex',
     baseColor: BLACK, artSpec: null, slots: {}, ranked: { belt: 'white' }, pairId: 'ranked',
     isSet: false, partner: null,
-    price: price(75), badges: ['Best seller'], colorways: BELT_COLORWAYS,
+    price: price(75), badges: ['Flagship'], colorways: BELT_COLORWAYS,
   },
   {
     id: 'ranked-ls', name: 'Ranked Long-Sleeve Rashguard', style: 'ls', theme: 'Ranked', gender: 'Unisex',

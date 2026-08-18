@@ -21,13 +21,35 @@ body.store {
 .store button { font-family: inherit; }
 .wrap { max-width: 1320px; margin: 0 auto; padding: 0 20px; }
 
+/* Display stack = big type only (hero, section headings, >=24px). It falls back to Impact
+   on most machines, which is tight by design — spacing it out is exactly what makes a
+   fallback look like a fallback, so tracking here is 0/negative, never positive.
+   Small all-caps chrome uses .ui-caps (body stack, 700, +0.04em) instead. */
 .display {
   font-family: var(--font-display, 'Barlow Condensed', 'Arial Narrow', Impact, sans-serif);
   text-transform: uppercase;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
   font-weight: 700;
   line-height: 0.96;
 }
+/* Small all-caps UI voice — nav wordmark fallback, tile labels, count, PDP title, etc. */
+.store .ui-caps,
+.store .nav__word,
+.store .tile__label,
+.store .grid-heading h1,
+.store .pdp__title,
+.store .drawer__head h2,
+.store .studio-step h3,
+.store .footer-col h4,
+.store .bundle h4,
+.store .card__title {
+  font-family: var(--font-body, Barlow, 'Segoe UI', system-ui, sans-serif);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.store .grid-heading h1 { font-weight: 600; }
+.store .card__title { font-weight: 600; letter-spacing: 0.03em; }
 
 /* ── announcement bar ─────────────────────────────────────────────── */
 .annbar {
@@ -35,13 +57,16 @@ body.store {
   color: var(--bone, #F5F3EE);
   font-size: 12.5px;
   text-align: center;
-  padding: 8px 40px 8px 12px;
+  padding: 8px 52px 8px 12px;
   position: relative;
 }
+/* 44x44 hit area (the glyph stays 16px) — this sits at the very top of a phone screen
+   where a 28px target is a miss-tap generator. */
 .annbar__close {
-  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
   background: none; border: 0; color: var(--bone, #F5F3EE); opacity: .7; cursor: pointer;
-  font-size: 16px; line-height: 1; padding: 6px;
+  font-size: 16px; line-height: 1; padding: 0;
+  width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center;
 }
 .annbar__close:hover { opacity: 1; }
 .annbar.is-hidden { display: none; }
@@ -57,24 +82,25 @@ body.store {
   display: flex; align-items: center; justify-content: space-between;
   height: 60px;
 }
-.nav__side { display: flex; align-items: center; gap: 6px; min-width: 96px; }
+.nav__side { display: flex; align-items: center; gap: 4px; min-width: 44px; }
 .nav__side.right { justify-content: flex-end; }
 .icon-btn {
   background: none; border: 0; color: inherit; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
-  width: 38px; height: 38px; border-radius: 6px; position: relative;
+  width: 44px; height: 44px; border-radius: 6px; position: relative;   /* 44x44 touch target */
+  flex: none;   /* never let the nav flexbox squeeze the target below 44px */
 }
 .icon-btn:hover { background: rgba(255,255,255,.08); }
 .icon-btn svg { width: 20px; height: 20px; }
 .cart-count {
-  position: absolute; top: 2px; right: 2px;
+  position: absolute; top: 5px; right: 3px;
   background: var(--accent, #E8A33D); color: var(--navy, #0B1220);
   font-size: 10px; font-weight: 700; min-width: 16px; height: 16px; border-radius: 999px;
   display: flex; align-items: center; justify-content: center; padding: 0 3px;
 }
 .nav__word {
-  font-family: var(--font-display, 'Barlow Condensed', 'Arial Narrow', Impact, sans-serif); text-transform: uppercase; letter-spacing: .04em;
-  font-weight: 700; font-size: 20px; color: var(--bone, #F5F3EE); text-decoration: none;
+  /* type: see .ui-caps block above — body stack, not the Impact-fallback display stack */
+  font-size: 20px; color: var(--bone, #F5F3EE); text-decoration: none;
   white-space: nowrap;
 }
 .nav__studio {
@@ -115,9 +141,13 @@ body.store {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 18px; border-bottom: 1px solid var(--line, #DBDBDB);
 }
-.drawer__head h2 { font-family: var(--font-display, 'Barlow Condensed', 'Arial Narrow', Impact, sans-serif); text-transform: uppercase; font-size: 18px; margin: 0; }
+.drawer__head h2 { font-size: 18px; margin: 0; }
 .drawer__body { padding: 16px 18px; overflow-y: auto; flex: 1; }
-.drawer__close { background: none; border: 0; font-size: 22px; cursor: pointer; line-height: 1; padding: 4px; }
+.drawer__close {
+  background: none; border: 0; font-size: 22px; cursor: pointer; line-height: 1; padding: 0;
+  width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center;
+  margin-right: -10px;   /* 44x44 target, optically still tucked into the drawer corner */
+}
 
 .drawer-nav-tree { list-style: none; margin: 0; padding: 0; }
 .drawer-nav-tree li { border-bottom: 1px solid var(--line, #DBDBDB); }
@@ -144,22 +174,39 @@ body.store {
 /* ── hero ──────────────────────────────────────────────────────────── */
 .hero {
   position: relative; background: var(--navy, #0B1220); color: var(--bone, #F5F3EE);
-  overflow: hidden; padding: 64px 20px 56px;
+  overflow: hidden; padding: 52px 0 48px;   /* inline padding comes from .hero__inner (.wrap) */
 }
-.hero__bg {
-  position: absolute; inset: 0; display: flex; justify-content: flex-end; align-items: center;
-  opacity: .22; pointer-events: none;
+/* Copy left, product right. The figure is a live render from the same renderer that
+   draws the grid — the hero is not allowed to be the one place with no product in it. */
+.hero__inner {
+  position: relative; display: grid; grid-template-columns: 1fr; gap: 28px; align-items: center;
 }
-.hero__bg svg { width: 620px; max-width: 70vw; transform: translateX(8%); }
-.hero__bg::after {
-  content: ''; position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 30% 50%, transparent 0%, var(--navy, #0B1220) 68%);
+@media (min-width: 900px) {
+  .hero__inner { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 40px; }
+  .hero { padding: 64px 0 60px; }
 }
-.hero__inner { position: relative; max-width: 640px; }
-.hero__claim { font-size: clamp(38px, 7vw, 64px); margin: 0 0 14px; }
+.hero__copy { max-width: 620px; }
+.hero__claim { font-size: clamp(38px, 6.4vw, 62px); margin: 0 0 14px; }
 .hero__claim .accent { color: var(--accent, #E8A33D); }
-.hero__sub { font-size: 16px; line-height: 1.55; color: rgba(245,243,238,.82); max-width: 480px; margin: 0 0 28px; }
+.hero__sub { font-size: 18px; line-height: 1.45; color: rgba(245,243,238,.92); max-width: 460px; margin: 0 0 8px; }
+.hero__note { font-size: 13px; line-height: 1.5; color: rgba(245,243,238,.62); max-width: 460px; margin: 0 0 26px; }
 .hero__cta { display: flex; gap: 12px; flex-wrap: wrap; }
+
+/* Figure: soft gold radial glow behind a full-detail garment render. */
+.hero__figure {
+  position: relative; width: 60%; max-width: 340px; margin: 0 auto; justify-self: center;
+}
+@media (min-width: 900px) {
+  .hero__figure { width: 100%; max-width: 520px; margin: 0; justify-self: end; }
+}
+.hero__glow {
+  position: absolute; left: 50%; top: 48%; width: 118%; aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%); pointer-events: none;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(232,163,61,.36) 0%, rgba(232,163,61,.20) 30%, rgba(232,163,61,.07) 52%, transparent 72%);
+}
+.hero__product { position: relative; }
+.hero__product svg { width: 100%; height: auto; }
 /* .btn / .btn--primary / .btn--secondary / .btn--ghost come from src/brand.css.
    Only add what brand.css doesn't already define: a full-width modifier and a
    graceful standalone fallback in case brand.css hasn't loaded (no .btn class at all
@@ -184,14 +231,17 @@ body.store {
 .tile__label {
   position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 12px;
   background: linear-gradient(to top, rgba(0,0,0,.72), transparent);
-  font-family: var(--font-display, 'Barlow Condensed', 'Arial Narrow', Impact, sans-serif); text-transform: uppercase; font-size: 14.5px; letter-spacing: .02em;
+  font-size: 14.5px;
 }
 .tile__label { color: var(--bone, #F5F3EE); }
 .tile:hover .tile__label { color: var(--accent, #E8A33D); }
 .store a.btn--primary, .store a.btn--primary:visited { color: var(--navy, #0B1220); }
 
 /* ── layout: filter rail + grid ───────────────────────────────────── */
-.shop { padding: 34px 0 60px; }
+/* NB: .shop is also .wrap, and a padding shorthand here would wipe .wrap's 20px
+   inline padding — at phone widths that put the grid hard against the screen edge.
+   Keep the 20px explicitly. */
+.shop { padding: 34px 20px 60px; }
 .shop-layout { display: grid; grid-template-columns: 1fr; gap: 28px; }
 @media (min-width: 1024px) { .shop-layout { grid-template-columns: 232px 1fr; } }
 
@@ -200,7 +250,7 @@ body.store {
 .filter-toggle {
   display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px;
   background: #fff; border: 1px solid var(--line, #DBDBDB); border-radius: 999px;
-  padding: 9px 16px; font-size: 13px; cursor: pointer;
+  padding: 9px 18px; font-size: 13px; cursor: pointer; min-height: 44px;   /* touch target */
 }
 @media (min-width: 1024px) { .filter-toggle { display: none; } }
 
@@ -221,15 +271,22 @@ body.store {
 .fopt input { accent-color: var(--accent, #E8A33D); }
 .fopt__count { margin-left: auto; color: var(--muted, #5A5A5A); font-size: 12px; }
 .fswatches { display: flex; flex-wrap: wrap; gap: 8px; }
+/* 44x44 hit area, 22px visual swatch (the box is transparent; only the inner span paints) */
 .fswatch {
-  width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; outline: 1px solid var(--line, #DBDBDB);
-  cursor: pointer; padding: 0;
+  width: 44px; height: 44px; border: 0; background: none; padding: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin: -6px;
 }
-.fswatch.is-active { outline: 2px solid var(--accent, #E8A33D); }
+.fswatch__swatch {
+  width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff;
+  outline: 1px solid var(--line, #DBDBDB); display: block;
+}
+.fswatch.is-active .fswatch__swatch { outline: 2px solid var(--accent, #E8A33D); }
+.fswatches { row-gap: 0; }
 .fsizes { display: flex; flex-wrap: wrap; gap: 6px; }
 .fsize {
   border: 1px solid var(--line, #DBDBDB); background: #fff; font-size: 12px; padding: 5px 9px;
-  border-radius: 3px; cursor: pointer;
+  border-radius: 3px; cursor: pointer; min-height: 44px; min-width: 44px;
 }
 .fsize.is-active { border-color: var(--navy, #0B1220); background: var(--navy, #0B1220); color: #fff; }
 .fprice { display: flex; flex-direction: column; gap: 6px; }
@@ -240,7 +297,7 @@ body.store {
 
 /* ── grid heading / sort ──────────────────────────────────────────── */
 .grid-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
-.grid-heading h1 { font-size: 15px; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: .03em; }
+.grid-heading h1 { font-size: 15px; margin: 0; }
 .grid-heading .count { color: var(--muted, #5A5A5A); font-weight: 400; }
 .sort select {
   border: 1px solid var(--line, #DBDBDB); background: #fff; border-radius: 4px; padding: 8px 10px; font-size: 13px;
@@ -275,32 +332,49 @@ body.store {
 /* .badge / .badge--sale / .badge--new / .badge--bestseller / .badge--sample come from
    src/brand.css. Only the corner-stack positioning and a denser size for the small card
    context are added here. */
-.card__badges { position: absolute; top: 8px; right: 8px; z-index: 3; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+/* One badge per corner, never a stack of two: merchandising (New / Flagship) top-left,
+   the required sample marker top-right, always in the same place on every card. */
+.card__badges { position: absolute; top: 8px; z-index: 3; display: flex; flex-direction: column; gap: 4px; }
+.card__badges--merch { left: 8px; align-items: flex-start; }
+.card__badges--sample { right: 8px; align-items: flex-end; }
 .card__badges .badge { font-size: 9.5px; padding: 0.32em 0.6em; }
+.card__badges--sample .badge { cursor: help; background: rgba(255,255,255,.78); }
 .card__badges .badge--sample { cursor: help; }
 .card__quickadd {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 3;
-  background: rgba(255,255,255,.96); padding: 8px; opacity: 0; transform: translateY(6px);
-  transition: opacity .2s ease, transform .2s ease; display: flex; flex-wrap: wrap; gap: 5px; justify-content: center;
+  background: rgba(255,255,255,.96); padding: 6px 6px 8px; opacity: 0; transform: translateY(6px);
+  transition: opacity .2s ease, transform .2s ease; display: flex; flex-wrap: wrap; gap: 4px; justify-content: center;
 }
 .card:hover .card__quickadd, .card.touch-flip .card__quickadd { opacity: 1; transform: translateY(0); }
 .qsize {
   font-size: 11px; border: 1px solid var(--line, #DBDBDB); background: #fff; padding: 4px 7px;
   border-radius: 2px; cursor: pointer;
+  min-height: 44px; min-width: 34px;   /* 44px tall touch target */
+  display: inline-flex; align-items: center; justify-content: center;
 }
 .qsize:hover { border-color: var(--navy, #0B1220); }
 .card__info { padding: 10px 2px 0; text-align: center; }
-.card__title { font-size: 13px; text-transform: uppercase; letter-spacing: .01em; margin: 0 0 4px; }
+.card__title { font-size: 13px; margin: 0 0 4px; }
 .card__title a { text-decoration: none; color: var(--ink, #1A1A1A); }
 .card__price { font-size: 13px; margin: 0 0 8px; }
 .card__price .was { text-decoration: line-through; color: var(--muted, #5A5A5A); margin-right: 6px; }
 .card__price .sample-tag { color: var(--muted, #5A5A5A); font-size: 11px; cursor: help; }
-.card__dots { display: flex; gap: 6px; justify-content: center; }
+/* The visual swatch stays 15px; the BUTTON is a 44x44 transparent box around it, so the
+   thing a thumb has to hit is 44x44 even though the thing an eye sees is 15px. The
+   negative inline margin pulls the boxes back to a ~28px visual rhythm — the overlap is
+   in dead space at the boxes' edges, well away from any swatch. */
+.card__dots { display: flex; gap: 0; justify-content: center; flex-wrap: wrap; margin-top: -8px; }
 .dot {
-  width: 15px; height: 15px; border-radius: 50%; border: 2px solid #fff; outline: 1px solid var(--line, #DBDBDB);
-  cursor: pointer; padding: 0;
+  width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin: 0 -8px;
 }
-.dot.is-active { outline: 2px solid var(--navy, #0B1220); }
+.dot__swatch {
+  width: 15px; height: 15px; border-radius: 50%; border: 2px solid #fff;
+  outline: 1px solid var(--line, #DBDBDB); display: block;
+}
+.dot.is-active .dot__swatch { outline: 2px solid var(--navy, #0B1220); }
+.pdp__dots .dot { margin: 0 -6px; }
 
 /* ── studio cross-sell band ───────────────────────────────────────── */
 .studio-band { background: var(--navy, #0B1220); color: var(--bone, #F5F3EE); padding: 56px 0; }
@@ -314,7 +388,7 @@ body.store {
   width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--accent, #E8A33D); color: var(--accent, #E8A33D);
   display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-family: var(--font-display, 'Barlow Condensed', 'Arial Narrow', Impact, sans-serif); font-size: 15px;
 }
-.studio-step h3 { font-size: 14.5px; text-transform: uppercase; margin: 0 0 6px; letter-spacing: .02em; }
+.studio-step h3 { font-size: 14.5px; margin: 0 0 6px; }
 .studio-step p { font-size: 13px; color: rgba(245,243,238,.72); margin: 0; line-height: 1.55; }
 .studio-band__cta { text-align: center; }
 
@@ -346,8 +420,9 @@ body.store {
   margin: auto;
 }
 .pdp__close {
-  position: absolute; top: 12px; right: 12px; z-index: 5; background: #fff; border: 1px solid var(--line, #DBDBDB);
-  border-radius: 50%; width: 34px; height: 34px; cursor: pointer; font-size: 18px; line-height: 1;
+  position: absolute; top: 10px; right: 10px; z-index: 5; background: #fff; border: 1px solid var(--line, #DBDBDB);
+  border-radius: 50%; width: 44px; height: 44px; cursor: pointer; font-size: 18px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;   /* 44x44 touch target */
 }
 .pdp__body { display: grid; grid-template-columns: 1fr; }
 @media (min-width: 760px) { .pdp__body { grid-template-columns: 76px 1fr 1fr; } }
@@ -378,11 +453,12 @@ body.store {
 .pills { display: flex; flex-wrap: wrap; gap: 7px; }
 .pill {
   border: 1px solid var(--line, #DBDBDB); background: #fff; font-size: 12.5px; padding: 7px 12px;
-  border-radius: 3px; cursor: pointer;
+  border-radius: 3px; cursor: pointer; min-height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
 }
 .pill.is-active { border-color: var(--navy, #0B1220); background: var(--navy, #0B1220); color: #fff; }
 .pill.is-disabled { opacity: .4; cursor: not-allowed; text-decoration: line-through; }
-.pdp__dots { display: flex; gap: 8px; }
+.pdp__dots { display: flex; gap: 0; flex-wrap: wrap; margin-left: -8px; }
 
 .accordion { border-top: 1px solid var(--line, #DBDBDB); margin-top: 18px; }
 .acc-item { border-bottom: 1px solid var(--line, #DBDBDB); }
@@ -411,7 +487,8 @@ blockquote.rule { border-left: 3px solid var(--accent, #E8A33D); margin: 8px 0; 
 .pdp__studio-link { display: inline-block; margin-top: 16px; font-size: 12.5px; text-decoration: underline; }
 
 @media (max-width: 460px) {
-  .hero__bg svg { width: 420px; }
+  .hero { padding: 40px 0 40px; }
+  .hero__figure { width: 62%; }
 }
 
 /* skip link (a11y) */

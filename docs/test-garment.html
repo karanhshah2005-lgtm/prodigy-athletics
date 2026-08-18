@@ -4,12 +4,16 @@
   body{margin:0;background:#e9e9ec;font:12px system-ui;padding:8px}
   h2{margin:14px 0 6px;font:600 13px system-ui;color:#556}
   .row{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+  .big{grid-template-columns:repeat(3,1fr)}
+  .cards{grid-template-columns:repeat(4,300px);justify-content:start}
   .t{background:#fff;border-radius:6px;position:relative;overflow:hidden}
   .t b{position:absolute;left:6px;top:4px;font:600 10px system-ui;color:#9aa;z-index:2}
   .t svg{display:block;width:100%;height:auto}
   #log{white-space:pre;font:12px ui-monospace;background:#111;color:#9f9;padding:8px;margin-top:10px}
   #png{margin-top:8px}#png img{width:220px;background:#fff;border:1px solid #ccc;margin-right:6px}
 </style>
+<h2>detail check — full detail, large (black / bone white / blue)</h2><div class="row big" id="r0"></div>
+<h2>card size — lite @300px, 1:1 (black / white / ranked blue / all-over)</h2><div class="row cards" id="r0b"></div>
 <h2>plain black — ls/ss/shorts/spats × front/back</h2><div class="row" id="r1"></div>
 <h2>all-over art (tiled) — same matrix</h2><div class="row" id="r2"></div>
 <h2>ranked SS: white blue purple brown black (front) + LS blue back + chest logo (single, LS) + white-body ranked</h2><div class="row" id="r3"></div>
@@ -26,6 +30,7 @@ const t0 = performance.now();
 
 const styles = ['ls','ss','shorts','spats'], views = ['front','back'];
 let html = '';
+
 for (const s of styles) for (const v of views) html += tile(`${s} ${v}`, renderGarment({ style: s, view: v, uid: `p-${s}-${v}` }));
 document.getElementById('r1').innerHTML = html;
 
@@ -61,6 +66,21 @@ document.getElementById('r4').innerHTML = html;
 const t1 = performance.now();
 log(`built ${document.querySelectorAll('svg').length} svgs in ${(t1 - t0).toFixed(0)} ms (string build)`);
 requestAnimationFrame(() => requestAnimationFrame(() => log(`first paint of all ${document.querySelectorAll('svg').length} svgs done at +${(performance.now() - t0).toFixed(0)} ms`)));
+
+// ── verification rows — built AFTER the paint measurement so the 32-svg timing stays honest ──
+setTimeout(() => {
+  document.getElementById('r0').innerHTML =
+    tile('ls black', renderGarment({ style:'ls', view:'front', uid:'d-blk' })) +
+    tile('ls bone white', renderGarment({ style:'ls', view:'front', baseColor:'#F5F3EE', uid:'d-wht' })) +
+    tile('ss blue', renderGarment({ style:'ss', view:'front', baseColor:'#1B4DB1', uid:'d-blu' }));
+  const uid = 'cd-art';
+  const d = artPatternDef({ uid, art: geo, tile: true, transform: { scale: 0.5 } });
+  document.getElementById('r0b').innerHTML =
+    tile('ls black', renderGarment({ style:'ls', view:'front', detail:'lite', size:300, uid:'cd-blk' })) +
+    tile('ls white', renderGarment({ style:'ls', view:'front', baseColor:'#ECECEA', detail:'lite', size:300, uid:'cd-wht' })) +
+    tile('ss ranked blue', renderRanked({ style:'ss', belt:'blue', detail:'lite', size:300, uid:'cd-rk' })) +
+    tile('ls all-over', renderGarment({ style:'ls', view:'front', detail:'lite', size:300, uid, defs:d, slots:{ all: artPatternRef({ uid }) } }));
+}, 40);
 
 // slot metadata sanity
 for (const s of styles) log(`${s} front slots: ` + slotsFor(s, 'front').map(x => x.key).join(','));

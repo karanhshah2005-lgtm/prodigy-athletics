@@ -147,6 +147,24 @@ h4 { font-size: var(--fs-xl); }
 h5 { font-size: var(--fs-lg); }
 h6 { font-size: var(--fs-md); }
 
+/* Small headings (< 24px) drop the display stack — see the type note above §7 Buttons.
+   Condensed display faces fall back to Impact, and Impact at 14-22px reads as a fallback,
+   not as a brand voice. Uppercase body at 700 + 0.04em holds the same tone and stays
+   legible. Negative tracking is also wrong here: it belongs to the big display runs. */
+h5, h6 {
+  font-family: var(--font-body);
+  font-weight: 700;
+  letter-spacing: var(--tracking-wide);
+}
+
+/* Utility for non-heading UI chrome that wants the same small all-caps voice. */
+.ui-caps {
+  font-family: var(--font-body);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: var(--tracking-wide);
+}
+
 small, .text-muted { color: var(--muted); }
 
 .eyebrow {
@@ -252,12 +270,17 @@ small, .text-muted { color: var(--muted); }
 /* --------------------------------------------------------------------------
    7. Buttons
    -------------------------------------------------------------------------- */
+/* Type note: buttons use the BODY stack, not --font-display. The display stack is a
+   condensed athletic sans that most machines do not have, so it falls back to Impact —
+   which is passable at 40px+ but reads as a cheap fallback at button/label sizes.
+   --font-display is reserved for the hero and section headings (>=24px); everything
+   small and all-caps is the body stack at 600-700 with +0.04em tracking. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5em;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   text-transform: uppercase;
   letter-spacing: var(--tracking-wide);
   font-weight: 700;

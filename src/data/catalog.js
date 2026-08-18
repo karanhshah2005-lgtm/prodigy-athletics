@@ -44,7 +44,9 @@ const price = (amount, extra = {}) => ({ sample: true, amount, currency: 'CAD', 
 const camoColors = ['#2b3a2a', '#4a5b3d', '#7a7d55', '#1c2418'];
 const minimalColorsDark = [NAVY, '#E8A33D', BONE];
 const minimalColorsLight = [BONE, NAVY, '#E8A33D'];
-const flagColors = ['#C8102E', '#FFFFFF', NAVY];
+// red bands / white band / red maple leaf — the leaf reads as a leaf, in the flag's own
+// colours, rather than a dark mark floating on the white band.
+const flagColors = ['#C8102E', '#F7F5F0', '#C8102E'];
 const geoColors = [NAVY, '#E8A33D', '#5A5A5A'];
 const gridColors = [NAVY, '#DBDBDB', '#E8A33D'];
 const kanjiColors = ['#141414', '#E8A33D'];

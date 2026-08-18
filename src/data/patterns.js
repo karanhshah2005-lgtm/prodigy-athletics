@@ -148,27 +148,51 @@ function kHalftone(ctx, size, colors, rnd, spec) {
   }
 }
 
+/**
+ * Stylised maple-leaf silhouette — ORIGINAL geometry, drawn from scratch as a symmetric
+ * point list, not a traced or copied asset. Right half only (x >= 0, y UP-positive,
+ * normalised to roughly ±1); drawMapleLeaf() mirrors it to make the left half, so the
+ * mark is symmetric by construction.
+ *
+ * A maple leaf, not a star: three upward lobes (a tall centre lobe with a serration each
+ * side, then a raised side lobe), a wide lower lobe at the widest point, and a straight
+ * stem. Five-pointed stars are US flag iconography and have no business on a product
+ * named for the Canadian maple leaf.
+ */
+const MAPLE_HALF = [
+  [0.00, 1.00],   // apex of the centre lobe
+  [0.14, 0.56],   // notch beside the apex
+  [0.34, 0.62],   // centre-lobe serration
+  [0.28, 0.40],   // notch
+  [0.62, 0.46],   // upper side lobe, angled up and out
+  [0.50, 0.22],   // notch
+  [0.84, 0.12],   // widest point — the outstretched arm
+  [0.48, -0.10],  // notch
+  [0.40, -0.42],  // lower lobe, angled down and out
+  [0.15, -0.34],  // sweep back in to the stem
+  [0.15, -0.86],  // stem base
+];
+
+function drawMapleLeaf(ctx, cx, cy, s, fill) {
+  // mirror the whole half (stem base included) so the stem gets a flat foot, not a point
+  const pts = [...MAPLE_HALF, ...MAPLE_HALF.slice().reverse().map(([x, y]) => [-x, y])];
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  pts.forEach(([px, py], i) => {
+    const x = cx + px * s, y = cy - py * s; // canvas y grows downward — flip
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.closePath(); ctx.fill();
+}
+
 function kFlagCa(ctx, size, colors, rnd, spec) {
   const { c0, c1, c2 } = cols(colors); // c0 = red band, c1 = white band, c2 = leaf accent
   const red = c0, white = c1, leaf = c2 || c0;
   const third = size / 3;
   ctx.fillStyle = red; ctx.fillRect(0, 0, size, size);
   ctx.fillStyle = white; ctx.fillRect(third, 0, third, size);
-  // stylised, angular leaf-ish geometric mark — original geometry, not a traced maple leaf
-  const cx = size / 2, cy = size / 2, s = size * 0.19;
-  ctx.fillStyle = leaf;
-  ctx.beginPath();
-  const pts = [
-    [0, -1.15], [0.28, -0.55], [0.62, -0.62], [0.34, -0.18],
-    [0.58, 0.05], [0.2, 0.12], [0.14, 0.62], [0, 0.3],
-    [-0.14, 0.62], [-0.2, 0.12], [-0.58, 0.05], [-0.34, -0.18],
-    [-0.62, -0.62], [-0.28, -0.55],
-  ];
-  pts.forEach(([px, py], i) => {
-    const x = cx + px * s, y = cy + py * s;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.closePath(); ctx.fill();
+  // leaf sized to sit inside the white band, like the flag it references
+  drawMapleLeaf(ctx, size / 2, size / 2, size * 0.155, leaf);
 }
 
 function kMinimal(ctx, size, colors, rnd, spec) {

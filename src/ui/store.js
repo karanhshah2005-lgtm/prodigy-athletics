@@ -168,6 +168,12 @@ function currentList() { return sortProducts(PRODUCTS.filter(p => matchesFilters
 
 // ───────────────────────────── card markup ─────────────────────────────
 
+/**
+ * Two separate corner stacks, deliberately: merchandising badges (New / Flagship) sit
+ * top-LEFT, and the sample marker always sits top-RIGHT, alone. Stacking both kinds in
+ * one corner made cards look like they carried two competing pills; the sample marker
+ * is required on every card (docs/AGENT-CONTEXT.md) so it gets its own fixed slot.
+ */
 function badgesMarkup(product) {
   const cls = { New: 'badge--new', 'Best seller': 'badge--bestseller', Flagship: 'badge--bestseller', Sale: 'badge--sale' };
   const specific = (product.badges || []).map(b => {
@@ -177,7 +183,8 @@ function badgesMarkup(product) {
     }
     return `<span class="badge ${cls[b] || ''}">${b}</span>`;
   }).join('');
-  return `${specific}<span class="badge badge--sample" title="Sample data — not a real product listing">Sample</span>`;
+  return `<div class="card__badges card__badges--merch">${specific}</div>
+          <div class="card__badges card__badges--sample"><span class="badge badge--sample" title="Sample data — not a real product listing">Sample</span></div>`;
 }
 
 function priceMarkup(product) {
@@ -189,7 +196,8 @@ function priceMarkup(product) {
 function colorDotsMarkup(product) {
   const activeIdx = activeColorwayIndex(product);
   return (product.colorways || []).map((hex, i) =>
-    `<button class="dot ${i === activeIdx ? 'is-active' : ''}" style="background:${hex}" data-idx="${i}" aria-label="${escapeHtml(colorwayLabel(product, hex))}" title="${escapeHtml(colorwayLabel(product, hex))}"></button>`
+    // 44x44 button (touch target) wrapping a 15px visual swatch — see .dot in store.css
+    `<button class="dot ${i === activeIdx ? 'is-active' : ''}" data-idx="${i}" aria-label="${escapeHtml(colorwayLabel(product, hex))}" title="${escapeHtml(colorwayLabel(product, hex))}"><span class="dot__swatch" style="background:${hex}"></span></button>`
   ).join('');
 }
 
@@ -217,7 +225,7 @@ function buildCardEl(product) {
   el.dataset.id = product.id;
   el.innerHTML = `
     <div class="card__media">
-      <div class="card__badges">${badgesMarkup(product)}</div>
+      ${badgesMarkup(product)}
       ${mediaMarkup(product)}
       <div class="card__quickadd">${quickAddMarkup()}</div>
     </div>
@@ -231,11 +239,11 @@ function buildCardEl(product) {
 
 function refreshCardMedia(el, product) {
   const media = el.querySelector('.card__media');
-  const badges = media.querySelector('.card__badges');
   const quickadd = media.querySelector('.card__quickadd');
   media.querySelectorAll('.card__front, .card__back').forEach(n => n.remove());
-  badges.insertAdjacentHTML('afterend', mediaMarkup(product));
-  void quickadd; // unchanged — still the last child, after the freshly-inserted front/back
+  // insert before the quick-add row (the badge stacks are two separate nodes now, so
+  // "after the badges" is no longer a single unambiguous anchor)
+  quickadd.insertAdjacentHTML('beforebegin', mediaMarkup(product));
   el.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('is-active', i === activeColorwayIndex(product)));
 }
 
@@ -342,7 +350,7 @@ function fopt(dim, value, label) {
 }
 function swatchBtn(hex) {
   const active = state.filters.colors.has(hex);
-  return `<button class="fswatch ${active ? 'is-active' : ''}" style="background:${hex}" data-dim="colors" data-value="${hex}" title="${hex}"></button>`;
+  return `<button class="fswatch ${active ? 'is-active' : ''}" data-dim="colors" data-value="${hex}" title="${hex}" aria-label="Filter by ${hex}"><span class="fswatch__swatch" style="background:${hex}"></span></button>`;
 }
 
 function buildFilterHTML() {
@@ -505,8 +513,9 @@ document.addEventListener('click', (e) => {
   if (link) { e.preventDefault(); applyCategoryLink(link); }
 });
 
-// hero background render
-document.getElementById('heroBg').innerHTML = renderRanked({ style: 'ls', view: 'front', belt: 'blue', uid: nextUid('hero'), size: 900, detail: 'full' });
+// hero product render — the storefront's own renderer, at full detail, as the hero figure
+document.getElementById('heroProduct').innerHTML =
+  renderRanked({ style: 'ss', view: 'front', belt: 'blue', uid: nextUid('hero'), size: 560, detail: 'full' });
 
 // ── drawers ──
 const overlay = document.getElementById('drawerOverlay');
@@ -638,7 +647,7 @@ function renderPDP() {
     <div class="variant-group">
       <label>Colourway</label>
       <div class="pdp__dots">${(product.colorways || []).map((hex, i) =>
-        `<button class="dot ${i === activeColorwayIndex(product) ? 'is-active' : ''}" style="background:${hex}" data-pick-color="${i}" title="${escapeHtml(colorwayLabel(product, hex))}" aria-label="${escapeHtml(colorwayLabel(product, hex))}"></button>`
+        `<button class="dot ${i === activeColorwayIndex(product) ? 'is-active' : ''}" data-pick-color="${i}" title="${escapeHtml(colorwayLabel(product, hex))}" aria-label="${escapeHtml(colorwayLabel(product, hex))}"><span class="dot__swatch" style="background:${hex}"></span></button>`
       ).join('')}</div>
     </div>` : '';
 

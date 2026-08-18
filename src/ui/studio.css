@@ -363,7 +363,8 @@ details.rule-details summary, details.myth-details summary { cursor: pointer; co
 }
 .view-switcher button.active { background: var(--accent, #E8A33D); color: var(--navy, #0B1220); }
 
-.canvas-stage-wrap { width: 100%; display: flex; justify-content: center; flex: 1 1 auto; min-height: 0; }
+.canvas-stage-wrap { width: 100%; display: flex; justify-content: center; align-items: center; flex: 1 1 auto; min-height: 0; }
+.canvas-stage { flex: 0 0 auto; }
 .canvas-stage {
   position: relative;
   width: min(70vh, 720px, 100%);

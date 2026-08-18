@@ -207,7 +207,7 @@ body.store :focus-visible { outline: 2px solid var(--ap-black); outline-offset: 
 /* ── grid ─────────────────────────────────────────────────────────────── */
 .shop { padding: 46px var(--ap-pad) 90px; }
 .shop__head {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; justify-content: flex-end;   /* A&P: Sort only, top-right */
   margin-bottom: 30px; gap: 12px;
 }
 .shop__count { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

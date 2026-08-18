@@ -638,7 +638,7 @@ function renderRashguard(h, { style, view, baseColor, slots, size, detail, defs,
 
 // ───────────────────────────── shorts ─────────────────────────────
 
-function renderShorts(h, { view, baseColor, slots, size, detail, defs }) {
+function renderShorts(h, { view, baseColor, slots, size, detail, defs, marks }) {
   const { u, id, url } = h;
   const flat = detail === 'flat';
   const front = view === 'front';
@@ -699,6 +699,8 @@ function renderShorts(h, { view, baseColor, slots, size, detail, defs }) {
       ${P(`<rect width="1000" height="1000" fill="${baseColor}"/>`)}
       ${all ? P(`<rect width="1000" height="1000" fill="${all}"/>`) : ''}
       ${fill('cL', vl)}${fill('cR', vr)}${fill('cB', band)}
+      ${(!flat && marks && marks.waist) ? `<g clip-path="${url('cB')}">${wordSVG(WORD_PRODIGY, { x: 500, y: 226, height: marks.waist.height || 18, color: (marks.waist.color && marks.waist.color !== 'auto') ? marks.waist.color : (tone.light ? '#0B1220' : '#F5F3EE') })}</g>` : ''}
+      ${(!flat && marks && marks.leg && front) ? `<g clip-path="${url('cR')}">${wordSVG(WORD_PRODIGY, { x: 604, y: 470, height: marks.leg.height || 16, color: (marks.leg.color && marks.leg.color !== 'auto') ? marks.leg.color : (tone.light ? '#0B1220' : '#F5F3EE'), rotate: 82 })}</g>` : ''}
       ${flat ? '' : `${bandLayer(h, tone, [SHORTS_BAND], 'cG')}
       <g style="mix-blend-mode:multiply" opacity="${tone.shade}">
         <rect width="1000" height="1000" fill="${url('x')}"/><rect width="1000" height="1000" fill="${url('y')}"/>
@@ -721,7 +723,7 @@ function renderShorts(h, { view, baseColor, slots, size, detail, defs }) {
 
 // ───────────────────────────── spats ─────────────────────────────
 
-function renderSpats(h, { view, baseColor, slots, size, detail, defs }) {
+function renderSpats(h, { view, baseColor, slots, size, detail, defs, marks }) {
   const { u, id, url } = h;
   const flat = detail === 'flat';
   const front = view === 'front';
@@ -785,6 +787,8 @@ function renderSpats(h, { view, baseColor, slots, size, detail, defs }) {
     <rect width="1000" height="1000" fill="${baseColor}"/>
     ${all ? `<rect width="1000" height="1000" fill="${all}"/>` : ''}
     ${fill('cL', vl)}${fill('cR', vr)}${fill('cB', band)}
+    ${(!flat && marks && marks.waist) ? `<g clip-path="${url('cB')}">${wordSVG(WORD_PRODIGY, { x: 500, y: 228, height: marks.waist.height || 22, color: (marks.waist.color && marks.waist.color !== 'auto') ? marks.waist.color : (tone.light ? '#0B1220' : '#F5F3EE') })}</g>` : ''}
+    ${(!flat && marks && marks.leg) ? `<g clip-path="${url('cR')}">${wordSVG(WORD_PRODIGY, { x: 604, y: 590, height: marks.leg.height || 26, color: (marks.leg.color && marks.leg.color !== 'auto') ? marks.leg.color : (tone.light ? '#0B1220' : '#F5F3EE'), rotate: 84 })}</g>` : ''}
     ${flat ? '' : `${bandLayer(h, tone, [SPATS_BAND, SPATS_CUFF_VL, SPATS_CUFF_VR], 'cG')}
     <g style="mix-blend-mode:multiply" opacity="${tone.shade}">
       <g clip-path="${url('cL')}"><rect width="1000" height="1000" fill="${url('legL')}"/></g>

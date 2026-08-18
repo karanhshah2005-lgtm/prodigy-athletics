@@ -32,3 +32,15 @@ document.getElementById('r2').innerHTML =
   tile('lite ranked purple', renderRanked({ style: 'ss', belt: 'purple', uid: 'm7', size: 300, detail: 'lite', marks: { chest: { kind: 'lockup', width: 130 }, sleeves: { text: 'PRODIGY' } } })) +
   tile('lite camo + marks', renderGarment({ style: 'ls', uid, size: 300, detail: 'lite', defs, slots: { all: artPatternRef({ uid }) }, marks: { chest: { kind: 'lockup', color: '#F5F3EE', width: 150 }, sleeves: { text: 'PRODIGY', color: '#F5F3EE' } } }));
 </script>
+<h2>bottoms — shorts + spats with waist/leg marks (front, back)</h2>
+<div class="row" id="r3"></div>
+<script type="module">
+import { renderGarment } from '../src/render/garment.js';
+const tile = (label, svg) => `<div class="t"><b>${label}</b>${svg}</div>`;
+const B = { waist: { color: 'auto' }, leg: { color: 'auto' } };
+document.getElementById('r3').innerHTML =
+  tile('shorts front', renderGarment({ style: 'shorts', uid: 'b1', marks: B })) +
+  tile('shorts back', renderGarment({ style: 'shorts', view: 'back', uid: 'b2', marks: B })) +
+  tile('spats front', renderGarment({ style: 'spats', uid: 'b3', marks: B })) +
+  tile('spats white front', renderGarment({ style: 'spats', baseColor: '#ECECEA', uid: 'b4', marks: B }));
+</script>

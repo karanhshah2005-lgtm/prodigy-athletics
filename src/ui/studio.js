@@ -604,6 +604,9 @@ function renderEmptyOverlays() {
     const hasArt = !!(entry && entry.art);
     const isRankAuto = state.ranked.on && rankAuto.has(s.key) && !hasArt;
     if (hasArt || isRankAuto) continue;
+    // Once an all-over print is placed the spec sheet has done its job — keep only
+    // the ACTIVE slot's guide so labels never sit on top of the artwork.
+    if (state.art.all && state.art.all.art && s.key !== state.activeSlot) continue;
     const [x, y, w, h] = s.bbox;
     const isActive = s.key === state.activeSlot;
     // 'all' spans the whole garment; pin its label to the top-left corner so it never

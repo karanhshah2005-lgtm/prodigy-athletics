@@ -233,6 +233,16 @@ function effectiveBody(belt, body) {
   return body;
 }
 
+/** "1800 × 2400 px · 6 × 8 in @ 300 dpi" — sublimation artwork is normally supplied at 300 dpi. */
+const PRINT_DPI = 300;
+function printSizeLabel(printPx, { brief = false } = {}) {
+  const [w, h] = printPx;
+  const win = Math.round(w / PRINT_DPI * 10) / 10, hin = Math.round(h / PRINT_DPI * 10) / 10;
+  return brief
+    ? `${w} &times; ${h} px &middot; ${win} &times; ${hin} in`
+    : `${w} &times; ${h} px &middot; ${win} &times; ${hin} in @ ${PRINT_DPI} dpi`;
+}
+
 async function computeCoveragePct() {
   // Belt-INDEPENDENT area estimate: render an unshaded (detail:'flat') mask of the
   // same construction with the rank-coloured slots painted a marker colour and
@@ -441,7 +451,8 @@ function buildActiveSlotControls(slotDef, entry) {
       <div class="control-label"><span>Rotation</span></div>
       <div class="dial-wrap">
         <div class="rotate-dial" id="rotateDial"><div class="dial-knob" id="dialKnob" style="transform:rotate(${t.rotate}deg)"></div></div>
-        <div class="control-inline"><input type="number" id="rotateNum" value="${Math.round(t.rotate)}"><span>&deg;</span></div>
+        <input type="range" id="rotateRange" min="0" max="359" step="1" value="${Math.round(t.rotate)}" aria-label="Rotation">
+        <div class="control-inline"><input type="number" id="rotateNum" min="0" max="359" step="1" value="${Math.round(t.rotate)}"><span>&deg;</span></div>
       </div>
     </div>
     <div class="control-row">
@@ -463,7 +474,7 @@ function buildArtPanel() {
       <span class="slot-thumb">${thumb}</span>
       <span class="slot-meta">
         <span class="slot-name">${esc(s.label)}</span><br>
-        <span class="slot-size">${s.printPx[0]} &times; ${s.printPx[1]} px</span>
+        <span class="slot-size">${printSizeLabel(s.printPx)}</span>
       </span>
     </button>`;
   }).join('');
@@ -576,6 +587,7 @@ function renderScenesPickerHTML() {
 function renderExportActionHTML() {
   return `<div class="panel-section" style="border-top:none;margin-top:0;padding-top:0;">
     <div class="panel-title">Export</div>
+    <div class="export-summary">${(() => { const sel = SCENES.filter(sc => state.scenesSelected[sc.key]); return sel.length ? `${sel.length} scene${sel.length > 1 ? 's' : ''}: ${sel.map(sc => esc(sc.label)).join(', ')}` : 'No scenes selected — tick them under Scenes.'; })()}</div>
     <button type="button" class="btn btn--primary btn-block" data-action="export-selected">Export selected</button>
     <div class="export-status"></div>
     <div class="panel-note">PNGs are web previews at 2000&ndash;3000 px. The cut sheet is a flat pattern starting point in the format factories send back &mdash; confirm scale and bleed with your printer.</div>
@@ -614,7 +626,7 @@ function renderEmptyOverlays() {
     // collides with the panel labels centred inside their own boxes.
     const anchorCls = s.key === 'all' ? ' is-whole' : '';
     html += `<div class="empty-slot-overlay ${isActive ? 'is-active' : ''}${anchorCls}" style="left:${x / 10}%;top:${y / 10}%;width:${w / 10}%;height:${h / 10}%">
-      <span>${esc(shortLabel(s.label))}<br>${s.printPx[0]} &times; ${s.printPx[1]} px</span>
+      <span>${esc(shortLabel(s.label))}<br>${printSizeLabel(s.printPx, { brief: true })}</span>
     </div>`;
   }
   overlayHostEl.innerHTML = html;
@@ -709,6 +721,7 @@ function bindRotateControls(container) {
   const dial = container.querySelector('#rotateDial');
   const knob = container.querySelector('#dialKnob');
   const num = container.querySelector('#rotateNum');
+  const range = container.querySelector('#rotateRange');
   if (!dial || !num) return;
   const setDeg = (deg) => {
     deg = ((Math.round(deg) % 360) + 360) % 360;
@@ -716,9 +729,11 @@ function bindRotateControls(container) {
     if (!entry) return;
     entry.transform.rotate = deg;
     num.value = String(deg);
+    if (range) range.value = String(deg);
     if (knob) knob.style.transform = `rotate(${deg}deg)`;
     scheduleCanvasOnly();
   };
+  if (range) { range.addEventListener('input', () => setDeg(Number(range.value))); range.addEventListener('change', invalidateGridSetCache); }
   num.addEventListener('input', () => { if (num.value !== '') setDeg(Number(num.value)); });
   num.addEventListener('change', invalidateGridSetCache);
   let dragging = false;
@@ -1007,12 +1022,21 @@ function renderViewSwitcher() {
 }
 function renderScenesRailBody() { return renderScenesPickerHTML() + renderExportActionHTML(); }
 
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && state.sheetOpen) { state.sheetOpen = false; contextualPanelEl.classList.remove('sheet-open'); renderTabStrip(); }
+});
+document.addEventListener('pointerdown', (e) => {
+  if (!state.sheetOpen || !matchMedia('(max-width: 1023px)').matches) return;
+  if (e.target.closest('.contextual-panel, .tab-strip, .icon-rail')) return;
+  state.sheetOpen = false; contextualPanelEl.classList.remove('sheet-open'); renderTabStrip();
+}, { capture: true });
+
 function render() {
   ensureActiveSlot();
   renderIconRail();
   renderTabStrip();
   renderViewSwitcher();
-  contextualPanelEl.innerHTML = renderPanelBody(state.activePanel);
+  contextualPanelEl.innerHTML = `<button type="button" class="sheet-close" data-action="close-sheet" aria-label="Close panel"><span class="sheet-handle"></span><span class="sheet-close-x">&times;</span></button>` + renderPanelBody(state.activePanel);
   contextualPanelEl.classList.toggle('sheet-open', state.sheetOpen);
   bindContinuousControls(contextualPanelEl);
   scenesRailEl.innerHTML = renderScenesRailBody();
@@ -1027,6 +1051,12 @@ function onGlobalClick(e) {
   const el = e.target.closest('[data-action]');
   if (!el) return;
   switch (el.dataset.action) {
+    case 'close-sheet': {
+      state.sheetOpen = false;
+      contextualPanelEl.classList.remove('sheet-open');
+      renderTabStrip();
+      return;
+    }
     case 'set-panel': {
       const panel = el.dataset.panel;
       const wasOpenSame = state.activePanel === panel && state.sheetOpen;

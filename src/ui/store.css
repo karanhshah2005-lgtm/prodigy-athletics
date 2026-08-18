@@ -377,3 +377,11 @@ body.store :focus-visible { outline: 2px solid var(--ap-black); outline-offset: 
 .ftr__policies { max-width: 720px; margin: 14px 0 6px; }
 .ftr__policies p { font-size: 11px; line-height: 1.5; color: var(--ap-grey, #767676); margin: 0 0 4px; }
 .ftr__policies b { color: var(--ap-black, #000); font-weight: 700; }
+
+/* narrow: five ranked figures shrink to thumbnails — show white / purple / black and pull
+   the stage in so the panel reads as an editorial frame, not an empty band */
+@media (max-width: 719px) {
+  .panel--ranked { height: 44vw; min-height: 240px; --stage-h: calc(max(44vw, 240px) - 80px); }
+  .panel--ranked .panel__fig:nth-child(2), .panel--ranked .panel__fig:nth-child(4) { display: none; }
+  .panel--ranked .panel__stage { gap: 4vw; padding-left: 20px; padding-right: 20px; }
+}

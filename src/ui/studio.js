@@ -28,7 +28,7 @@ function loadPanelModule() {
 const state = {
   style: 'ss',
   view: 'front',           // 'front' | 'back' — drives slotsFor(); art is stored per this
-  canvasTab: 'front',      // 'front' | 'back' | 'cutsheet' — what the canvas currently shows
+  canvasTab: 'front',      // 'front' | 'back' | 'spin' | 'cutsheet' — what the canvas currently shows
   baseColor: BASE_PRESETS.black,
   aop: false,
   ranked: { on: false, belt: 'blue', body: 'black' },
@@ -675,8 +675,49 @@ async function renderCutSheetView() {
 }
 
 function updateCanvas(opts) {
+  if (state.canvasTab !== 'spin' && spin) { try { spin.dispose(); } catch { /* noop */ } spin = null; }
   if (state.canvasTab === 'cutsheet') renderCutSheetView();
+  else if (state.canvasTab === 'spin') renderSpinView();
   else renderGarmentCanvas(opts);
+}
+
+// ───────────────────────────── 360° view (WebGL, lazy) ─────────────────────────────
+let spin = null, spinMod = null;
+async function loadSpinModule() {
+  if (spinMod) return spinMod;
+  try { spinMod = await import('../render/spin3d.js'); } catch (e) { console.warn('spin3d unavailable', e); spinMod = null; }
+  return spinMod;
+}
+/** Marks + colours for the 3D viewer, derived from the current studio state. */
+function spinOptsFromState() {
+  const allArt = state.art.all && state.art.all.art ? state.art.all.art : null;
+  const rank = state.ranked.on ? BELT_HEX[state.ranked.belt] : null;
+  return {
+    style: (state.style === 'ls' || state.style === 'ss') ? state.style : 'ls',
+    baseColor: state.ranked.on ? (effectiveBody(state.ranked.belt, state.ranked.body) === 'white' ? BASE_PRESETS.white : BASE_PRESETS.black) : state.baseColor,
+    sleeveColor: rank || null,
+    art: allArt, artTile: 3,
+    sleeveText: 'PRODIGY', chestMark: 'wordmark', backText: 'PRODIGY',
+    autoRotate: true, speed: 0.6, background: 'transparent', quality: 'auto',
+  };
+}
+async function renderSpinView() {
+  overlayHostEl.innerHTML = '';
+  dragLayerEl.classList.remove('draggable');
+  cutsheetNotesEl.hidden = true;
+  const mod = await loadSpinModule();
+  if (state.canvasTab !== 'spin') return;
+  if (!mod || (state.style !== 'ls' && state.style !== 'ss')) {
+    svgHostEl.innerHTML = `<div class="slot-empty-note" style="padding:24px;text-align:center;">${mod ? '360° view is available for rashguards (long or short sleeve).' : '360° view needs WebGL — showing the flat render instead.'}</div>`;
+    if (!mod) renderGarmentCanvas({ overlays: false });
+    return;
+  }
+  svgHostEl.innerHTML = '<div id="spinHost" style="position:absolute;inset:0"></div><div class="spin-hint">DRAG TO SPIN</div>';
+  const host = document.getElementById('spinHost');
+  const opts = spinOptsFromState();
+  spin = mod.mountSpin(host, opts);
+  if (host.dataset.spinFallback === '1') { svgHostEl.innerHTML = ''; renderGarmentCanvas({ overlays: false }); spin = null; return; }
+  if (spin && spin.onInteract) spin.onInteract(() => { const h = svgHostEl.querySelector('.spin-hint'); if (h) h.style.opacity = '0'; });
 }
 
 let canvasRaf = null;
@@ -1017,7 +1058,7 @@ function renderTabStrip() {
   tabStripEl.innerHTML = TAB_ITEMS.map((it) => `<button type="button" class="tab-btn ${state.activePanel === it.key ? 'active' : ''}" data-action="set-panel" data-panel="${it.key}">${esc(it.label)}</button>`).join('');
 }
 function renderViewSwitcher() {
-  const tabs = [['front', 'Front'], ['back', 'Back'], ['cutsheet', 'Cut sheet']];
+  const tabs = [['front', 'Front'], ['back', 'Back'], ['spin', '360°'], ['cutsheet', 'Cut sheet']];
   viewSwitcherEl.innerHTML = tabs.map(([k, l]) => `<button type="button" role="tab" aria-selected="${state.canvasTab === k}" class="${state.canvasTab === k ? 'active' : ''}" data-action="set-canvas-tab" data-tab="${k}">${l}</button>`).join('');
 }
 function renderScenesRailBody() { return renderScenesPickerHTML() + renderExportActionHTML(); }

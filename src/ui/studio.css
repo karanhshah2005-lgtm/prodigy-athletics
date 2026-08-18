@@ -561,3 +561,7 @@ html, body { max-width: 100%; }
 @media (max-width: 720px) {
   .ap-header .ap-link--btn { display: none; }
 }
+
+/* 360° view */
+.spin-hint { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); font: 500 11px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .12em; color: var(--accent, #E8A33D); pointer-events: none; transition: opacity .4s; }
+#spinHost canvas { display: block; width: 100% !important; height: 100% !important; }

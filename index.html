@@ -3,92 +3,233 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Prodigy Athletics — Rashguards, Ranked Sets &amp; Custom Gear (Sample Storefront)</title>
-<meta name="description" content="Sample storefront for Prodigy Athletics, a Canadian jiu-jitsu apparel company. Every product image on this page is generated, not photographed. Catalog and prices are placeholders.">
+<title>Prodigy Athletics — Rashguards, Ranked, Sets (Sample Storefront)</title>
+<meta name="description" content="Sample storefront for Prodigy Athletics. Every product image is a render from our own pattern files. Prices, product copy and specifications are placeholders.">
 <meta name="robots" content="noindex">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-<!-- brand.css is linked for its reset only; store.css below owns every visible token
-     on this page (white/black storefront system — no gold, no navy chrome). -->
 <link rel="stylesheet" href="src/brand.css">
 <link rel="stylesheet" href="src/ui/store.css">
+<script type="importmap">
+{"imports":{
+  "three": "./vendor/three/three.module.js",
+  "three/addons/": "./vendor/three/addons/"
+}}
+</script>
 </head>
 <body class="store">
-<a class="skip-link" href="#shop">Skip to products</a>
+<a class="skip-link t-button" href="#shop">Skip to products</a>
 
-<!-- Sample honesty strip — one quiet grey line above the header. -->
-<div class="samplestrip" id="sampleStrip" role="note">
-  <span>Sample storefront — prices and copy are placeholders.</span>
-  <button class="samplestrip__close" id="sampleStripClose" aria-label="Dismiss this message">&times;</button>
-</div>
+<!-- 0. SAMPLE STRIP — permanent, not dismissible -->
+<div class="strip t-micro" role="note">Sample storefront — prices and product copy are placeholders</div>
 
-<header class="hdr" id="siteHeader">
-  <nav class="hdr__nav" aria-label="Primary">
-    <ul class="hdr__links" id="hdrLinks"></ul>
-  </nav>
-  <a class="hdr__logo" href="index.html" id="hdrLogo" aria-label="Prodigy Athletics — home">
-    <span class="hdr__logo-fallback">PRODIGY ATHLETICS</span>
-  </a>
-  <div class="shopmenu" id="shopMenu" hidden>
-    <ul id="shopMenuList"></ul>
+<!-- 1. HEADER -->
+<header class="hdr" id="hdr">
+  <div class="hdr__inner">
+    <a class="hdr__wordmark t-h2" href="index.html">Prodigy Athletics</a>
+    <nav class="hdr__nav" id="hdrNav" aria-label="Primary">
+      <a class="hdr__link t-nav" href="#gis">Gis</a>
+      <a class="hdr__link t-nav" href="#shop">Rashguards</a>
+      <a class="hdr__link t-nav" href="#ranked">Ranked</a>
+      <a class="hdr__link t-nav" href="#sets">Sets</a>
+      <a class="hdr__link t-nav" href="studio.html">Design your own</a>
+    </nav>
+    <span class="hdr__spacer"></span>
+    <button class="hdr__menu t-nav" type="button" id="hdrMenu" aria-expanded="false" aria-controls="hdrNav">Menu</button>
+    <a class="hdr__cart t-nav" href="#shop" id="cartLink">Cart <span id="cartCount">0</span></a>
   </div>
 </header>
 
 <main id="main">
-  <!-- Release panels — full-bleed editorial stages, all live renders. -->
-  <section class="panels" id="panels" aria-label="Releases"></section>
 
-  <!-- Product grid -->
-  <section class="shop" id="shop" tabindex="-1">
-    <div class="shop__head">
-      <p class="shop__count" id="gridCount">24 products</p>
-      <div class="shop__sort">
-        <label for="sortSelect" class="visually-hidden">Sort</label>
-        <select id="sortSelect">
-          <option value="featured">Sort</option>
-          <option value="price-asc">Price: low to high</option>
-          <option value="price-desc">Price: high to low</option>
-          <option value="name-asc">Name: A–Z</option>
-        </select>
+  <!-- 2. HERO -->
+  <section class="hero" aria-labelledby="heroLine">
+    <div class="hero__viewer">
+      <div class="hero__spin" id="heroSpin" tabindex="0" role="slider" aria-valuemin="0" aria-valuemax="359" aria-valuenow="0" aria-valuetext="0 degrees" aria-label="Black long-sleeve rashguard. Drag, or use the left and right arrow keys, to rotate."></div>
+      <p class="hero__drag t-label" id="heroDrag">Drag to spin</p>
+      <p class="hero__fallback t-caption" id="heroFallback">360 view unavailable on this device.</p>
+    </div>
+    <div class="hero__copy">
+      <span class="t-label">Rashguards — relaunching</span>
+      <h1 class="t-display-xl" id="heroLine">Every angle. Before you buy.</h1>
+      <a class="btn btn--gold t-button" href="#ranked">See the ranked line</a>
+    </div>
+  </section>
+
+  <!-- 3. SECTION 01 — RANKED -->
+  <section class="sec sec--major sec--navy" id="ranked" aria-labelledby="rankedHead">
+    <div class="wrap">
+      <div class="sechead reveal">
+        <span class="t-label">01 — Ranked</span>
+        <h2 class="t-display-l" id="rankedHead">Five belts. One cut.</h2>
+        <p class="t-lead">Ranked short sleeve, in white, blue, purple, brown and black. Rank colour sits in the sleeve panels and the collar binding, not in a stripe across the chest.</p>
+      </div>
+      <div class="ranked__row" id="rankedRow"></div>
+      <p class="ranked__note t-caption">
+        IBJJF Art. 8.1.14 requires the rashguard to be &ldquo;colored black, white, or black and white, and with at least 10% of the rank color(belt) to which the athlete belongs.&rdquo;
+        The federation publishes no measuring method, so we build well clear of the line.
+        <a class="tlink" href="https://ibjjf.com/books-videos" target="_blank" rel="noopener">Rule book</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- 4. SECTION 02 — CORE -->
+  <section class="sec sec--major sec--bone" id="core" aria-labelledby="coreHead">
+    <div class="wrap">
+      <div class="sechead reveal">
+        <span class="t-label">02 — Core</span>
+        <h2 class="t-display-l" id="coreHead">Black. White. Nothing else.</h2>
+        <p class="t-lead">Long sleeve, chest lockup, sleeve print, back print. The version you wear when you are not thinking about what you are wearing.</p>
+      </div>
+      <div class="core__row" id="coreRow"></div>
+    </div>
+  </section>
+
+  <!-- 5. SECTION 03 — SETS -->
+  <section class="sec sec--major sec--bonedeep" id="sets" aria-labelledby="setsHead">
+    <div class="wrap">
+      <div class="sechead reveal">
+        <span class="t-label">03 — Sets</span>
+        <h2 class="t-display-l" id="setsHead">One artwork, three cuts.</h2>
+        <p class="t-lead">Dye sublimation prints flat on the roll, then the pieces are cut and sewn. The same file becomes the rashguard, the shorts and the spats.</p>
+      </div>
+      <div class="sets__row" id="setsRow"></div>
+      <p class="sets__cta"><a class="btn btn--ghost t-button" href="#shop">Shop sets</a></p>
+    </div>
+  </section>
+
+  <!-- 6. SECTION 04 — THE DETAIL -->
+  <section class="sec sec--major sec--navy" id="detail" aria-labelledby="detailHead">
+    <div class="wrap">
+      <div class="sechead reveal">
+        <span class="t-label">04 — Detail</span>
+        <h2 class="t-display-l" id="detailHead">Shoulder to cuff.</h2>
+      </div>
+      <div class="detail__grid">
+        <div class="detail__stage" id="detailStage"></div>
+        <ul class="detail__list" id="detailList"></ul>
       </div>
     </div>
-    <div class="grid" id="grid"></div>
   </section>
+
+  <!-- 7. SECTION 05 — GIS -->
+  <section class="sec sec--major sec--bone" id="gis" aria-labelledby="gisHead">
+    <div class="wrap">
+      <div class="sechead reveal">
+        <span class="t-label">05 — Gis</span>
+        <h2 class="t-display-l" id="gisHead">The gi came first.</h2>
+        <p class="t-lead">Prodigy started as a kimono company. The rashguards are the newer line.</p>
+      </div>
+      <div class="gis__grid">
+        <div id="gisRow">
+          <div class="gis__placeholder">
+            <span class="t-label">Gi render — to confirm</span>
+            <p class="t-caption">The renderer has no gi pattern yet. Nothing is shown in its place, and no photograph is used.</p>
+          </div>
+        </div>
+        <table class="spec">
+          <caption class="vh">Gi specification</caption>
+          <tbody>
+            <tr><th class="t-label" scope="row">Jacket weave</th><td><span class="todo">— to confirm</span></td></tr>
+            <tr><th class="t-label" scope="row">Jacket gsm</th><td><span class="todo">— to confirm</span></td></tr>
+            <tr><th class="t-label" scope="row">Pant</th><td><span class="todo">— to confirm</span></td></tr>
+            <tr><th class="t-label" scope="row">Sizes</th><td class="t-body-s">A0–A6</td></tr>
+            <tr><th class="t-label" scope="row">Shrinkage</th><td><span class="todo">— to confirm</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. SECTION 06 — DESIGN YOUR OWN -->
+  <section class="sec sec--major sec--navy" id="studio" aria-labelledby="studioHead">
+    <div class="wrap">
+      <div class="sechead reveal">
+        <span class="t-label">06 — Studio</span>
+        <h2 class="t-display-l" id="studioHead">Upload it. See it. Send it.</h2>
+        <p class="t-lead">Drop in artwork and see it on the real pattern, front and back. Export the mockup and the factory cut sheet in the same click.</p>
+      </div>
+      <div class="studio__grid">
+        <div class="studio__pane" id="studioGarment"></div>
+        <div class="studio__pane">
+          <div class="studio__sheet" id="studioSheet"></div>
+          <span class="t-label">Cut sheet — cut line, bleed, seams</span>
+        </div>
+      </div>
+      <p class="studio__cta"><a class="btn btn--gold t-button" href="studio.html">Open the studio</a></p>
+    </div>
+  </section>
+
+  <!-- 9. SHOP -->
+  <section class="sec sec--major sec--bone" id="shop" tabindex="-1" aria-labelledby="shopHead">
+    <div class="wrap">
+      <div class="sechead reveal">
+        <span class="t-label">07 — All</span>
+        <h2 class="t-display-l" id="shopHead">The whole range.</h2>
+        <p class="t-lead">Every image on this site is a render from our own pattern files. There is no photography yet.</p>
+      </div>
+      <div class="grid" id="grid"></div>
+      <p class="shopall"><button class="tlink t-button" type="button" id="shopAll">Show all</button></p>
+    </div>
+  </section>
+
 </main>
 
+<!-- 10. FOOTER -->
 <footer class="ftr">
-  <ul class="ftr__links" id="ftrLinks"></ul>
-  <form class="ftr__signup" id="ftrSignup">
-    <label for="ftrEmail" class="visually-hidden">Email address (sample — not connected)</label>
-    <input type="email" id="ftrEmail" placeholder="Email" aria-describedby="ftrSignupNote" autocomplete="off">
-    <button type="submit">Sign up</button>
-    <span class="ftr__signup-note" id="ftrSignupNote">Sample — not connected</span>
-  </form>
-  <div class="ftr__policies" id="policies">
-    <p><b>Shipping —</b> Sample text; shipping policy to be confirmed by Prodigy Athletics.</p>
-    <p><b>Returns —</b> Sample text; returns policy to be confirmed by Prodigy Athletics.</p>
-    <p><b>Sizing —</b> Sample text; sizes run XS–4XL, compression fit — size chart to be confirmed by Prodigy Athletics.</p>
+  <div class="wrap">
+    <div class="ftr__cols">
+      <div class="ftr__col">
+        <h2 class="t-label">Shop</h2>
+        <ul>
+          <li><a class="t-body-s" href="#ranked">Ranked</a></li>
+          <li><a class="t-body-s" href="#core">Core</a></li>
+          <li><a class="t-body-s" href="#sets">Sets</a></li>
+          <li><a class="t-body-s" href="#shop">Shorts and spats</a></li>
+          <li><a class="t-body-s" href="#gis">Gis</a></li>
+        </ul>
+      </div>
+      <div class="ftr__col">
+        <h2 class="t-label">Studio</h2>
+        <ul>
+          <li><a class="t-body-s" href="studio.html">Design your own</a></li>
+          <li><a class="t-body-s" href="studio.html">Cut sheet export</a></li>
+          <li><a class="t-body-s" href="#detail">Where the marks sit</a></li>
+        </ul>
+      </div>
+      <div class="ftr__col">
+        <h2 class="t-label">Support</h2>
+        <ul>
+          <li><span class="t-body-s">Sizes XS–4XL</span></li>
+          <li><span class="t-body-s">Shipping <span class="todo">— to confirm</span></span></li>
+          <li><span class="t-body-s">Returns <span class="todo">— to confirm</span></span></li>
+          <li><span class="t-body-s">Contact <span class="todo">— to confirm</span></span></li>
+        </ul>
+      </div>
+      <div class="ftr__col">
+        <h2 class="t-label">Prodigy</h2>
+        <ul>
+          <li><span class="t-body-s">A Canadian kimono company</span></li>
+          <li><span class="t-body-s">Rashguards are the newer line</span></li>
+          <li><span class="t-body-s">Story <span class="todo">— to confirm</span></span></li>
+        </ul>
+      </div>
+    </div>
+    <hr class="ftr__rule">
+    <div class="ftr__bottom">
+      <span class="ftr__mark t-h2">Prodigy Athletics</span>
+      <p class="ftr__legal t-micro">
+        Sample storefront. Prices, product copy and specifications are placeholders.<br>
+        Checkout is not connected. Every product image is rendered in your browser.
+      </p>
+    </div>
   </div>
-  <p class="ftr__legal">
-    &copy; Prodigy Athletics — sample storefront, not a live store. Checkout is not connected.
-    Nothing here can be purchased. Every product image is rendered in your browser — no photography.
-  </p>
 </footer>
 
-<!-- Cart (demo) -->
-<div class="drawer-overlay" id="drawerOverlay"></div>
-<div class="drawer" id="cartDrawer" aria-hidden="true" role="dialog" aria-label="Cart">
-  <div class="drawer__head">
-    <h2>Cart</h2>
-    <button class="drawer__close" id="cartClose" aria-label="Close cart">&times;</button>
-  </div>
-  <div class="drawer__body" id="cartDrawerBody"></div>
-</div>
-
-<!-- PDP modal -->
+<!-- PDP -->
 <div class="pdp-overlay" id="pdpOverlay">
-  <div class="pdp" id="pdpRoot" role="dialog" aria-modal="true" aria-labelledby="pdpTitle">
+  <div class="pdp" id="pdp" role="dialog" aria-modal="true" aria-labelledby="pdpTitle" tabindex="-1">
     <button class="pdp__close" id="pdpClose" aria-label="Close">&times;</button>
-    <div class="pdp__body" id="pdpBody"></div>
+    <div id="pdpBody"></div>
   </div>
 </div>
 

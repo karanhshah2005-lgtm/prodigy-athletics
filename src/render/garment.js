@@ -140,6 +140,93 @@ const SPATS_VR = `M 662 300 C 656 420 640 560 620 700 C 610 790 604 850 600 884
 const SPATS_BAND = `M 352 198 L 648 198 C 652 214 655 230 657 248
   C 552 262 448 262 343 248 C 345 230 348 214 352 198 Z`;
 
+// ───────────────────────────── gi (kimono) ─────────────────────────────
+// DESIGN.md §7 OBSERVED: "a Canadian kimono company first; rashguards are a line
+// extension." The gi jacket is drawn the way it is CUT, not as a t-shirt with a collar:
+// a straight body, a drop-shoulder sleeve wide enough to grip, and a lapel that is a
+// separate reinforced strip crossing LEFT OVER RIGHT (the wearer's left panel on top,
+// which is the viewer's RIGHT). Side slits open the skirt from the hem.
+// Authored directly in the 1000×1000 frame — no scale transform — so slotBBox values are
+// literal and any userSpaceOnUse <pattern> lands where the studio overlay says it does.
+
+// body / torso panel
+const GI_TORSO_F = `M 336 256
+  C 384 244 428 234 463 232 C 476 254 524 254 537 232
+  C 572 234 616 244 664 256 L 670 452
+  C 678 580 684 700 694 826 L 306 826
+  C 316 700 322 580 330 452 Z`;
+const GI_TORSO_B = `M 336 256
+  C 384 244 428 238 455 236 C 472 228 528 228 545 236
+  C 572 238 616 244 664 256 L 670 452
+  C 678 580 684 700 694 826 L 306 826
+  C 316 700 322 580 330 452 Z`;
+
+// drop-shoulder sleeves, wide and straight, finishing at the wrist
+const GI_SLV_VL = `M 336 256 C 260 308 172 398 88 484
+  C 106 536 126 580 148 620 C 213 558 274 504 330 452 Z`;
+const GI_SLV_VR = `M 664 256 C 740 308 828 398 912 484
+  C 894 536 874 580 852 620 C 787 558 726 504 670 452 Z`;
+
+// lapel: the collar arc behind the neck plus the two legs down the front
+// The collar is one piece with the lapels: it closes the neck (no hole to see through),
+// stands ~50 units proud of the shoulder line, and its inner edge IS the torso neckline.
+const GI_COLLAR = `M 408 240 C 414 220 448 210 500 210 C 552 210 586 220 592 240
+  L 537 232 C 524 254 476 254 463 232 Z`;
+const GI_LAPEL_UNDER = `M 408 240 L 463 232 L 525 538 L 470 546 Z`;
+const GI_LAPEL_OVER = `M 537 232 L 592 240 L 530 546 L 518 827 L 463 826 L 475 538 Z`;
+const GI_LAPEL_B = `M 408 240 C 414 220 448 210 500 210 C 552 210 586 220 592 240
+  L 545 236 C 528 228 472 228 455 236 Z`;
+
+// belt (optional): band + knot + two hanging ends
+const GI_BELT_BAND = `M 312 584 C 400 576 600 576 688 584 L 690 652 C 600 644 400 644 310 652 Z`;
+const GI_BELT_KNOT = `M 462 578 L 540 576 C 548 596 549 640 541 662 L 461 664 C 453 640 454 598 462 578 Z`;
+const GI_BELT_TAILS = `M 466 658 L 500 656 L 496 788 L 458 786 Z
+  M 508 656 L 542 658 L 548 782 L 510 784 Z`;
+
+// construction lines
+const GI_SIDE_SLIT_L = `M 322 700 L 306 826`;
+const GI_SIDE_SLIT_R = `M 678 700 L 694 826`;
+const GI_HEM_SEAM = `M 308 806 L 692 806`;
+const GI_CUFF_VL = `M 88 484 C 106 536 126 580 148 620 L 186 588 C 166 552 148 512 132 476 Z`;
+const GI_CUFF_VR = `M 912 484 C 894 536 874 580 852 620 L 814 588 C 834 552 852 512 868 476 Z`;
+const GI_CUFF_SEAM_VL = `M 132 476 C 148 512 166 552 186 588`;
+const GI_CUFF_SEAM_VR = `M 868 476 C 852 512 834 552 814 588`;
+const GI_ARMHOLE_L = `M 336 256 C 334 322 332 390 330 452`;
+const GI_ARMHOLE_R = `M 664 256 C 666 322 668 390 670 452`;
+const GI_BACK_SEAM = `M 500 236 L 500 826`;
+
+// patch zones
+const GI_CHEST_PATCH = { x: 572, y: 300, w: 96, h: 96 };
+const GI_SHOULDER_PATCH_VL = { x: 216, y: 296, w: 92, h: 108, rot: -47, cx: 262, cy: 350 };
+const GI_SHOULDER_PATCH_VR = { x: 692, y: 296, w: 92, h: 108, rot: 47, cx: 738, cy: 350 };
+const GI_BACK_ZONE = { x: 372, y: 320, w: 256, h: 150 };
+
+// ── gi pants ──
+const GIP = `M 296 182 L 704 182
+  C 716 262 720 348 718 434 C 714 528 708 614 702 706
+  C 696 786 692 848 688 884 L 530 884
+  C 526 800 520 700 514 610 C 510 552 505 516 500 486
+  C 495 516 490 552 486 610 C 480 700 474 800 470 884 L 312 884
+  C 308 848 304 786 298 706 C 292 614 286 528 282 434
+  C 280 348 284 262 296 182 Z`;
+const GIP_VL = `M 296 182 C 284 262 280 348 282 434 C 286 528 292 614 298 706
+  C 304 786 308 848 312 884 L 470 884 C 474 800 480 700 486 610
+  C 490 552 495 516 500 486 C 432 428 352 300 296 182 Z`;
+const GIP_VR = `M 704 182 C 716 262 720 348 718 434 C 714 528 708 614 702 706
+  C 696 786 692 848 688 884 L 530 884 C 526 800 520 700 514 610
+  C 510 552 505 516 500 486 C 568 428 648 300 704 182 Z`;
+const GIP_BAND = `M 296 182 L 704 182 C 707 206 710 230 712 254 L 288 254
+  C 290 230 293 206 296 182 Z`;
+const GIP_BAND_SEAM = `M 288 254 L 712 254`;
+const GIP_BAND_EDGE = `M 296 184 L 704 184`;
+const GIP_DRAW_CHANNEL = `M 291 222 L 709 222`;
+const GIP_KNEE_VL = { x: 322, y: 588, w: 142, h: 168 };
+const GIP_KNEE_VR = { x: 536, y: 588, w: 142, h: 168 };
+const GIP_HEM_VL = `M 312 884 L 470 884 L 468 842 L 310 842 Z`;
+const GIP_HEM_VR = `M 530 884 L 688 884 L 690 842 L 532 842 Z`;
+const GIP_HEM_SEAM_VL = `M 310 842 L 468 842`;
+const GIP_HEM_SEAM_VR = `M 532 842 L 690 842`;
+
 // ── frame density ──
 // The rashguard was authored at 728/1000 of the frame (73%) which left it swimming in
 // whitespace on a card. Everything DRAWN is wrapped in RASH_XF (a scale about
@@ -166,6 +253,13 @@ export const BELT_HEX = Object.freeze({
   purple: '#5B2C8F',
   brown: '#5A3A22',
   black: '#141414',
+});
+
+/** Gi base colours. The three a kimono line actually ships. */
+export const GI_PRESETS = Object.freeze({
+  white: '#F4F2EC',
+  blue: '#1B4FA8',
+  black: '#141416',
 });
 
 export const BASE_PRESETS = Object.freeze({
@@ -223,11 +317,43 @@ const SPATS_SLOTS = {
 };
 SPATS_SLOTS.back = SPATS_SLOTS.front;
 
+const GI_SLOTS = {
+  front: [
+    { key: 'all', label: 'All-over print', printPx: [5400, 4200], piece: 'whole jacket' },
+    { key: 'lapel', label: 'Lapel + collar', printPx: [3200, 400], piece: 'lapel' },
+    { key: 'sleeveL', label: "Left sleeve (wearer's left)", printPx: [2000, 2200], piece: 'sleeve' },
+    { key: 'sleeveR', label: "Right sleeve (wearer's right)", printPx: [2000, 2200], piece: 'sleeve' },
+    { key: 'chestPatch', label: 'Left chest patch', printPx: [1000, 1000], piece: 'front body', zone: true },
+    { key: 'shoulderPatchL', label: "Shoulder patch (wearer's left)", printPx: [950, 1100], piece: 'sleeve', zone: true },
+    { key: 'shoulderPatchR', label: "Shoulder patch (wearer's right)", printPx: [950, 1100], piece: 'sleeve', zone: true },
+  ],
+  back: [
+    { key: 'all', label: 'All-over print', printPx: [5400, 4200], piece: 'whole jacket' },
+    { key: 'back', label: 'Back panel', printPx: [2600, 3000], piece: 'back body' },
+    { key: 'lapel', label: 'Collar', printPx: [1600, 300], piece: 'lapel' },
+    { key: 'sleeveL', label: "Left sleeve (wearer's left)", printPx: [2000, 2200], piece: 'sleeve' },
+    { key: 'sleeveR', label: "Right sleeve (wearer's right)", printPx: [2000, 2200], piece: 'sleeve' },
+    { key: 'shoulderPatchL', label: "Shoulder patch (wearer's left)", printPx: [950, 1100], piece: 'sleeve', zone: true },
+    { key: 'shoulderPatchR', label: "Shoulder patch (wearer's right)", printPx: [950, 1100], piece: 'sleeve', zone: true },
+  ],
+};
+const GIPANTS_SLOTS = {
+  front: [
+    { key: 'all', label: 'All-over print', printPx: [3600, 5200], piece: 'whole pant' },
+    { key: 'legL', label: "Left leg (wearer's left)", printPx: [1700, 4600], piece: 'leg' },
+    { key: 'legR', label: "Right leg (wearer's right)", printPx: [1700, 4600], piece: 'leg' },
+    { key: 'waist', label: 'Drawstring waistband', printPx: [3800, 560], piece: 'waistband' },
+  ],
+};
+GIPANTS_SLOTS.back = GIPANTS_SLOTS.front;
+
 export const STYLES = Object.freeze({
   ls: { name: 'Long-sleeve rashguard', short: 'Long sleeve', slots: RASH_SLOTS, family: 'rashguard' },
   ss: { name: 'Short-sleeve rashguard', short: 'Short sleeve', slots: SS_SLOTS, family: 'rashguard' },
   shorts: { name: 'Grappling shorts', short: 'Shorts', slots: SHORTS_SLOTS, family: 'shorts' },
   spats: { name: 'Spats', short: 'Spats', slots: SPATS_SLOTS, family: 'spats' },
+  gi: { name: 'Gi jacket', short: 'Gi jacket', slots: GI_SLOTS, family: 'gi' },
+  gipants: { name: 'Gi pants', short: 'Gi pants', slots: GIPANTS_SLOTS, family: 'gipants' },
 });
 
 export function slotsFor(style, view = 'front') {
@@ -264,6 +390,31 @@ export function slotBBox(style, view, key) {
       case 'frontL': case 'backL': return view === 'front' ? t([500, 208, 172, 358]) : t([328, 208, 172, 358]);
       case 'frontR': case 'backR': return view === 'front' ? t([328, 208, 172, 358]) : t([500, 208, 172, 358]);
       case 'waistband': return t([344, 208, 312, 36]);
+    }
+  }
+  if (fam === 'gi') {
+    // wearer's left is the viewer's right on the front view
+    const wlIsVr = view === 'front';
+    const slv = right => right ? [664, 256, 248, 364] : [88, 256, 248, 364];
+    const shp = right => right ? [692, 296, 92, 108] : [216, 296, 92, 108];
+    switch (key) {
+      case 'all': return [88, 210, 824, 617];
+      case 'back': return [306, 238, 388, 588];
+      case 'lapel': return view === 'front' ? [408, 210, 184, 617] : [408, 210, 184, 46];
+      case 'sleeveL': return slv(wlIsVr);
+      case 'sleeveR': return slv(!wlIsVr);
+      case 'chestPatch': return [GI_CHEST_PATCH.x, GI_CHEST_PATCH.y, GI_CHEST_PATCH.w, GI_CHEST_PATCH.h];
+      case 'shoulderPatchL': return shp(wlIsVr);
+      case 'shoulderPatchR': return shp(!wlIsVr);
+      case 'backPrint': return [GI_BACK_ZONE.x, GI_BACK_ZONE.y, GI_BACK_ZONE.w, GI_BACK_ZONE.h];
+    }
+  }
+  if (fam === 'gipants') {
+    switch (key) {
+      case 'all': return [280, 182, 440, 702];
+      case 'legL': return view === 'front' ? [500, 182, 220, 702] : [280, 182, 220, 702];
+      case 'legR': return view === 'front' ? [280, 182, 220, 702] : [500, 182, 220, 702];
+      case 'waist': return [288, 182, 424, 72];
     }
   }
   if (fam === 'spats') {
@@ -384,10 +535,10 @@ function seamGroup(kit, seams, hi = []) {
  * on light ones it deepens (multiply). Either way it is a VALUE step, which is the cue
  * the eye reads as "garment", plus its own seam supplied by the caller.
  */
-function bandLayer({ url }, tone, paths, clip) {
+function bandLayer({ url }, tone, paths, clip, k = 1) {
   if (!paths.length) return '';
-  const mult = +(0.055 + 0.085 * tone.t).toFixed(3);
-  const lift = +(0.1 * (1 - tone.t)).toFixed(3);
+  const mult = +((0.055 + 0.085 * tone.t) * k).toFixed(3);
+  const lift = +(0.1 * (1 - tone.t) * k).toFixed(3);
   const d = paths.map(p => `<path d="${p}"/>`).join('');
   return `<g clip-path="${url(clip)}">
     <g style="mix-blend-mode:multiply" fill="#000" opacity="${mult}">${d}</g>
@@ -473,7 +624,7 @@ function rashguardShading(h, { view, style, tone }) {
     <ellipse cx="500" cy="820" rx="168" ry="20" fill="#000" opacity=".30" filter="${url('s3')}"/>`;
   const capY = 300;
   return `
-  <g style="mix-blend-mode:multiply" opacity="${tone.shade}">
+  <g style="mix-blend-mode:multiply" opacity="${(tone.shade * (tone.light ? 0.84 : 1)).toFixed(3)}">
     <g clip-path="${url('cTor')}">${front ? torsoFront : torsoBack}</g>
     <g clip-path="${url('cVL')}"><rect width="1000" height="1000" fill="${url('aL')}"/></g>
     <g clip-path="${url('cVR')}"><rect width="1000" height="1000" fill="${url('aR')}"/></g>
@@ -810,6 +961,339 @@ function renderSpats(h, { view, baseColor, slots, size, detail, defs, marks }) {
 </svg>`;
 }
 
+// ───────────────────────────── gi renderer ─────────────────────────────
+
+/**
+ * Pearl weave. A gi's weave is a fine diagonal cross, and it is the one visual cue that
+ * separates a kimono from a heavy t-shirt at any size. One tiny <pattern> of two 45°
+ * lines, laid over the colour at 5% — cheap enough to keep in `lite`, where a turbulence
+ * filter is not affordable.
+ */
+function pearlDefs({ id }) {
+  return `<pattern id="${id('pearl')}" width="8" height="8" patternUnits="userSpaceOnUse">
+    <rect width="8" height="8" fill="#808080"/>
+    <path d="M -1 9 L 9 -1" stroke="#ffffff" stroke-width="1.5" fill="none"/>
+    <path d="M -1 -1 L 9 9" stroke="#000000" stroke-width="1.5" fill="none"/>
+  </pattern>`;
+}
+function pearlLayer({ url }, detail) {
+  return `<g style="mix-blend-mode:overlay" opacity="${detail === 'lite' ? '.06' : '.05'}">
+    <rect width="1000" height="1000" fill="${url('pearl')}"/></g>`;
+}
+
+const rrectRot = (z, r = 12) => `<path transform="rotate(${z.rot} ${z.cx} ${z.cy})" d="${rrect(z, r)}"/>`;
+
+/** Belt colour for the optional tied belt. Accepts a belt name or any paint string. */
+function beltPaint(belt) {
+  if (!belt) return null;
+  return BELT_HEX[belt] || String(belt);
+}
+
+function giDefs(h, { view, detail }) {
+  const { id } = h;
+  const front = view === 'front';
+  const torso = front ? GI_TORSO_F : GI_TORSO_B;
+  const lapel = front
+    ? `<path d="${GI_COLLAR}"/><path d="${GI_LAPEL_UNDER}"/><path d="${GI_LAPEL_OVER}"/>`
+    : `<path d="${GI_LAPEL_B}"/>`;
+  return `
+  <clipPath id="${id('cGar')}">
+    <path d="${torso}"/><path d="${GI_SLV_VL}"/><path d="${GI_SLV_VR}"/>
+    ${front ? `<path d="${GI_COLLAR}"/>` : `<path d="${GI_LAPEL_B}"/>`}
+  </clipPath>
+  <clipPath id="${id('cTor')}"><path d="${torso}"/>${front ? `<path d="${GI_COLLAR}"/>` : ''}</clipPath>
+  <clipPath id="${id('cVL')}"><path d="${GI_SLV_VL}"/></clipPath>
+  <clipPath id="${id('cVR')}"><path d="${GI_SLV_VR}"/></clipPath>
+  <clipPath id="${id('cLap')}">${lapel}</clipPath>
+  <clipPath id="${id('cChest')}"><path d="${rrect(GI_CHEST_PATCH, 14)}"/></clipPath>
+  <clipPath id="${id('cShL')}">${rrectRot(GI_SHOULDER_PATCH_VL)}</clipPath>
+  <clipPath id="${id('cShR')}">${rrectRot(GI_SHOULDER_PATCH_VR)}</clipPath>
+  <clipPath id="${id('cBelt')}"><path d="${GI_BELT_BAND}"/><path d="${GI_BELT_KNOT}"/><path d="${GI_BELT_TAILS}"/></clipPath>
+  ${commonDefs(h, detail)}
+  ${pearlDefs(h)}
+  <linearGradient id="${id('tX')}" x1="318" y1="0" x2="682" y2="0" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#000" stop-opacity=".34"/><stop offset=".16" stop-color="#000" stop-opacity=".05"/>
+    <stop offset=".44" stop-color="#000" stop-opacity="0"/><stop offset=".70" stop-color="#000" stop-opacity=".10"/>
+    <stop offset=".88" stop-color="#000" stop-opacity=".32"/><stop offset="1" stop-color="#000" stop-opacity=".58"/></linearGradient>
+  <linearGradient id="${id('tY')}" x1="0" y1="220" x2="0" y2="826" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#000" stop-opacity=".20"/><stop offset=".14" stop-color="#000" stop-opacity="0"/>
+    <stop offset=".64" stop-color="#000" stop-opacity=".04"/><stop offset="1" stop-color="#000" stop-opacity=".26"/></linearGradient>
+  <linearGradient id="${id('dg')}" x1="200" y1="200" x2="880" y2="880" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset=".55" stop-color="#000" stop-opacity=".04"/>
+    <stop offset="1" stop-color="#000" stop-opacity=".20"/></linearGradient>
+  <linearGradient id="${id('aL')}" x1="110" y1="600" x2="336" y2="300" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#000" stop-opacity=".40"/><stop offset=".26" stop-color="#000" stop-opacity=".04"/>
+    <stop offset=".58" stop-color="#000" stop-opacity="0"/><stop offset=".84" stop-color="#000" stop-opacity=".22"/>
+    <stop offset="1" stop-color="#000" stop-opacity=".46"/></linearGradient>
+  <linearGradient id="${id('aR')}" x1="890" y1="600" x2="664" y2="300" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#000" stop-opacity=".64"/><stop offset=".24" stop-color="#000" stop-opacity=".18"/>
+    <stop offset=".54" stop-color="#000" stop-opacity=".02"/><stop offset=".80" stop-color="#000" stop-opacity=".26"/>
+    <stop offset="1" stop-color="#000" stop-opacity=".56"/></linearGradient>
+  <radialGradient id="${id('kl')}" cx="348" cy="272" r="600" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".45" stop-color="#fff" stop-opacity=".05"/>
+    <stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>`;
+}
+
+function giShading(h, { view, tone }) {
+  const { url } = h;
+  const front = view === 'front';
+  // Key light upper-left. The gi hangs, so the folds are vertical and the deep values sit
+  // in the armpits, under the lapel's over-edge and under the belt.
+  const torsoFront = `
+    <rect width="1000" height="1000" fill="${url('tX')}"/><rect width="1000" height="1000" fill="${url('tY')}"/>
+    <path d="M 475 538 L 537 232 L 557 236 L 495 542 Z" fill="#000" opacity="${tone.light ? '.13' : '.22'}" filter="${url('s3')}"/>
+    <path d="M 463 826 L 475 538 L 495 540 L 483 826 Z" fill="#000" opacity="${tone.light ? '.10' : '.17'}" filter="${url('s3')}"/>
+    <ellipse cx="352" cy="470" rx="34" ry="72" fill="#000" opacity=".30" filter="${url('s2')}"/>
+    <ellipse cx="650" cy="470" rx="38" ry="76" fill="#000" opacity=".48" filter="${url('s2')}"/>
+    <rect x="322" y="652" width="356" height="36" fill="#000" opacity="${tone.light ? '.16' : '.24'}" filter="${url('s2')}"/>
+    <ellipse cx="500" cy="820" rx="182" ry="18" fill="#000" opacity=".26" filter="${url('s3')}"/>`;
+  const torsoBack = `
+    <rect width="1000" height="1000" fill="${url('tX')}"/><rect width="1000" height="1000" fill="${url('tY')}"/>
+    <rect x="494" y="256" width="12" height="560" fill="#000" opacity="${tone.light ? '.14' : '.22'}" filter="${url('s3')}"/>
+    <ellipse cx="418" cy="360" rx="66" ry="48" fill="#000" opacity=".16" transform="rotate(-14 418 360)" filter="${url('s2')}"/>
+    <ellipse cx="582" cy="360" rx="66" ry="48" fill="#000" opacity=".28" transform="rotate(14 582 360)" filter="${url('s2')}"/>
+    <ellipse cx="352" cy="470" rx="34" ry="72" fill="#000" opacity=".28" filter="${url('s2')}"/>
+    <ellipse cx="650" cy="470" rx="38" ry="76" fill="#000" opacity=".46" filter="${url('s2')}"/>
+    <ellipse cx="500" cy="820" rx="182" ry="18" fill="#000" opacity=".24" filter="${url('s3')}"/>`;
+  return `
+  <g style="mix-blend-mode:multiply" opacity="${tone.shade}">
+    <g clip-path="${url('cTor')}">${front ? torsoFront : torsoBack}</g>
+    <g clip-path="${url('cVL')}"><rect width="1000" height="1000" fill="${url('aL')}"/></g>
+    <g clip-path="${url('cVR')}"><rect width="1000" height="1000" fill="${url('aR')}"/></g>
+    <g clip-path="${url('cGar')}"><rect width="1000" height="1000" fill="${url('dg')}"/></g>
+    <g clip-path="${url('cGar')}" filter="${url('s2')}">
+      <ellipse cx="360" cy="276" rx="66" ry="22" fill="#000" opacity=".12" transform="rotate(-30 360 276)"/>
+      <ellipse cx="640" cy="276" rx="68" ry="23" fill="#000" opacity=".26" transform="rotate(30 640 276)"/>
+    </g>
+  </g>
+  <g style="mix-blend-mode:screen" clip-path="${url('cGar')}">
+    <rect width="1000" height="1000" fill="${url('kl')}"/>
+    <ellipse cx="214" cy="446" rx="26" ry="118" fill="#fff" opacity=".16" transform="rotate(41 214 446)" filter="${url('s2')}"/>
+    <ellipse cx="786" cy="446" rx="22" ry="110" fill="#fff" opacity=".07" transform="rotate(-41 786 446)" filter="${url('s2')}"/>
+    <ellipse cx="404" cy="420" rx="44" ry="150" fill="#fff" opacity=".10" filter="${url('s1')}"/>
+    ${front ? `<ellipse cx="452" cy="308" rx="46" ry="30" fill="#fff" opacity=".10" filter="${url('s2')}"/>`
+            : `<ellipse cx="436" cy="330" rx="58" ry="40" fill="#fff" opacity=".11" filter="${url('s2')}"/>`}
+  </g>`;
+}
+
+function giSeams(kit, { view }) {
+  const front = view === 'front';
+  const seams = front ? [
+    // lapel: two stitch rows down each leg is what a reinforced gi lapel actually carries
+    { d: 'M 408 240 L 470 546', o: 0.34, off: [-3, 0] },
+    { d: 'M 463 232 L 525 538', o: 0.30, off: [-3, 0] },
+    { d: 'M 537 232 L 475 538 L 463 826', o: 0.36, off: [-3.4, 0] },
+    { d: 'M 592 240 L 530 546 L 518 827', o: 0.32, off: [3.4, 0] },
+    { d: 'M 463 232 C 476 254 524 254 537 232', o: 0.34, off: [0, -3] },
+    { d: GI_ARMHOLE_L, o: 0.34, off: [-3.4, 0] },
+    { d: GI_ARMHOLE_R, o: 0.38, off: [-3.4, 0] },
+    { d: GI_CUFF_SEAM_VL, o: 0.34, off: [3, -2] },
+    { d: GI_CUFF_SEAM_VR, o: 0.34, off: [-3, -2] },
+    { d: GI_HEM_SEAM, o: 0.30, off: [0, -3.2] },
+    { d: GI_SIDE_SLIT_L, o: 0.30, off: [-3, 0] },
+    { d: GI_SIDE_SLIT_R, o: 0.34, off: [-3, 0] },
+  ] : [
+    { d: GI_BACK_SEAM, o: 0.26, off: [-3, 0] },
+    { d: 'M 455 236 C 472 228 528 228 545 236', o: 0.34, off: [0, -3] },
+    { d: GI_ARMHOLE_L, o: 0.34, off: [-3.4, 0] },
+    { d: GI_ARMHOLE_R, o: 0.38, off: [-3.4, 0] },
+    { d: GI_CUFF_SEAM_VL, o: 0.34, off: [3, -2] },
+    { d: GI_CUFF_SEAM_VR, o: 0.34, off: [-3, -2] },
+    { d: GI_HEM_SEAM, o: 0.30, off: [0, -3.2] },
+    { d: GI_SIDE_SLIT_L, o: 0.30, off: [-3, 0] },
+    { d: GI_SIDE_SLIT_R, o: 0.34, off: [-3, 0] },
+  ];
+  const lit = [{ d: 'M 408 240 C 414 220 448 210 500 210 C 552 210 586 220 592 240', o: front ? 0.30 : 0.24 }];
+  return seamGroup(kit, seams, lit);
+}
+
+/** Brand marks on a gi: a monogram patch on the left chest, the word across the back. */
+const GI_SLEEVE_AXIS = { vl: [[306, 314], [176, 508]], vr: [[694, 314], [824, 508]] };
+function giMarks(h, { view, marks, tone }) {
+  if (!marks) return '';
+  const { url } = h;
+  const front = view === 'front';
+  const autoCol = tone.light ? '#0B1220' : '#F5F3EE';
+  const col = c => (!c || c === 'auto') ? autoCol : c;
+  let out = '';
+  if (front && marks.chest) {
+    const z = marks.chest;
+    const size = z.width || 76;
+    const cx = GI_CHEST_PATCH.x + GI_CHEST_PATCH.w / 2, cy = GI_CHEST_PATCH.y + GI_CHEST_PATCH.h / 2;
+    const m = z.kind === 'word' ? wordSVG(WORD_PRODIGY, { x: cx, y: cy, height: size / 5, color: col(z.color) })
+      : z.kind === 'lockup' ? lockupSVG({ x: cx, y: cy, width: size, color: col(z.color) })
+        : monoSVG({ cx, cy, size, color: (z.color && z.color !== 'auto') ? z.color : '#E8A33D', bg: z.bg || '#0B1220' })
+          + `<circle cx="${cx}" cy="${cy}" r="${size / 2 + 1.5}" fill="none" stroke="${autoCol}" stroke-opacity=".38" stroke-width="2.5"/>`;
+    out += `<g clip-path="${url('cTor')}">${m}</g>`;
+  }
+  if (!front && marks.back) {
+    const z = marks.back;
+    const w = z.width || 260;
+    const cx = GI_BACK_ZONE.x + GI_BACK_ZONE.w / 2, cy = GI_BACK_ZONE.y + GI_BACK_ZONE.h / 2;
+    const m = z.kind === 'lockup' ? lockupSVG({ x: cx, y: cy, width: w, color: col(z.color) })
+      : wordSVG(WORD_PRODIGY, { x: cx, y: cy, height: w / WORD_PRODIGY.w * WORD_PRODIGY.h, color: col(z.color) });
+    out += `<g clip-path="${url('cTor')}">${m}</g>`;
+  }
+  if (marks.sleeves && marks.sleeves.text !== null) {
+    const c = col(marks.sleeves.color);
+    const hgt = marks.sleeves.height || 30;
+    for (const side of ['vl', 'vr']) {
+      const [[x0, y0], [x1, y1]] = GI_SLEEVE_AXIS[side];
+      const dx = x1 - x0, dy = y1 - y0;
+      const len = Math.hypot(dx, dy);
+      const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+      const height = Math.min(hgt, (len * 0.9) / WORD_PRODIGY.w * WORD_PRODIGY.h);
+      out += `<g clip-path="${url(side === 'vl' ? 'cVL' : 'cVR')}">${wordSVG(WORD_PRODIGY, { x: x0 + dx * 0.5, y: y0 + dy * 0.5, height, color: c, rotate: ang })}</g>`;
+    }
+  }
+  return out;
+}
+
+function renderGi(h, { view, baseColor, slots, size, detail, defs, marks, belt }) {
+  const { u, url } = h;
+  const flat = detail === 'flat';
+  const front = view === 'front';
+  const S = k => paint(slots[k]);
+  // wearer's left is the viewer's right on the front view
+  const vl = front ? S('sleeveR') : S('sleeveL');
+  const vr = front ? S('sleeveL') : S('sleeveR');
+  const shL = front ? S('shoulderPatchR') : S('shoulderPatchL');
+  const shR = front ? S('shoulderPatchL') : S('shoulderPatchR');
+  const tone = toneOf(baseColor);
+  const kit = seamKit(size, 1);
+  const beltHex = beltPaint(belt);
+  const fill = (clip, p) => p ? `<g clip-path="${url(clip)}"><rect width="1000" height="1000" fill="${p}"/></g>` : '';
+  const lapelBands = front ? [GI_COLLAR, GI_LAPEL_UNDER, GI_LAPEL_OVER] : [GI_LAPEL_B];
+  const cuffBands = [GI_CUFF_VL, GI_CUFF_VR];
+
+  return `${svgOpen(size, u)}
+  <defs>${giDefs(h, { view, detail })}${defs}</defs>
+  ${flat ? '' : `<ellipse cx="500" cy="846" rx="212" ry="18" fill="#000" opacity=".14" filter="${url('s2')}"/>`}
+  <g clip-path="${url('cGar')}">
+    <rect width="1000" height="1000" fill="${baseColor}"/>
+    ${S('all') ? `<rect width="1000" height="1000" fill="${S('all')}"/>` : ''}
+    ${fill('cTor', S('back') && !front ? S('back') : null)}
+    ${fill('cVL', vl)}
+    ${fill('cVR', vr)}
+    ${fill('cLap', S('lapel'))}
+    ${front ? `<g clip-path="${url('cTor')}">${fill('cChest', S('chestPatch'))}</g>` : ''}
+    ${fill('cShL', shL)}
+    ${fill('cShR', shR)}
+    ${flat ? '' : giMarks(h, { view, marks, tone })}
+    ${(!flat && beltHex && front) ? `<g clip-path="${url('cBelt')}"><rect width="1000" height="1000" fill="${beltHex}"/></g>
+      <g clip-path="${url('cBelt')}" style="mix-blend-mode:multiply">
+        <rect x="0" y="628" width="1000" height="30" fill="#000" opacity=".28" filter="${url('s3')}"/>
+        <rect x="440" y="548" width="120" height="130" fill="#000" opacity=".18" filter="${url('s3')}"/>
+      </g>` : ''}
+    ${flat ? '' : bandLayer(h, tone, lapelBands, 'cGar', tone.light ? 0.55 : 1.7)}
+    ${flat ? '' : bandLayer(h, tone, cuffBands, 'cGar')}
+    ${flat ? '' : giShading(h, { view, tone })}
+    ${flat ? '' : pearlLayer(h, detail)}
+    ${flat ? '' : giSeams(kit, { view })}
+    ${(!flat && beltHex && front) ? seamGroup(kit, [
+      { d: 'M 312 584 C 400 576 600 576 688 584', o: 0.34, off: [0, -3] },
+      { d: 'M 310 652 C 400 644 600 644 690 652', o: 0.30, off: [0, -3] },
+      { d: 'M 462 578 C 454 608 453 642 461 664', o: 0.30, off: [-3, 0] },
+      { d: 'M 540 576 C 548 606 549 640 541 662', o: 0.30, off: [-3, 0] },
+      { d: 'M 500 656 L 496 788 M 508 656 L 510 784', o: 0.26, off: [-3, 0] },
+    ]) : ''}
+  </g>
+  ${flat ? '' : `<g fill="none" stroke="#000" stroke-opacity=".22" stroke-width="${kit.out}">
+    <path d="${front ? GI_TORSO_F : GI_TORSO_B}"/><path d="${GI_SLV_VL}"/><path d="${GI_SLV_VR}"/>
+    <path d="${front ? GI_COLLAR : GI_LAPEL_B}"/></g>`}
+</svg>`;
+}
+
+// ───────────────────────────── gi pants ─────────────────────────────
+
+function renderGiPants(h, { view, baseColor, slots, size, detail, defs, marks }) {
+  const { u, id, url } = h;
+  const flat = detail === 'flat';
+  const front = view === 'front';
+  const S = k => paint(slots[k]);
+  const vl = front ? S('legR') : S('legL');
+  const vr = front ? S('legL') : S('legR');
+  const tone = toneOf(baseColor);
+  const kit = seamKit(size, 1);
+  const fill = (clip, p) => p ? `<g clip-path="${url(clip)}"><rect width="1000" height="1000" fill="${p}"/></g>` : '';
+  const knee = z => `<path d="${rrect(z, 16)}"/>`;
+
+  return `${svgOpen(size, u)}
+  <defs>
+    <clipPath id="${id('cG')}"><path d="${GIP}"/></clipPath>
+    <clipPath id="${id('cL')}"><path d="${GIP_VL}"/></clipPath>
+    <clipPath id="${id('cR')}"><path d="${GIP_VR}"/></clipPath>
+    <clipPath id="${id('cB')}"><path d="${GIP_BAND}"/></clipPath>
+    ${commonDefs(h, detail)}
+    ${pearlDefs(h)}
+    <linearGradient id="${id('x')}" x1="282" y1="0" x2="718" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000" stop-opacity=".34"/><stop offset=".18" stop-color="#000" stop-opacity=".04"/>
+      <stop offset=".46" stop-color="#000" stop-opacity="0"/><stop offset=".72" stop-color="#000" stop-opacity=".10"/>
+      <stop offset=".90" stop-color="#000" stop-opacity=".32"/><stop offset="1" stop-color="#000" stop-opacity=".56"/></linearGradient>
+    <linearGradient id="${id('y')}" x1="0" y1="182" x2="0" y2="884" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000" stop-opacity=".20"/><stop offset=".16" stop-color="#000" stop-opacity="0"/>
+      <stop offset=".72" stop-color="#000" stop-opacity=".05"/><stop offset="1" stop-color="#000" stop-opacity=".24"/></linearGradient>
+    <linearGradient id="${id('dg')}" x1="282" y1="200" x2="718" y2="884" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".18"/></linearGradient>
+    <radialGradient id="${id('kl')}" cx="378" cy="250" r="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity=".14"/><stop offset=".5" stop-color="#fff" stop-opacity=".04"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    ${defs}
+  </defs>
+  ${flat ? '' : `<ellipse cx="500" cy="898" rx="216" ry="16" fill="#000" opacity=".14" filter="${url('s2')}"/>`}
+  <g clip-path="${url('cG')}">
+    <rect width="1000" height="1000" fill="${baseColor}"/>
+    ${S('all') ? `<rect width="1000" height="1000" fill="${S('all')}"/>` : ''}
+    ${fill('cL', vl)}${fill('cR', vr)}${fill('cB', S('waist'))}
+    ${(!flat && marks && marks.waist) ? `<g clip-path="${url('cB')}">${wordSVG(WORD_PRODIGY, { x: 500, y: 220, height: marks.waist.height || 24, color: (marks.waist.color && marks.waist.color !== 'auto') ? marks.waist.color : (tone.light ? '#0B1220' : '#F5F3EE') })}</g>` : ''}
+    ${(!flat && marks && marks.leg) ? `<g clip-path="${url('cR')}">${wordSVG(WORD_PRODIGY, { x: 618, y: 480, height: marks.leg.height || 24, color: (marks.leg.color && marks.leg.color !== 'auto') ? marks.leg.color : (tone.light ? '#0B1220' : '#F5F3EE'), rotate: 86 })}</g>` : ''}
+    ${flat ? '' : `
+    <g style="mix-blend-mode:multiply" opacity="${(tone.shade * 0.5).toFixed(3)}">
+      <g clip-path="${url('cG')}">${knee(GIP_KNEE_VL).replace('<path', '<path fill="#000" opacity=".24"')}${knee(GIP_KNEE_VR).replace('<path', '<path fill="#000" opacity=".24"')}</g>
+    </g>
+    ${bandLayer(h, tone, [GIP_BAND, GIP_HEM_VL, GIP_HEM_VR], 'cG')}
+    <g style="mix-blend-mode:multiply" opacity="${tone.shade}">
+      <rect width="1000" height="1000" fill="${url('x')}"/><rect width="1000" height="1000" fill="${url('y')}"/>
+      <rect width="1000" height="1000" fill="${url('dg')}"/>
+      ${front
+        ? `<ellipse cx="500" cy="466" rx="80" ry="126" fill="#000" opacity="${tone.light ? '.26' : '.42'}" filter="${url('s1')}"/>
+           <ellipse cx="374" cy="336" rx="44" ry="86" fill="#000" opacity=".14" filter="${url('s1')}"/>
+           <ellipse cx="626" cy="338" rx="48" ry="90" fill="#000" opacity=".28" filter="${url('s1')}"/>`
+        : `<ellipse cx="430" cy="340" rx="74" ry="72" fill="#000" opacity=".12" filter="${url('s1')}"/>
+           <ellipse cx="570" cy="340" rx="74" ry="72" fill="#000" opacity=".22" filter="${url('s1')}"/>
+           <rect x="496" y="254" width="8" height="240" fill="#000" opacity=".24" filter="${url('s3')}"/>
+           <ellipse cx="500" cy="486" rx="66" ry="76" fill="#000" opacity=".26" filter="${url('s1')}"/>`}
+      <ellipse cx="392" cy="660" rx="18" ry="140" fill="#000" opacity=".12" filter="${url('s2')}"/>
+      <ellipse cx="608" cy="660" rx="20" ry="144" fill="#000" opacity=".22" filter="${url('s2')}"/>
+      <ellipse cx="500" cy="266" rx="204" ry="16" fill="#000" opacity=".22" filter="${url('s3')}"/>
+    </g>
+    <g style="mix-blend-mode:screen">
+      <rect width="1000" height="1000" fill="${url('kl')}"/>
+      <ellipse cx="384" cy="580" rx="38" ry="200" fill="#fff" opacity=".16" filter="${url('s1')}"/>
+      <ellipse cx="616" cy="580" rx="34" ry="194" fill="#fff" opacity=".07" filter="${url('s1')}"/>
+    </g>
+    ${pearlLayer(h, detail)}
+    ${seamGroup(kit, [
+      { d: GIP_BAND_SEAM, o: 0.34, off: [0, -3.2] },
+      { d: GIP_DRAW_CHANNEL, o: 0.22, off: [0, -2.6] },
+      { d: 'M 500 254 L 500 486', o: 0.28, off: [-3, 0] },
+      { d: 'M 500 486 C 505 516 510 552 514 610 C 520 700 526 800 530 884', o: 0.3, off: [-3, 0] },
+      { d: 'M 500 486 C 495 516 490 552 486 610 C 480 700 474 800 470 884', o: 0.26, off: [-3, 0] },
+      { d: `${rrect(GIP_KNEE_VL, 16)}`, o: 0.24, off: [-2.6, -2.6] },
+      { d: `${rrect(GIP_KNEE_VR, 16)}`, o: 0.26, off: [-2.6, -2.6] },
+      { d: GIP_HEM_SEAM_VL, o: 0.3, off: [0, -3] },
+      { d: GIP_HEM_SEAM_VR, o: 0.3, off: [0, -3] },
+    ], [{ d: GIP_BAND_EDGE, o: 0.24 }])}
+    ${front ? `<g fill="none" stroke="#000" stroke-opacity=".34" stroke-width="${(kit.w * 1.05).toFixed(2)}" stroke-linecap="round">
+      <path d="M 468 224 C 476 246 480 266 478 286"/><path d="M 532 224 C 524 246 520 266 522 286"/>
+      <path d="M 478 286 C 462 296 452 310 457 322 C 464 332 484 327 489 310"/>
+      <path d="M 522 286 C 538 296 548 310 543 322 C 536 332 516 327 511 310"/></g>
+    <g fill="#000" opacity=".5"><circle cx="468" cy="222" r="${(kit.w * 1.2).toFixed(2)}"/><circle cx="532" cy="222" r="${(kit.w * 1.2).toFixed(2)}"/></g>` : ''}`}
+  </g>
+  ${flat ? '' : `<path d="${GIP}" fill="none" stroke="#000" stroke-opacity=".22" stroke-width="${kit.out}"/>`}
+</svg>`;
+}
+
 // ───────────────────────────── public API ─────────────────────────────
 
 /**
@@ -818,16 +1302,18 @@ function renderSpats(h, { view, baseColor, slots, size, detail, defs, marks }) {
  */
 export function renderGarment({
   style = 'ls', view = 'front', baseColor = BASE_PRESETS.black,
-  slots = {}, size = 1000, detail = 'full', uid, defs = '', marks = null,
+  slots = {}, size = 1000, detail = 'full', uid, defs = '', marks = null, belt = null,
 } = {}) {
   if (!STYLES[style]) throw new Error(`Unknown style "${style}"`);
   if (view !== 'front' && view !== 'back') throw new Error(`Unknown view "${view}"`);
   const h = ns(uid);
-  const args = { style, view, baseColor, slots: slots || {}, size, detail, defs, marks };
+  const args = { style, view, baseColor, slots: slots || {}, size, detail, defs, marks, belt };
   switch (STYLES[style].family) {
     case 'rashguard': return renderRashguard(h, args);
     case 'shorts': return renderShorts(h, args);
     case 'spats': return renderSpats(h, args);
+    case 'gi': return renderGi(h, args);
+    case 'gipants': return renderGiPants(h, args);
   }
 }
 
@@ -848,6 +1334,13 @@ export function renderRanked({
   if (belt === 'white' && body === 'white') bodyKey = 'black';
   const baseColor = bodyKey === 'white' ? BASE_PRESETS.white : BASE_PRESETS.black;
   const fam = STYLES[style]?.family;
+  // A gi is not a ranked rashguard: the rank sits in the belt tied at the waist, never in
+  // a panel of the jacket. Same entry point, different construction, so a catalogue can
+  // render "white gi, blue belt" without a second function.
+  if (fam === 'gi' || fam === 'gipants') {
+    const giBase = bodyKey === 'white' ? GI_PRESETS.white : GI_PRESETS.black;
+    return renderGarment({ style, view, baseColor: giBase, size, detail, uid, defs, marks, belt, slots });
+  }
   const rankSlots = fam === 'rashguard'
     ? { sleeveL: hex, sleeveR: hex, collar: hex }
     : fam === 'shorts' ? { waistband: hex } : { waistband: hex };
@@ -866,6 +1359,8 @@ export function estimateRankCoverage({ style = 'ss', slotsPainted = ['sleeveL', 
     ss: { front: .40, back: .40, sleeveL: .075, sleeveR: .075, collar: .02, chest: .035, upperBack: .035 },
     shorts: { frontL: .24, frontR: .24, backL: .24, backR: .24, waistband: .04 },
     spats: { legL: .47, legR: .47, waistband: .06 },
+    gi: { back: .30, lapel: .10, sleeveL: .16, sleeveR: .16, chestPatch: .012, shoulderPatchL: .02, shoulderPatchR: .02 },
+    gipants: { legL: .47, legR: .47, waist: .06 },
   }[style] || {};
   let sum = 0;
   for (const k of slotsPainted) if (k === 'all') return 1; else sum += AREA[k] || 0;

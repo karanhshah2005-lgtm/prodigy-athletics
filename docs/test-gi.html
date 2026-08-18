@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>gi renderer test — jacket + pants</title>
+<link rel="stylesheet" href="../src/brand.css">
+<style>
+  body { margin:0; background:#F5F3EE; color:#101623;
+         font:14px/1.5 Barlow,'Segoe UI',system-ui,sans-serif; padding:20px 24px 80px; }
+  h1 { font:600 20px/1 'Barlow Condensed',system-ui,sans-serif; letter-spacing:.04em;
+       text-transform:uppercase; margin:0 0 4px; }
+  p.note { color:#4A5464; margin:0 0 20px; font-size:13px; max-width:70ch; }
+  h2 { font:500 12px/1.5 'IBM Plex Mono',ui-monospace,monospace; letter-spacing:.12em;
+       text-transform:uppercase; color:#7C8492; margin:28px 0 10px; }
+  .row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+  .row.three { grid-template-columns:repeat(3,1fr); }
+  .row.six { grid-template-columns:repeat(6,1fr); }
+  .t { background:#EAE6DC; position:relative; overflow:hidden; }
+  .t.dark { background:#0B1220; }
+  .t b { position:absolute; left:8px; top:6px; z-index:2;
+         font:500 10px/1.4 'IBM Plex Mono',ui-monospace,monospace; letter-spacing:.14em;
+         text-transform:uppercase; color:#7C8492; }
+  .t svg { display:block; width:100%; height:auto; }
+  .strip { font:500 10px/1.4 'IBM Plex Mono',ui-monospace,monospace; letter-spacing:.14em;
+           text-transform:uppercase; color:#7C8492; margin-top:8px; }
+  pre { font:11px/1.5 ui-monospace,Consolas,monospace; color:#4A5464; background:#EAE6DC;
+        padding:10px 12px; overflow:auto; }
+</style>
+</head>
+<body>
+<h1>Gi renderer — jacket + pants</h1>
+<p class="note">Sample renders only. No prices, no SKUs, no specification claims — jacket weave and
+GSM are — TO CONFIRM until the client supplies them. Belt colours here are the rank system, not brand colour.</p>
+
+<h2>01 — jacket, three base colours, front</h2>
+<div class="row three" id="r1"></div>
+
+<h2>02 — jacket back, with the back print</h2>
+<div class="row three" id="r2"></div>
+
+<h2>03 — belt tied at the waist (white gi, five ranks)</h2>
+<div class="row six" id="r3"></div>
+
+<h2>04 — gi pants, front and back</h2>
+<div class="row" id="r4"></div>
+
+<h2>05 — card size (lite @ 300) — the grid test</h2>
+<div class="row six" id="r5"></div>
+
+<h2>06 — slot check: slotsFor / slotBBox</h2>
+<pre id="slots"></pre>
+
+<script type="module">
+import { renderGarment, renderRanked, STYLES, GI_PRESETS, slotsFor, slotBBox, estimateRankCoverage } from '../src/render/garment.js';
+
+const tile = (label, svg, dark) => `<div class="t${dark ? ' dark' : ''}"><b>${label}</b>${svg}</div>`;
+const MARKS = {
+  chest: { kind: 'mono', width: 74 },
+  back: { kind: 'word', color: 'auto', width: 250 },
+};
+
+document.getElementById('r1').innerHTML =
+  tile('white', renderGarment({ style: 'gi', baseColor: GI_PRESETS.white, uid: 'g1', marks: MARKS })) +
+  tile('blue', renderGarment({ style: 'gi', baseColor: GI_PRESETS.blue, uid: 'g2', marks: MARKS })) +
+  tile('black', renderGarment({ style: 'gi', baseColor: GI_PRESETS.black, uid: 'g3', marks: MARKS }), true);
+
+document.getElementById('r2').innerHTML =
+  tile('white back', renderGarment({ style: 'gi', view: 'back', baseColor: GI_PRESETS.white, uid: 'g4', marks: MARKS })) +
+  tile('blue back', renderGarment({ style: 'gi', view: 'back', baseColor: GI_PRESETS.blue, uid: 'g5', marks: MARKS })) +
+  tile('black back', renderGarment({ style: 'gi', view: 'back', baseColor: GI_PRESETS.black, uid: 'g6', marks: MARKS }), true);
+
+document.getElementById('r3').innerHTML =
+  ['white', 'blue', 'purple', 'brown', 'black'].map((b, i) =>
+    tile(b + ' belt', renderRanked({ style: 'gi', belt: b, body: 'white', uid: 'gb' + i, marks: MARKS }))).join('') +
+  tile('black gi, white belt', renderRanked({ style: 'gi', belt: 'white', body: 'black', uid: 'gb9', marks: MARKS }), true);
+
+document.getElementById('r4').innerHTML =
+  tile('white pants front', renderGarment({ style: 'gipants', baseColor: GI_PRESETS.white, uid: 'p1', marks: { waist: { color: 'auto' } } })) +
+  tile('white pants back', renderGarment({ style: 'gipants', view: 'back', baseColor: GI_PRESETS.white, uid: 'p2' })) +
+  tile('blue pants front', renderGarment({ style: 'gipants', baseColor: GI_PRESETS.blue, uid: 'p3', marks: { waist: { color: 'auto' }, leg: { color: 'auto' } } })) +
+  tile('black pants front', renderGarment({ style: 'gipants', baseColor: GI_PRESETS.black, uid: 'p4', marks: { waist: { color: 'auto' } } }), true);
+
+document.getElementById('r5').innerHTML =
+  tile('white', renderGarment({ style: 'gi', baseColor: GI_PRESETS.white, uid: 'l1', size: 300, detail: 'lite', marks: MARKS })) +
+  tile('blue', renderGarment({ style: 'gi', baseColor: GI_PRESETS.blue, uid: 'l2', size: 300, detail: 'lite', marks: MARKS })) +
+  tile('black', renderGarment({ style: 'gi', baseColor: GI_PRESETS.black, uid: 'l3', size: 300, detail: 'lite', marks: MARKS }), true) +
+  tile('blue belt', renderRanked({ style: 'gi', belt: 'blue', uid: 'l4', size: 300, detail: 'lite', marks: MARKS })) +
+  tile('pants white', renderGarment({ style: 'gipants', baseColor: GI_PRESETS.white, uid: 'l5', size: 300, detail: 'lite' })) +
+  tile('pants blue', renderGarment({ style: 'gipants', baseColor: GI_PRESETS.blue, uid: 'l6', size: 300, detail: 'lite' }));
+
+const lines = [];
+for (const style of ['gi', 'gipants']) {
+  lines.push(`${style} — ${STYLES[style].name} (family ${STYLES[style].family})`);
+  for (const view of ['front', 'back']) {
+    for (const s of slotsFor(style, view)) {
+      lines.push(`  ${view.padEnd(5)} ${s.key.padEnd(15)} ${JSON.stringify(s.bbox).padEnd(24)} ${s.printPx.join('x')}  ${s.label}`);
+    }
+  }
+  lines.push(`  slotBBox(unknown) -> ${JSON.stringify(slotBBox(style, 'front', 'nope'))}`);
+  lines.push(`  estimateRankCoverage -> ${estimateRankCoverage({ style, slotsPainted: ['sleeveL', 'sleeveR'] }).toFixed(3)}`);
+}
+document.getElementById('slots').textContent = lines.join('\n');
+
+window.__giReady = true;
+</script>
+</body>
+</html>

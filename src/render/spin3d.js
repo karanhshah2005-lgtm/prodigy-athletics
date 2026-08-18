@@ -12,14 +12,23 @@
  *     "three/addons/":"../vendor/three/addons/" }}</script>
  *
  * Public API:
- *   mountSpin(el, opts) -> { update(opts), setAutoRotate(bool), snapshot(width), dispose() }
+ *   mountSpin(el, opts) -> { update(opts), setAutoRotate(bool), snapshot(width),
+ *                            onInteract(cb), dispose() }
  * Extras used by the test harness (safe to ignore):
  *   setAzimuth(rad), setPolar(rad), getInfo()
+ *
+ * MARKS. The brand marks are the same PATH GEOMETRY the SVG renderer uses
+ * (src/render/marks.js), rasterised through an <img> of an inline-SVG data URL, so the
+ * chest lockup / sleeve wordmark / back print are pixel-identical between 2D and 3D.
+ * Pass `chestMarkSvg` / `backTextSvg` / `sleeveTextSvg` to supply your own data-URL SVG.
+ * Canvas text in 'Barlow Condensed' 800 is the synchronous fallback until an image
+ * lands, and the only path for arbitrary (non-brand) strings.
  */
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { WORD_PRODIGY, WORD_ATHLETICS, wordSVG, lockupSVG, monoSVG } from './marks.js';
 
 // ───────────────────────────── defaults ─────────────────────────────
 
@@ -32,15 +41,26 @@ export const SPIN_DEFAULTS = Object.freeze({
   artTile: 3,              // repeat count around the torso
   sleeveText: 'PRODIGY',
   sleeveTextColor: '#F5F3EE',
-  chestMark: 'wordmark',   // 'wordmark' | 'mono' | null
+  sleeveTextCap: 0.32,     // cap height as a fraction of sleeve circumference
+  sleeveTextSvg: null,     // data-URL SVG override for the sleeve run
+  chestMark: 'wordmark',   // 'wordmark' | 'lockup' | 'mono' | null
   chestMarkColor: '#E8A33D',
+  chestMarkBg: '#0B1220',  // roundel ground for chestMark:'mono'
+  chestMarkSvg: null,      // data-URL SVG override, drawn onto the torso texture
+  chestMarkWidth: 0.44,    // lockup width as a fraction of the chest width
   backText: null,          // e.g. 'PRODIGY'
+  backTextSvg: null,       // data-URL SVG override
   autoRotate: true,
-  speed: 0.6,
+  speed: 0.6,              // ×6 = OrbitControls units; 0.39 ≈ the 14°/s the design system asks for
+  maxTurns: 1.5,           // idle rotation STOPS after this many revolutions. Never loops forever.
+  fill: 0.82,              // garment height as a fraction of the stage height (imagery rule: 80%)
+  fillWide: 0.92,          // garment width as a fraction of the stage width on narrow stages
+  keyboard: false,         // host element becomes a focusable slider: ←/→ 5°, Shift+←/→ 30°
   background: 'transparent',
   quality: 'auto',         // 'auto' | 'high' | 'low'
   zoom: false,
   pan: false,
+  dragHint: false,         // draws nothing; the host hides its own label via onInteract()
 });
 
 const QUALITY = {
@@ -369,6 +389,67 @@ function loadArtImage(dataUrl) {
   });
 }
 
+// ───────────────────────────── brand marks as images ─────────────────────────────
+// Same path geometry as the SVG renderer. Wrapped in an <svg> with a GENEROUS intrinsic
+// size so Chrome rasterises it at texture resolution rather than at the viewBox size.
+
+const _markUrl = new Map();
+function svgUrl(key, vbW, vbH, inner, pxW) {
+  if (_markUrl.has(key)) return _markUrl.get(key);
+  const w = Math.round(pxW), h = Math.round(pxW * vbH / vbW);
+  const s = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${vbW} ${vbH}">${inner}</svg>`;
+  const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(s)}`;
+  _markUrl.set(key, url);
+  return url;
+}
+
+const WORDS = { PRODIGY: WORD_PRODIGY, ATHLETICS: WORD_ATHLETICS };
+
+/** Stacked PRODIGY / ATHLETICS lockup. aspect ≈ 620:197. */
+function lockupUrl(color) {
+  return svgUrl(`lock|${color}`, 620, 200,
+    lockupSVG({ x: 310, y: 100, width: 600, color }), 1240);
+}
+/** A single stencil word. aspect = word.w : word.h * 1.08 */
+function wordUrl(text, color) {
+  const w = WORDS[String(text).toUpperCase()];
+  if (!w) return null;
+  return svgUrl(`word|${text}|${color}`, w.w + 8, w.h + 8,
+    wordSVG(w, { x: (w.w + 8) / 2, y: (w.h + 8) / 2, height: w.h, color }), 1800);
+}
+/** P-in-a-roundel monogram. Square. */
+function monoUrl(color, bg) {
+  return svgUrl(`mono|${color}|${bg}`, 246, 246,
+    monoSVG({ cx: 123, cy: 123, size: 246, color, bg }), 620);
+}
+
+/** The data URLs this configuration wants, so the mount can preload them. */
+function markUrls(o) {
+  const out = [];
+  const chest = o.chestMarkSvg || (o.chestMark === 'mono' ? monoUrl(o.chestMarkColor, o.chestMarkBg)
+    : (o.chestMark === 'wordmark' || o.chestMark === 'lockup') ? lockupUrl(o.chestMarkColor)
+      : o.chestMark ? wordUrl(o.chestMark, o.chestMarkColor) : null);
+  const back = o.backText ? (o.backTextSvg || wordUrl(o.backText, o.chestMarkColor)) : null;
+  const sleeve = o.sleeveText ? (o.sleeveTextSvg || wordUrl(o.sleeveText, o.sleeveTextColor)) : null;
+  for (const u of [chest, back, sleeve]) if (u) out.push(u);
+  return { chest, back, sleeve, all: out };
+}
+
+/**
+ * Draw an already-loaded mark image in the CURRENT local space, centred on the origin,
+ * running along +x, fitted to a run budget and a cap-height budget.
+ * Returns the drawn box, or null if the image is not ready.
+ */
+function drawMark(ctx, img, { maxRun, cap, align = 'cap' }) {
+  if (!img || !img.width) return null;
+  const aspect = img.width / img.height;
+  let h = cap, w = cap * aspect;
+  if (align === 'run') { w = maxRun; h = w / aspect; }
+  if (w > maxRun) { w = maxRun; h = w / aspect; }
+  ctx.drawImage(img, -w / 2, -h / 2, w, h);
+  return { w, h };
+}
+
 function tileArt(ctx, img, W, H, tileW, tileH) {
   const cols = Math.max(1, Math.round(W / tileW));
   const tw = W / cols;
@@ -418,25 +499,32 @@ function buildTorsoCanvas(o, m, q) {
   x.fillRect(0, bandTop - Math.max(1, H * 0.0025), W, Math.max(1, H * 0.0025));
   x.restore();
 
+  const urls = markUrls(o);
+
   // ── chest mark, centred on the front (u = 0.25) ──
-  if (o.chestMark) {
+  if (o.chestMark || o.chestMarkSvg) {
     const cx = W * 0.25;
     const cy = (1 - m.vAtY(0.30)) * H;
+    const mark = getArtImage(urls.chest);
     x.save();
     x.translate(cx, cy);
     x.scale(1, squash);
     x.fillStyle = o.chestMarkColor;
-    if (o.chestMark === 'mono') {
+    if (mark) {
+      const isMono = !o.chestMarkSvg && o.chestMark === 'mono';
+      const wide = (isMono ? 0.30 : (o.chestMarkWidth ?? 0.44)) * m.chestWidth / upw;
+      drawMark(x, mark, { maxRun: wide, cap: wide, align: 'run' });
+    } else if (o.chestMark === 'mono') {
       const r = (0.30 * m.chestWidth * 0.5) / upw;
       x.lineWidth = r * 0.19;
       x.strokeStyle = o.chestMarkColor;
       x.beginPath(); x.arc(0, 0, r * 0.90, 0, Math.PI * 2); x.stroke();
       const fs = fitFont(x, 'P', 0, 800, r * 0.95, r * 1.05);
       drawRun(x, 'P', fs, 0, 800);
-    } else {
-      const wordWorld = 0.36 * m.chestWidth;
-      const maxRun = wordWorld / upw;
-      const word = String(o.chestMark === 'wordmark' ? 'PRODIGY' : o.chestMark);
+    } else if (o.chestMark) {
+      // synchronous fallback: Barlow Condensed 800 lockup, same proportions as marks.js
+      const maxRun = (o.chestMarkWidth ?? 0.44) * m.chestWidth / upw;
+      const word = String(o.chestMark === 'wordmark' || o.chestMark === 'lockup' ? 'PRODIGY' : o.chestMark);
       const fs = fitFont(x, word, 0.04, 800, maxRun, maxRun);
       const main = drawRun(x, word, fs, 0.04, 800);
       const sub = 'ATHLETICS';
@@ -450,18 +538,22 @@ function buildTorsoCanvas(o, m, q) {
     x.restore();
   }
 
-  // ── back text, centred on the back (u = 0.75) ──
-  if (o.backText) {
+  // ── back text, centred on the back (u = 0.75), between the shoulder blades ──
+  if (o.backText || o.backTextSvg) {
     const cx = W * 0.75;
     const cy = (1 - m.vAtY(0.295)) * H;
+    const mark = getArtImage(urls.back);
     x.save();
     x.translate(cx, cy);
     x.scale(1, squash);
     x.fillStyle = o.chestMarkColor;
-    const maxRun = (0.62 * m.chestWidth) / upw;   // stays inside the back panel
-    const word = String(o.backText);
-    const fs = fitFont(x, word, 0.03, 800, Math.min(maxRun, W * 0.26), 0.14 / upw);
-    drawRun(x, word, fs, 0.03, 800);
+    const maxRun = Math.min((0.66 * m.chestWidth) / upw, W * 0.28);
+    if (mark) {
+      drawMark(x, mark, { maxRun, cap: 0.16 / upw });
+    } else if (o.backText) {
+      const fs = fitFont(x, String(o.backText), 0.03, 800, maxRun, 0.14 / upw);
+      drawRun(x, String(o.backText), fs, 0.03, 800);
+    }
     x.restore();
   }
 
@@ -500,20 +592,30 @@ function buildSleeveCanvas(o, m, q) {
   x.restore();
 
   // ── sleeve text: down the OUTSIDE of the arm (u = 0.5 is the outer face) ──
+  // This is the signature detail and the organiser's first requirement, so it is sized
+  // from the CAP HEIGHT, not from the run: the target is ~32% of the sleeve circumference,
+  // which puts the letters a third of the way around the arm. They wrap a little onto the
+  // front and back of the sleeve, which is what a real sublimated sleeve print does.
+  // The run is then whatever the sleeve can carry, shoulder to cuff, cuff band excluded.
   const text = (o.sleeveText || '').trim();
-  if (text) {
-    const vTop = 0.80, vBot = 0.11;                    // window below the armhole, above the cuff
-    const runPx = (vTop - vBot) * S;                   // available run in canvas px (before squash)
+  if (text || o.sleeveTextSvg) {
+    const vTop = 0.975, vBot = 0.055;                  // shoulder seam → just above the cuff band
+    const runPx = (vTop - vBot) * S;                   // available run in canvas px (after squash)
     const cy = (1 - (vTop + vBot) / 2) * S;
+    const maxRun = runPx / Math.max(0.05, squash);     // …in the local (pre-squash) space
+    const cap = Math.max(0.10, Math.min(0.42, o.sleeveTextCap ?? 0.32)) * m.sleeveCirc / upw;
+    const mark = getArtImage(markUrls(o).sleeve);
     x.save();
     x.translate(S * 0.5, cy);
     x.scale(1, squash);                                // world-isotropy, applied before rotate
-    x.rotate(Math.PI / 2);                             // run along +y (shoulder → cuff)
+    x.rotate(Math.PI / 2);                             // run along +x (shoulder → cuff)
     x.fillStyle = o.sleeveTextColor;
-    const maxRun = runPx / Math.max(0.05, squash);
-    const maxCap = 0.30 * m.sleeveCirc / upw;          // cap height across the arm
-    const fs = fitFont(x, text, 0.22, 800, maxRun, maxCap);
-    drawRun(x, text, fs, 0.22, 800);
+    if (mark) {
+      drawMark(x, mark, { maxRun, cap });
+    } else if (text) {
+      const fs = fitFont(x, text, 0.04, 800, maxRun, cap);
+      drawRun(x, text, fs, 0.04, 800);
+    }
     x.restore();
   }
 
@@ -537,6 +639,7 @@ function makeTexture(canvas, renderer) {
 
 const NOOP_API = () => ({
   update() {}, setAutoRotate() {}, dispose() {},
+  onInteract() { return () => {}; },
   setAzimuth() {}, setPolar() {},
   getInfo() { return { fallback: true, triangles: 0, fps: 0 }; },
   async snapshot() { return null; },
@@ -573,7 +676,8 @@ export function mountSpin(el, opts = {}) {
   el.appendChild(canvas);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 40);
+  // fov 26: the design-system value, chosen so the chest wordmark does not barrel
+  const camera = new THREE.PerspectiveCamera(26, 1, 0.05, 40);
 
   const pmrem = new THREE.PMREMGenerator(renderer);
   const roomScene = new RoomEnvironment();
@@ -581,14 +685,56 @@ export function mountSpin(el, opts = {}) {
   scene.environment = envRT.texture;
   roomScene.traverse(n => { if (n.geometry) n.geometry.dispose(); if (n.material) n.material.dispose(); });
 
+  // — lights —
+  // The rig is parented to the CAMERA, so a turning garment keeps the same three-quarter
+  // key and the same rim at every azimuth. A world-fixed rig sends the chest mark into
+  // shadow somewhere in every revolution, which is the one thing the hero cannot do.
+  // Directional targets stay at the world origin (the garment centre) by default.
+  const rig = new THREE.Group();
+  camera.add(rig);
+  scene.add(camera);
+
   const key = new THREE.DirectionalLight(0xffffff, 1.55);
-  key.position.set(-2.2, 3.0, 3.0);
-  scene.add(key);
-  const fill = new THREE.DirectionalLight(0xffffff, 0.5);
-  fill.position.set(2.4, 0.4, -1.8);
-  scene.add(fill);
+  key.position.set(-2.2, 2.6, 2.4);
+  rig.add(key);
+  const fillL = new THREE.DirectionalLight(0xffffff, 0.5);
+  fillL.position.set(2.6, 0.3, 1.4);
+  rig.add(fillL);
+  // rim / back lights: a PAIR, behind the garment and out to either side, so both
+  // silhouette edges catch a highlight at every azimuth. This is what stops a black long
+  // sleeve on a navy hero reading as a flat cut-out, and it is what makes the back view
+  // (where there is no chest mark to carry the eye) still read as a solid object.
+  const rimA = new THREE.DirectionalLight(0xd8e4ff, 1.4);
+  rimA.position.set(-2.9, 1.7, -2.5);
+  rig.add(rimA);
+  const rimB = new THREE.DirectionalLight(0xcdd9f0, 1.0);
+  rimB.position.set(2.9, 1.3, -2.7);
+  rig.add(rimB);
   const bounce = new THREE.HemisphereLight(0xdfe6f2, 0x0a0c10, 0.30);
   scene.add(bounce);
+
+  /**
+   * Tone-aware exposure. Sampling the base colour's luminance is what lets one rig carry
+   * both ends of the catalogue: a near-black garment needs the extra stop, and the same
+   * extra stop would clip a bone-white one to a flat shape.
+   */
+  function applyLighting() {
+    const L = luminance(o.baseColor);
+    const t = smoothstep((L - 0.05) / 0.45);          // 0 = black garment · 1 = bone white
+    renderer.toneMappingExposure = 1.18 - 0.30 * t;
+    key.intensity = 2.10 - 0.62 * t;
+    fillL.intensity = 0.46 + 0.08 * t;
+    rimA.intensity = 1.85 - 1.35 * t;
+    rimB.intensity = 1.25 - 0.95 * t;
+    fabric.sheen = fabricSleeve.sheen = 0.60 + 0.35 * (1 - t);
+    bounce.intensity = 0.34 - 0.07 * t;
+    const env = 0.98 - 0.22 * t;
+    fabric.envMapIntensity = env;
+    fabricSleeve.envMapIntensity = env;
+    collarMat.envMapIntensity = env * 0.94;
+    fabric.needsUpdate = fabricSleeve.needsUpdate = collarMat.needsUpdate = true;
+    needsRender = true;
+  }
 
   // — materials —
   const fabric = new THREE.MeshPhysicalMaterial({
@@ -662,6 +808,7 @@ export function mountSpin(el, opts = {}) {
     fabric.sheenColor.set(shade(o.baseColor, 0.42));
     collarMat.color.set(0xd2d2d2);   // slight darkening over the sampled print
     innerMat.color.set(shade(o.baseColor, -0.72));
+    applyLighting();
   }
 
   function rebuildTextures() {
@@ -685,25 +832,65 @@ export function mountSpin(el, opts = {}) {
   const fabricSleeve = fabric.clone();
   fabricSleeve.side = THREE.DoubleSide;
 
-  function frameCamera() {
+  /**
+   * Framing. A bounding-SPHERE fit is rotation-proof but it frames the sphere, not the
+   * garment: a tall, thin rashguard then fills barely 60% of the stage and the hero reads
+   * as a small floating object. Turntable rotation is about Y only, so the real envelope
+   * is a CYLINDER — radius r in XZ, half-height halfY — which is still yaw-invariant and
+   * a great deal tighter. Distance is refit as the polar angle changes (keepFit), so the
+   * garment neither shrinks nor clips when the viewer is tilted.
+   */
+  const ENV = { center: new THREE.Vector3(), r: 0.5, halfY: 0.7 };
+  function measureEnvelope() {
     const box = new THREE.Box3().setFromObject(root);
-    const sph = box.getBoundingSphere(new THREE.Sphere());
+    if (!Number.isFinite(box.min.x) || box.isEmpty()) return;
+    box.getCenter(ENV.center);
+    const dx = Math.max(ENV.center.x - box.min.x, box.max.x - ENV.center.x);
+    const dz = Math.max(ENV.center.z - box.min.z, box.max.z - ENV.center.z);
+    ENV.r = Math.max(1e-3, Math.hypot(dx, dz));
+    ENV.halfY = Math.max(1e-3, (box.max.y - box.min.y) / 2);
+  }
+  const clamp01 = (v, lo, hi) => Math.min(hi, Math.max(lo, Number.isFinite(v) ? v : hi));
+  function fitDistance(polar) {
     const aspect = camera.aspect || 1;
     const vFov = THREE.MathUtils.degToRad(camera.fov);
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
-    const d = Math.max(sph.radius / Math.sin(vFov / 2), sph.radius / Math.sin(hFov / 2)) * 1.06;
-    controls.target.copy(sph.center);
-    const dir = new THREE.Vector3().subVectors(camera.position, controls.target);
-    if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1);
-    dir.normalize();
-    camera.position.copy(sph.center).addScaledVector(dir, d);
-    camera.near = Math.max(0.02, d - sph.radius * 2);
-    camera.far = d + sph.radius * 4;
+    const fillV = clamp01(o.fill, 0.4, 0.96);
+    const fillH = clamp01(o.fillWide, 0.4, 0.98);
+    // screen-vertical half extent of the cylinder seen at this polar angle
+    const halfV = ENV.halfY * Math.abs(Math.sin(polar)) + ENV.r * Math.abs(Math.cos(polar));
+    const dv = (halfV / fillV) / Math.tan(vFov / 2);
+    const dh = (ENV.r / fillH) / Math.tan(hFov / 2);
+    return Math.max(dv, dh);
+  }
+  const sphTmp = new THREE.Spherical();
+  const offTmp = new THREE.Vector3();
+  function frameCamera() {
+    measureEnvelope();
+    controls.target.copy(ENV.center);
+    offTmp.subVectors(camera.position, controls.target);
+    if (offTmp.lengthSq() < 1e-6) offTmp.set(0, 0, 1);
+    sphTmp.setFromVector3(offTmp);
+    const d = fitDistance(sphTmp.phi);
+    camera.position.copy(controls.target).addScaledVector(offTmp.normalize(), d);
+    camera.near = Math.max(0.02, d - (ENV.r + ENV.halfY) * 2);
+    camera.far = d + (ENV.r + ENV.halfY) * 4;
     camera.updateProjectionMatrix();
-    controls.minDistance = d * 0.55;
-    controls.maxDistance = d * 1.8;
+    controls.minDistance = d * 0.35;
+    controls.maxDistance = d * 2.4;
     controls.update();
     needsRender = true;
+  }
+  /** Hold the fit as the user tilts. No-op when the host has enabled zoom. */
+  function keepFit() {
+    if (o.zoom) return;
+    offTmp.subVectors(camera.position, controls.target);
+    sphTmp.setFromVector3(offTmp);
+    const want = fitDistance(sphTmp.phi);
+    if (Math.abs(want - sphTmp.radius) < want * 0.003) return;
+    sphTmp.radius = want;
+    camera.position.copy(controls.target).add(offTmp.setFromSpherical(sphTmp));
+    camera.updateProjectionMatrix();
   }
 
   // — controls —
@@ -719,16 +906,75 @@ export function mountSpin(el, opts = {}) {
   controls.autoRotate = !!o.autoRotate;
   controls.autoRotateSpeed = (o.speed ?? 0.6) * 6;
 
-  // pause auto-rotate while dragging, resume 2s after release
-  let resumeTimer = 0, wantAutoRotate = !!o.autoRotate;
-  const onDown = () => { clearTimeout(resumeTimer); controls.autoRotate = false; };
-  const onUp = () => {
-    clearTimeout(resumeTimer);
-    if (wantAutoRotate) resumeTimer = setTimeout(() => { controls.autoRotate = true; needsRender = true; }, 2000);
+  // — first-interaction signal —
+  // The viewer draws no affordance of its own (`dragHint` is accepted and deliberately
+  // renders nothing). The host owns the "DRAG TO SPIN" label and hides it from here, so
+  // the label lives in the page's type system instead of inside a WebGL canvas.
+  const interactCbs = new Set();
+  let interacted = false;
+  function fireInteract() {
+    if (interacted) return;
+    interacted = true;
+    for (const cb of [...interactCbs]) { try { cb(); } catch { /* host's problem */ } }
+    interactCbs.clear();
+  }
+  /** cb runs once, on the first drag / wheel / arrow key. Returns an unsubscribe. */
+  function onInteract(cb) {
+    if (typeof cb !== 'function') return () => {};
+    if (interacted) { try { cb(); } catch { /* ignore */ } return () => {}; }
+    interactCbs.add(cb);
+    return () => interactCbs.delete(cb);
+  }
+
+  // Idle rotation STOPS on the first interaction, and otherwise after `maxTurns`
+  // revolutions. It never resumes and it never loops forever (design system §5).
+  let wantAutoRotate = !!o.autoRotate;
+  let turned = 0;               // radians accumulated while auto-rotating
+  const stopAutoRotate = () => { wantAutoRotate = false; controls.autoRotate = false; needsRender = true; };
+  const onDown = () => { fireInteract(); stopAutoRotate(); };
+  const onWheel = () => { fireInteract(); stopAutoRotate(); };
+  const onKey = e => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    fireInteract();
+    stopAutoRotate();
   };
   canvas.addEventListener('pointerdown', onDown);
-  window.addEventListener('pointerup', onUp);
-  window.addEventListener('pointercancel', onUp);
+  canvas.addEventListener('wheel', onWheel, { passive: true });
+  canvas.addEventListener('keydown', onKey);
+
+  // — keyboard: the viewer announces as a slider in degrees —
+  let detachKeys = () => {};
+  if (o.keyboard) {
+    const deg = () => {
+      const a = -controls.getAzimuthalAngle() * 180 / Math.PI;
+      return Math.round(((a % 360) + 360) % 360);
+    };
+    const announce = () => {
+      const d = deg();
+      el.setAttribute('aria-valuenow', String(d));
+      el.setAttribute('aria-valuetext', `${d} degrees`);
+    };
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'slider');
+    el.setAttribute('aria-valuemin', '0');
+    el.setAttribute('aria-valuemax', '359');
+    el.setAttribute('aria-orientation', 'horizontal');
+    announce();
+    const step = (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      fireInteract();
+      stopAutoRotate();
+      const by = (e.shiftKey ? 30 : 5) * Math.PI / 180;
+      setAzimuth(controls.getAzimuthalAngle() + (e.key === 'ArrowRight' ? -by : by));
+      announce();
+    };
+    el.addEventListener('keydown', step);
+    // announce after the damped motion has settled as well as at release
+    const sync = () => { announce(); setTimeout(announce, 400); };
+    window.addEventListener('pointerup', sync);
+    detachKeys = () => { el.removeEventListener('keydown', step); window.removeEventListener('pointerup', sync); };
+  }
 
   // — background —
   function applyBackground() {
@@ -747,8 +993,17 @@ export function mountSpin(el, opts = {}) {
   rebuildTextures();
   applyBackground();
 
-  // art / font are async: never block, just re-render when they land
-  if (o.art && o.art.dataUrl) loadArtImage(o.art.dataUrl).then(img => { if (img && !disposed) rebuildTextures(); });
+  // art / marks / fonts are async: never block the first paint, just re-render when they
+  // land. Marks are inline-SVG data URLs, so this settles inside one frame in practice.
+  function loadAssets() {
+    const urls = markUrls(o).all;
+    if (o.art && o.art.dataUrl) urls.push(o.art.dataUrl);
+    const pending = urls.filter(u => !_imgCache.has(u));
+    if (pending.length) {
+      Promise.all(pending.map(loadArtImage)).then(() => { if (!disposed) rebuildTextures(); });
+    }
+  }
+  loadAssets();
   try {
     if (document.fonts && document.fonts.load) {
       Promise.all([
@@ -782,10 +1037,28 @@ export function mountSpin(el, opts = {}) {
   }, { threshold: 0.01 });
   io.observe(el);
 
+  let lastTick = 0;
   function tick() {
     raf = requestAnimationFrame(tick);
-    // OrbitControls.update() reports whether the camera actually moved — skip idle redraws
-    const moved = controls.update();
+    // OrbitControls.update() reports whether the camera actually moved — skip idle redraws.
+    // The delta is passed so idle rotation runs at a real 14°/s instead of 14° per 60
+    // FRAMES, which halves on a 30fps display.
+    const t = performance.now();
+    const dt = lastTick ? Math.min(0.1, (t - lastTick) / 1000) : 1 / 60;
+    lastTick = t;
+    const before = controls.getAzimuthalAngle();
+    const moved = controls.update(dt);
+    if (moved) {
+      keepFit();
+      if (controls.autoRotate) {
+        // count the idle revolutions and hard-stop at maxTurns
+        let d = controls.getAzimuthalAngle() - before;
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        turned += Math.abs(d);
+        if (turned >= Math.max(0, o.maxTurns ?? 1.5) * Math.PI * 2) stopAutoRotate();
+      }
+    }
     if (!moved && !needsRender) return;
     renderer.render(scene, camera);
     needsRender = false;
@@ -809,7 +1082,9 @@ export function mountSpin(el, opts = {}) {
     q = qualityFor();
     const geoDirty = next.style !== undefined && next.style !== prev.style || q !== qPrev;
     const texDirty = geoDirty || ['baseColor', 'art', 'artTile', 'sleeveText', 'sleeveTextColor',
-      'chestMark', 'chestMarkColor', 'backText'].some(k => next[k] !== undefined && next[k] !== prev[k]);
+      'sleeveTextCap', 'sleeveTextSvg', 'chestMark', 'chestMarkColor', 'chestMarkBg',
+      'chestMarkSvg', 'chestMarkWidth', 'backText', 'backTextSvg',
+    ].some(k => next[k] !== undefined && next[k] !== prev[k]);
 
     if (next.background !== undefined) applyBackground();
     if (next.speed !== undefined) controls.autoRotateSpeed = (o.speed ?? 0.6) * 6;
@@ -818,18 +1093,13 @@ export function mountSpin(el, opts = {}) {
     if (next.autoRotate !== undefined) setAutoRotate(!!o.autoRotate);
 
     if (geoDirty) buildAll();
-    if (texDirty) {
-      rebuildTextures();
-      if (o.art && o.art.dataUrl && !getArtImage(o.art.dataUrl)) {
-        loadArtImage(o.art.dataUrl).then(img => { if (img && !disposed) rebuildTextures(); });
-      }
-    }
+    if (texDirty) { rebuildTextures(); loadAssets(); }
     needsRender = true;
   }
 
   function setAutoRotate(on) {
     wantAutoRotate = !!on;
-    clearTimeout(resumeTimer);
+    turned = 0;
     controls.autoRotate = !!on;
     needsRender = true;
   }
@@ -881,11 +1151,16 @@ export function mountSpin(el, opts = {}) {
       running: !!raf,
       autoRotating: !!controls.autoRotate,
       autoRotateWanted: !!wantAutoRotate,
+      turns: Math.round((turned / (Math.PI * 2)) * 100) / 100,
+      azimuthDeg: Math.round(((-controls.getAzimuthalAngle() * 180 / Math.PI) % 360 + 360) % 360),
+      fill: o.fill,
       geometries: renderer.info.memory.geometries,
       textures: renderer.info.memory.textures,
       size: [W, H],
       style: o.style,
       quality: q === QUALITY.high ? 'high' : 'low',
+      interacted,
+      dragHint: !!o.dragHint,
     };
   }
 
@@ -893,11 +1168,12 @@ export function mountSpin(el, opts = {}) {
     if (disposed) return;
     disposed = true;
     stop();
-    clearTimeout(resumeTimer);
+    detachKeys();
     io.disconnect(); ro.disconnect();
+    interactCbs.clear();
     canvas.removeEventListener('pointerdown', onDown);
-    window.removeEventListener('pointerup', onUp);
-    window.removeEventListener('pointercancel', onUp);
+    canvas.removeEventListener('wheel', onWheel);
+    canvas.removeEventListener('keydown', onKey);
     controls.dispose();
     clearBuild();
     if (torsoTex) torsoTex.dispose();
@@ -908,7 +1184,7 @@ export function mountSpin(el, opts = {}) {
     if (canvas.parentNode === el) el.removeChild(canvas);
   }
 
-  return { update, setAutoRotate, snapshot, dispose, setAzimuth, setPolar, getInfo };
+  return { update, setAutoRotate, snapshot, dispose, onInteract, setAzimuth, setPolar, getInfo };
 }
 
 export default mountSpin;

@@ -1,220 +1,261 @@
 /**
- * catalog.js — SAMPLE storefront data. No real SKUs, no real prices exist for this brand
- * (see docs/DESIGN.md §7) — every price object below carries sample:true and every price
- * MUST be rendered with a "sample" label. Do not treat any value here as a real fact.
+ * catalog.js — SAMPLE storefront data for Prodigy Athletics.
  *
- * Product shape:
+ * HONESTY (docs/DESIGN.md §7, docs/DESIGN-SYSTEM.md rule 11): zero real prices, SKUs,
+ * fabrics or weights exist for this brand. Every price object carries sample:true and is
+ * rendered as "$NN sample". Every unsupplied spec renders "— TO CONFIRM". Nothing in this
+ * file is a fact about the client's business.
+ *
+ * Product shape
  * {
- *   id, name, style:'ls'|'ss'|'shorts'|'spats', theme, gender:'Unisex'|'Women', baseColor,
- *   artSpec: patterns.js spec | null,           // null only for `ranked` items
- *   slots: { [slotKey]: true },                 // which garment.js slots get the artwork
- *   ranked: { belt } | null,
- *   pairId: string | null,                      // links an LS/SS sleeve-length sibling pair
- *   isSet: boolean, partner: { style, slots } | null,   // "Set:" two-garment merchandising
- *   price: { sample:true, amount, currency:'CAD', compareAt? },
- *   badges: [ 'New' | 'Flagship' ],   // never 'Best seller' or 'Sale' — no sales/promo history exists
- *   colorways: [hex,...],                       // dots; belts for ranked, recolors otherwise
+ *   id        string
+ *   name      string   card-title register, UPPERCASE, e.g. "RANKED SHORT SLEEVE — BLUE"
+ *   line      string   merchandising line: 'Core' | 'Ranked' | 'Recon Camo' | 'Maple' | 'Sets'
+ *   eyebrow   string   mono eyebrow on the PDP, e.g. "RANKED — SHORT SLEEVE"
+ *   style     'ls'|'ss'|'shorts'|'spats'          garment.js style key
+ *   baseColor hex
+ *   artSpec   patterns.js spec | null
+ *   artScale  number   tile scale for artPatternDef
+ *   ranked    { belt, body } | null               drives renderRanked
+ *   marks     garment.js `marks` option — EVERY product carries the PRODIGY name
+ *   unconfirmed string | undefined            visible "— to confirm" token on card + PDP
+ *   price     { sample:true, amount, currency }
+ *   sizes     string[]                            XS–4XL. Gi sizing (A0–A6) never appears on a rashguard.
+ *   pieces    [{ style, marks }] | null           set members beyond the primary style
+ *   copy      [p1, p2, p3]                        PDP paragraphs, fixed order
  * }
- *
- * The ranked short-sleeve rashguard (white/blue/purple/brown/black) is the client's ONE
- * confirmed real product (see DESIGN.md OBSERVED section) — it is the hero, first in the
- * list and carries the only "Flagship" badge (the one confirmed real line).
  */
 
-import { BELT_HEX } from '../render/garment.js';
+import { BELT_HEX, BASE_PRESETS } from '../render/garment.js';
 
-export const THEMES = Object.freeze(['Ranked', 'Camo', 'Minimalist', 'Flag', 'Geometric', 'Abstract', 'Waves']);
-export const CUTS = Object.freeze([
-  { key: 'ls', label: 'Long sleeve' },
-  { key: 'ss', label: 'Short sleeve' },
-  { key: 'shorts', label: 'Shorts' },
-  { key: 'spats', label: 'Spats' },
-  { key: 'sets', label: 'Sets' }, // virtual cut — filters isSet:true regardless of underlying style
-]);
-export const GENDERS = Object.freeze(['Unisex', 'Women']);
+export const BELTS = Object.freeze(['white', 'blue', 'purple', 'brown', 'black']);
+export const BELT_LABEL = Object.freeze({
+  white: 'WHITE', blue: 'BLUE', purple: 'PURPLE', brown: 'BROWN', black: 'BLACK',
+});
 
-const BELTS = ['white', 'blue', 'purple', 'brown', 'black'];
-const BELT_COLORWAYS = BELTS.map(b => BELT_HEX[b]);
+/** Rashguard / bottoms sizing. A0–A6 is gi sizing and lives on the gi section only. */
+export const SIZES = Object.freeze(['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL']);
+export const GI_SIZES = 'A0–A6';
 
-const NAVY = '#0B1220', BONE = '#F5F3EE', BLACK = '#14161b', GREY = '#5A5E66';
+export const LINES = Object.freeze(['Core', 'Ranked', 'Recon Camo', 'Maple', 'Sets']);
 
-/** Small helper so sample prices never accidentally read as real. */
-const price = (amount, extra = {}) => ({ sample: true, amount, currency: 'CAD', ...extra });
+const BLACK = BASE_PRESETS.black;   // #14161b
+const WHITE = BASE_PRESETS.white;   // #ECECEA
+const BONE_MARK = '#F5F3EE';
+const INK_MARK = '#0B1220';
 
-const camoColors = ['#2b3a2a', '#4a5b3d', '#7a7d55', '#1c2418'];
-const minimalColorsDark = [NAVY, '#E8A33D', BONE];
-const minimalColorsLight = [BONE, NAVY, '#E8A33D'];
-// red bands / white band / red maple leaf — the leaf reads as a leaf, in the flag's own
-// colours, rather than a dark mark floating on the white band.
-const flagColors = ['#C8102E', '#F7F5F0', '#C8102E'];
-const geoColors = [NAVY, '#E8A33D', '#5A5A5A'];
-const gridColors = [NAVY, '#DBDBDB', '#E8A33D'];
-const kanjiColors = ['#141414', '#E8A33D'];
-const topoColors = [NAVY, '#1B4DB1', '#5A5A5A'];
-const wavesColorsCool = [NAVY, '#1B4DB1', '#22B6FF'];
-const wavesColorsWarm = ['#141414', '#5A3A22', '#E8A33D'];
-const stripesColors = [NAVY, '#E8A33D', BONE];
-const halftoneColors = [NAVY, '#E8A33D'];
+// Currency is one of the things DESIGN.md §7 says the client still has to supply, so a
+// price carries none. It renders "$NN sample" and asserts nothing about CAD or USD.
+const price = (amount) => ({ sample: true, amount, currency: null });
+
+/* ── artwork specs ─────────────────────────────────────────────────────── */
+
+const CAMO = { kind: 'camo', colors: ['#2b3a2a', '#4a5b3d', '#7a7d55', '#1c2418'], seed: 11 };
+const MAPLE = { kind: 'flag-ca', colors: ['#C8102E', '#F7F5F0', '#C8102E'], seed: 4 };
+
+/* ── mark sets ─────────────────────────────────────────────────────────── */
+// Every top: chest lockup + PRODIGY down both sleeves + back print.
+// Every bottom: PRODIGY on the waistband + down one leg.
+
+const topMarks = (c) => ({
+  chest: { kind: 'lockup', color: c, width: 150 },
+  sleeves: { text: 'PRODIGY', color: c },
+  back: { kind: 'word', color: c, width: 250 },
+});
+const bottomMarks = (c) => ({ waist: { color: c }, leg: { color: c } });
+
+/** Ranked marks: a belt-coloured monogram roundel, knocked out in the body colour. */
+function rankedMarks(belt) {
+  const onWhiteBody = belt === 'black';
+  const knock = onWhiteBody ? BONE_MARK : (belt === 'white' ? INK_MARK : BONE_MARK);
+  return {
+    chest: { kind: 'mono', width: 58, color: knock, bg: BELT_HEX[belt] },
+    sleeves: { text: 'PRODIGY', color: belt === 'white' ? INK_MARK : BONE_MARK },
+    back: { kind: 'word', color: onWhiteBody ? INK_MARK : BONE_MARK, width: 250 },
+  };
+}
+
+/* ── shared paragraphs ─────────────────────────────────────────────────── */
+
+const P_SPEC = 'Fabric — TO CONFIRM. Weight — TO CONFIRM. Dye sublimation prints flat on the roll, then the pieces are cut and sewn.';
+// Fit and care are specs like any other: nothing in §7 OBSERVED states either, so neither
+// "compression fit" nor a wash instruction is asserted here.
+const P_FIT = 'Sizes run XS to 4XL. Fit, care and size chart — TO CONFIRM.';
+const P_FIT_BOTTOM = P_FIT;
+
+const CUT_WORD = { ls: 'long sleeve', ss: 'short sleeve', shorts: 'shorts', spats: 'spats' };
+
+/* ── products ──────────────────────────────────────────────────────────── */
+
+function core(id, style, colorName, hex, amount) {
+  const cut = CUT_WORD[style];
+  const markColor = hex === WHITE ? INK_MARK : BONE_MARK;
+  return {
+    id, line: 'Core',
+    name: `CORE ${style === 'ls' ? 'LONG SLEEVE' : 'SHORT SLEEVE'} — ${colorName.toUpperCase()}`,
+    eyebrow: `CORE — ${style === 'ls' ? 'LONG SLEEVE' : 'SHORT SLEEVE'}`,
+    style, baseColor: hex, artSpec: null, artScale: 1, ranked: null,
+    marks: topMarks(markColor), price: price(amount), sizes: SIZES, pieces: null,
+    copy: [
+      `Core ${cut} in ${colorName.toLowerCase()}, with no artwork on the body. Chest lockup, PRODIGY down both sleeves, one back print.`,
+      P_SPEC,
+      P_FIT,
+    ],
+  };
+}
+
+function ranked(style, belt, amount) {
+  const cutLabel = style === 'ls' ? 'LONG SLEEVE' : 'SHORT SLEEVE';
+  const body = belt === 'black' ? 'white' : 'black';
+  return {
+    id: `ranked-${style}-${belt}`, line: 'Ranked',
+    name: `RANKED ${cutLabel} — ${BELT_LABEL[belt]}`,
+    eyebrow: `RANKED — ${cutLabel}`,
+    // §7 OBSERVED confirms a ranked SHORT-SLEEVE line only, and lists "whether the ranked
+    // rashguard line is short-sleeve only" as an open question. The long sleeve therefore
+    // carries the same visible token every other unconfirmed fact on this site carries.
+    unconfirmed: style === 'ls' ? 'Long sleeve — to confirm' : null,
+    style, baseColor: body === 'white' ? WHITE : BLACK,
+    artSpec: null, artScale: 1, ranked: { belt, body },
+    marks: rankedMarks(belt), price: price(amount), sizes: SIZES, pieces: null,
+    copy: [
+      `Ranked ${CUT_WORD[style]}, ${belt} rank colour. The rank colour sits in the sleeve panels and the collar binding, not in a stripe across the chest.`,
+      P_SPEC,
+      P_FIT,
+    ],
+  };
+}
 
 export const PRODUCTS = Object.freeze([
-  // ── Ranked (the one confirmed real product) ─────────────────────────────
+  /* ── Ranked — the one confirmed line (§7 OBSERVED) ─────────────────── */
+  ...BELTS.map(b => ranked('ss', b, 75)),
+  ...BELTS.map(b => ranked('ls', b, 85)),
+
+  /* ── Core ──────────────────────────────────────────────────────────── */
+  core('core-ls-black', 'ls', 'Black', BLACK, 78),
+  core('core-ls-white', 'ls', 'White', WHITE, 78),
+  core('core-ss-black', 'ss', 'Black', BLACK, 68),
+  core('core-ss-white', 'ss', 'White', WHITE, 68),
+
+  /* ── Recon Camo ────────────────────────────────────────────────────── */
   {
-    id: 'ranked-ss', name: 'Ranked Short-Sleeve Rashguard', style: 'ss', theme: 'Ranked', gender: 'Unisex',
-    baseColor: BLACK, artSpec: null, slots: {}, ranked: { belt: 'white' }, pairId: 'ranked',
-    isSet: false, partner: null,
-    price: price(75), badges: ['Flagship'], colorways: BELT_COLORWAYS,
+    id: 'recon-ls', line: 'Recon Camo', name: 'RECON CAMO LONG SLEEVE',
+    eyebrow: 'RECON CAMO — LONG SLEEVE',
+    style: 'ls', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62, ranked: null,
+    marks: topMarks(BONE_MARK), price: price(88), sizes: SIZES, pieces: null,
+    copy: [
+      'Recon Camo long sleeve. The camo runs to the seam on every panel, so the pattern carries across the join instead of stopping at a panel edge.',
+      P_SPEC,
+      P_FIT,
+    ],
   },
   {
-    id: 'ranked-ls', name: 'Ranked Long-Sleeve Rashguard', style: 'ls', theme: 'Ranked', gender: 'Unisex',
-    baseColor: BLACK, artSpec: null, slots: {}, ranked: { belt: 'blue' }, pairId: 'ranked',
-    isSet: false, partner: null,
-    price: price(85), badges: ['New'], colorways: BELT_COLORWAYS,
+    id: 'recon-ss', line: 'Recon Camo', name: 'RECON CAMO SHORT SLEEVE',
+    eyebrow: 'RECON CAMO — SHORT SLEEVE',
+    style: 'ss', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62, ranked: null,
+    marks: topMarks(BONE_MARK), price: price(78), sizes: SIZES, pieces: null,
+    copy: [
+      'Recon Camo short sleeve. Same file as the long sleeve, re-cut for the shorter pattern piece.',
+      P_SPEC,
+      P_FIT,
+    ],
+  },
+  {
+    id: 'recon-shorts', line: 'Recon Camo', name: 'RECON CAMO GRAPPLING SHORTS',
+    eyebrow: 'RECON CAMO — SHORTS',
+    style: 'shorts', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62, ranked: null,
+    marks: bottomMarks(BONE_MARK), price: price(62), sizes: SIZES, pieces: null,
+    copy: [
+      'Recon Camo grappling shorts. PRODIGY sits on the waistband and down the right leg.',
+      P_SPEC,
+      P_FIT_BOTTOM,
+    ],
+  },
+  {
+    id: 'recon-spats', line: 'Recon Camo', name: 'RECON CAMO SPATS',
+    eyebrow: 'RECON CAMO — SPATS',
+    style: 'spats', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62, ranked: null,
+    marks: bottomMarks(BONE_MARK), price: price(68), sizes: SIZES, pieces: null,
+    copy: [
+      'Recon Camo spats. Waistband name, one leg print, and the same camo file as the tops.',
+      P_SPEC,
+      P_FIT_BOTTOM,
+    ],
+  },
+  {
+    id: 'recon-set', line: 'Sets', name: 'RECON CAMO SET — LONG SLEEVE + SHORTS',
+    eyebrow: 'SETS — RECON CAMO',
+    style: 'ls', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62, ranked: null,
+    marks: topMarks(BONE_MARK), price: price(142), sizes: SIZES,
+    pieces: [{ style: 'shorts', marks: bottomMarks(BONE_MARK) }],
+    copy: [
+      'One artwork, cut for the long sleeve and the shorts. That is a set.',
+      P_SPEC,
+      P_FIT,
+    ],
   },
 
-  // ── Camo ─────────────────────────────────────────────────────────────────
+  /* ── Maple ─────────────────────────────────────────────────────────── */
   {
-    id: 'recon-camo-ls', name: 'Recon Camo Long-Sleeve', style: 'ls', theme: 'Camo', gender: 'Unisex',
-    baseColor: '#1c2418', artSpec: { kind: 'camo', colors: camoColors, seed: 11 }, slots: { all: true },
-    ranked: null, pairId: 'recon-camo', isSet: false, partner: null,
-    price: price(88), badges: [], colorways: ['#2b3a2a', '#26303f', '#3a2b2b'],
+    id: 'maple-ls', line: 'Maple', name: 'MAPLE LONG SLEEVE',
+    eyebrow: 'MAPLE — LONG SLEEVE',
+    style: 'ls', baseColor: '#C8102E', artSpec: MAPLE, artScale: 0.85, ranked: null,
+    marks: topMarks(INK_MARK), price: price(88), sizes: SIZES, pieces: null,
+    copy: [
+      'Maple long sleeve. Two red bands, a white centre panel and one leaf, drawn as flat shapes rather than a photograph of a flag.',
+      P_SPEC,
+      P_FIT,
+    ],
   },
   {
-    id: 'recon-camo-ss', name: 'Recon Camo Short-Sleeve', style: 'ss', theme: 'Camo', gender: 'Unisex',
-    baseColor: '#1c2418', artSpec: { kind: 'camo', colors: camoColors, seed: 11 }, slots: { all: true },
-    ranked: null, pairId: 'recon-camo', isSet: false, partner: null,
-    price: price(78), badges: [], colorways: ['#2b3a2a', '#26303f', '#3a2b2b'],
-  },
-  {
-    id: 'recon-camo-shorts', name: 'Recon Camo Grappling Shorts', style: 'shorts', theme: 'Camo', gender: 'Unisex',
-    baseColor: '#1c2418', artSpec: { kind: 'camo', colors: camoColors, seed: 11 }, slots: { all: true },
-    ranked: null, pairId: null, isSet: false, partner: null,
-    price: price(58), badges: [], colorways: ['#2b3a2a', '#26303f', '#3a2b2b'],
-  },
-
-  // ── Minimalist ───────────────────────────────────────────────────────────
-  {
-    id: 'ink-minimal-ls', name: 'Ink Minimalist Long-Sleeve', style: 'ls', theme: 'Minimalist', gender: 'Unisex',
-    baseColor: NAVY, artSpec: { kind: 'minimal', colors: minimalColorsDark, seed: 2 }, slots: { all: true },
-    ranked: null, pairId: 'ink-minimal', isSet: false, partner: null,
-    price: price(82), badges: [], colorways: [NAVY, '#141414', GREY],
-  },
-  {
-    id: 'bone-minimal-ss', name: 'Bone Minimalist Short-Sleeve', style: 'ss', theme: 'Minimalist', gender: 'Women',
-    baseColor: BONE, artSpec: { kind: 'minimal', colors: minimalColorsLight, seed: 3 }, slots: { all: true },
-    ranked: null, pairId: null, isSet: false, partner: null,
-    price: price(72), badges: [], colorways: [BONE, '#DBDBDB', '#E8A33D'],
-  },
-  {
-    id: 'ink-minimal-spats', name: 'Ink Minimalist Spats', style: 'spats', theme: 'Minimalist', gender: 'Unisex',
-    baseColor: NAVY, artSpec: { kind: 'minimal', colors: minimalColorsDark, seed: 2 }, slots: { all: true },
-    ranked: null, pairId: null, isSet: false, partner: null,
-    price: price(66), badges: [], colorways: [NAVY, '#141414', GREY],
+    id: 'maple-set', line: 'Sets', name: 'MAPLE SET — LONG SLEEVE + SPATS',
+    eyebrow: 'SETS — MAPLE',
+    style: 'ls', baseColor: '#C8102E', artSpec: MAPLE, artScale: 0.85, ranked: null,
+    marks: topMarks(INK_MARK), price: price(150), sizes: SIZES,
+    pieces: [{ style: 'spats', marks: bottomMarks(INK_MARK) }],
+    copy: [
+      'One artwork, cut for the long sleeve and the spats. The bands land in different places on each piece, because the pattern pieces are different shapes.',
+      P_SPEC,
+      P_FIT,
+    ],
   },
 
-  // ── Flag ─────────────────────────────────────────────────────────────────
+  /* ── Plain bottoms ─────────────────────────────────────────────────── */
   {
-    id: 'flag-maple-ls', name: 'Flag Maple Long-Sleeve', style: 'ls', theme: 'Flag', gender: 'Unisex',
-    baseColor: '#C8102E', artSpec: { kind: 'flag-ca', colors: flagColors, seed: 4 }, slots: { all: true },
-    ranked: null, pairId: 'flag-maple', isSet: false, partner: null,
-    price: price(88), badges: ['New'], colorways: ['#C8102E', NAVY, '#141414'],
+    id: 'shorts-black', line: 'Core', name: 'GRAPPLING SHORTS — BLACK',
+    eyebrow: 'CORE — SHORTS',
+    style: 'shorts', baseColor: BLACK, artSpec: null, artScale: 1, ranked: null,
+    marks: bottomMarks(BONE_MARK), price: price(62), sizes: SIZES, pieces: null,
+    copy: [
+      'Grappling shorts in black, with no artwork. PRODIGY on the waistband and down the right leg.',
+      P_SPEC,
+      P_FIT_BOTTOM,
+    ],
   },
   {
-    id: 'flag-maple-ss', name: 'Flag Maple Short-Sleeve', style: 'ss', theme: 'Flag', gender: 'Women',
-    baseColor: '#141414', artSpec: { kind: 'flag-ca', colors: flagColors, seed: 4 }, slots: { sleeveL: true, sleeveR: true },
-    ranked: null, pairId: 'flag-maple', isSet: false, partner: null,
-    price: price(76), badges: [], colorways: ['#C8102E', NAVY, '#141414'],
-  },
-
-  // ── Geometric ────────────────────────────────────────────────────────────
-  {
-    id: 'fracture-geo-ls', name: 'Fracture Geometric Long-Sleeve', style: 'ls', theme: 'Geometric', gender: 'Unisex',
-    baseColor: NAVY, artSpec: { kind: 'geo', colors: geoColors, seed: 5 }, slots: { all: true },
-    ranked: null, pairId: 'fracture-geo', isSet: false, partner: null,
-    price: price(85), badges: [], colorways: [NAVY, '#141414', '#5A3A22'],
-  },
-  {
-    id: 'prism-grid-ss', name: 'Prism Grid Short-Sleeve', style: 'ss', theme: 'Geometric', gender: 'Women',
-    baseColor: NAVY, artSpec: { kind: 'grid', colors: gridColors, seed: 6, cell: 36 }, slots: { all: true },
-    ranked: null, pairId: 'prism-grid', isSet: false, partner: null,
-    price: price(74), badges: [], colorways: [NAVY, '#141414', '#1B4DB1'],
-  },
-  {
-    id: 'prism-grid-shorts', name: 'Prism Grid Shorts', style: 'shorts', theme: 'Geometric', gender: 'Women',
-    baseColor: NAVY, artSpec: { kind: 'grid', colors: gridColors, seed: 6, cell: 36 }, slots: { all: true },
-    ranked: null, pairId: null, isSet: false, partner: null,
-    price: price(56), badges: [], colorways: [NAVY, '#141414', '#1B4DB1'],
-  },
-  {
-    id: 'signal-stripes-ss', name: 'Signal Stripes Short-Sleeve', style: 'ss', theme: 'Geometric', gender: 'Unisex',
-    baseColor: NAVY, artSpec: { kind: 'stripes', colors: stripesColors, seed: 13, count: 9, angle: 38 }, slots: { all: true },
-    ranked: null, pairId: null, isSet: false, partner: null,
-    price: price(73), badges: [], colorways: [NAVY, '#141414', '#5A3A22'],
-  },
-  {
-    id: 'halftone-fade-ss', name: 'Halftone Fade Short-Sleeve', style: 'ss', theme: 'Geometric', gender: 'Unisex',
-    baseColor: NAVY, artSpec: { kind: 'halftone', colors: halftoneColors, seed: 12, cell: 22 }, slots: { all: true },
-    ranked: null, pairId: null, isSet: false, partner: null,
-    price: price(77), badges: ['New'], colorways: [NAVY, '#141414', '#5A3A22'],
+    id: 'spats-black', line: 'Core', name: 'SPATS — BLACK',
+    eyebrow: 'CORE — SPATS',
+    style: 'spats', baseColor: BLACK, artSpec: null, artScale: 1, ranked: null,
+    marks: bottomMarks(BONE_MARK), price: price(66), sizes: SIZES, pieces: null,
+    copy: [
+      'Spats in black, with no artwork. Waistband name and one leg print.',
+      P_SPEC,
+      P_FIT_BOTTOM,
+    ],
   },
 
-  // ── Abstract ─────────────────────────────────────────────────────────────
+  /* ── Core set ──────────────────────────────────────────────────────── */
   {
-    id: 'brushline-ls', name: 'Brushline Abstract Long-Sleeve', style: 'ls', theme: 'Abstract', gender: 'Unisex',
-    baseColor: '#141414', artSpec: { kind: 'kanji-abstract', colors: kanjiColors, seed: 7, strokes: 4 }, slots: { all: true },
-    ranked: null, pairId: 'brushline', isSet: false, partner: null,
-    price: price(90), badges: ['New'], colorways: ['#141414', NAVY, '#5A3A22'],
-  },
-  {
-    id: 'topo-abstract-ss', name: 'Topo Abstract Short-Sleeve', style: 'ss', theme: 'Abstract', gender: 'Unisex',
-    baseColor: NAVY, artSpec: { kind: 'topo', colors: topoColors, seed: 8, lines: 10 }, slots: { all: true },
-    ranked: null, pairId: null, isSet: false, partner: null,
-    price: price(76), badges: [], colorways: [NAVY, '#141414', '#1B4DB1'],
-  },
-
-  // ── Waves ────────────────────────────────────────────────────────────────
-  {
-    id: 'tide-waves-ls', name: 'Tide Waves Long-Sleeve', style: 'ls', theme: 'Waves', gender: 'Women',
-    baseColor: NAVY, artSpec: { kind: 'waves', colors: wavesColorsCool, seed: 9, bands: 7 }, slots: { all: true },
-    ranked: null, pairId: 'tide-waves', isSet: false, partner: null,
-    price: price(87), badges: [], colorways: [NAVY, '#1B4DB1', '#141414'],
-  },
-  {
-    id: 'current-waves-ss', name: 'Current Waves Short-Sleeve', style: 'ss', theme: 'Waves', gender: 'Unisex',
-    baseColor: '#141414', artSpec: { kind: 'waves', colors: wavesColorsWarm, seed: 10, bands: 7 }, slots: { all: true },
-    ranked: null, pairId: null, isSet: false, partner: null,
-    price: price(75), badges: [], colorways: ['#141414', NAVY, '#5A3A22'],
-  },
-  {
-    id: 'tide-waves-spats', name: 'Tide Waves Spats', style: 'spats', theme: 'Waves', gender: 'Women',
-    baseColor: NAVY, artSpec: { kind: 'waves', colors: wavesColorsCool, seed: 9, bands: 7 }, slots: { all: true },
-    ranked: null, pairId: null, isSet: false, partner: null,
-    price: price(68), badges: [], colorways: [NAVY, '#1B4DB1', '#141414'],
-  },
-
-  // ── Sets — one artwork across rashguard + shorts/spats, merchandised as the unit ────────
-  {
-    id: 'set-camo-recon', name: 'Set: Recon Camo', style: 'ss', theme: 'Camo', gender: 'Unisex',
-    baseColor: '#1c2418', artSpec: { kind: 'camo', colors: camoColors, seed: 11 }, slots: { all: true },
-    ranked: null, pairId: null, isSet: true, partner: { style: 'shorts', slots: { all: true } },
-    price: price(118), badges: ['New'], colorways: ['#2b3a2a', '#26303f', '#3a2b2b'],
-  },
-  {
-    id: 'set-flag-maple', name: 'Set: Flag Maple', style: 'ls', theme: 'Flag', gender: 'Unisex',
-    baseColor: '#C8102E', artSpec: { kind: 'flag-ca', colors: flagColors, seed: 4 }, slots: { all: true },
-    ranked: null, pairId: null, isSet: true, partner: { style: 'spats', slots: { all: true } },
-    price: price(145), badges: [], colorways: ['#C8102E', NAVY, '#141414'],
-  },
-  {
-    id: 'set-fracture-geo', name: 'Set: Fracture Geo', style: 'ss', theme: 'Geometric', gender: 'Women',
-    baseColor: NAVY, artSpec: { kind: 'geo', colors: geoColors, seed: 5 }, slots: { all: true },
-    ranked: null, pairId: null, isSet: true, partner: { style: 'shorts', slots: { all: true } },
-    price: price(112), badges: [], colorways: [NAVY, '#141414', '#5A3A22'],
-  },
-  {
-    id: 'set-brushline', name: 'Set: Brushline', style: 'ls', theme: 'Abstract', gender: 'Unisex',
-    baseColor: '#141414', artSpec: { kind: 'kanji-abstract', colors: kanjiColors, seed: 7, strokes: 4 }, slots: { all: true },
-    ranked: null, pairId: null, isSet: true, partner: { style: 'spats', slots: { all: true } },
-    price: price(150), badges: [], colorways: ['#141414', NAVY, '#5A3A22'],
+    id: 'core-set', line: 'Sets', name: 'CORE SET — LONG SLEEVE + SHORTS',
+    eyebrow: 'SETS — CORE',
+    style: 'ls', baseColor: BLACK, artSpec: null, artScale: 1, ranked: null,
+    marks: topMarks(BONE_MARK), price: price(132), sizes: SIZES,
+    pieces: [{ style: 'shorts', marks: bottomMarks(BONE_MARK) }],
+    copy: [
+      'Core long sleeve and core shorts, both black. The set is the two pieces, not a discount.',
+      P_SPEC,
+      P_FIT,
+    ],
   },
 ]);
 
@@ -222,8 +263,13 @@ export function findProduct(id) {
   return PRODUCTS.find(p => p.id === id) || null;
 }
 
-/** The LS/SS sibling of a product that shares a pairId, if one exists (drives the PDP Sleeve pill). */
-export function pairedProduct(product) {
-  if (!product?.pairId) return null;
-  return PRODUCTS.find(p => p.id !== product.id && p.pairId === product.pairId) || null;
+export function productsByLine(line) {
+  return PRODUCTS.filter(p => p.line === line);
 }
+
+/** The five ranked short sleeves, in belt order — the homepage 01 panel. */
+export const RANKED_SS = Object.freeze(BELTS.map(b => findProduct(`ranked-ss-${b}`)));
+
+/** IBJJF Art. 8.1.14, quoted verbatim. Never paraphrase, never certify against it. */
+export const IBJJF_814 = 'Both genders must wear a shirt of elastic material (skin tight) long enough to cover the torso all the way to the waistband of the shorts, colored black, white, or black and white, and with at least 10% of the rank color(belt) to which the athlete belongs.';
+export const IBJJF_URL = 'https://ibjjf.com/books-videos';

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>spin3d — 360° rashguard viewer test</title>
+<link rel="stylesheet" href="../src/brand.css">
 <script type="importmap">
 {"imports":{
   "three":"../vendor/three/three.module.js",
@@ -21,10 +22,16 @@
   p.note { color:#9aa4b5; margin:0 0 18px; font-size:12px; }
   .row { display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start; }
   .card { background:#11172400; border:1px solid #1e2838; border-radius:10px; padding:10px; width:340px; }
+  body { font-family:Barlow,'Segoe UI',system-ui,sans-serif; }
   .card h2 { font-size:12px; letter-spacing:.12em; text-transform:uppercase; margin:0 0 8px; color:#E8A33D; }
   .stage { width:320px; height:400px; border-radius:8px; overflow:hidden;
            background:radial-gradient(120% 90% at 50% 20%, #202a3b 0%, #0d131d 70%); }
   .stage.light { background:radial-gradient(120% 90% at 50% 20%, #ffffff 0%, #d9dde4 75%); }
+  .stagewrap { position:relative; }
+  .hint { position:absolute; left:0; right:0; bottom:10px; text-align:center; color:#E8A33D;
+          opacity:.6; font:500 12px/1.5 'IBM Plex Mono',ui-monospace,monospace; letter-spacing:.12em;
+          transition:opacity 240ms cubic-bezier(.4,0,.2,1); pointer-events:none; }
+  .hint.gone { opacity:0; }
   .ctl { margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; }
   button { background:#1b2434; color:#F5F3EE; border:1px solid #2b374b; border-radius:6px;
            padding:5px 9px; font:inherit; font-size:12px; cursor:pointer; }
@@ -58,19 +65,31 @@
 <script type="module">
 import { mountSpin } from '../src/render/spin3d.js';
 import { demoArt } from '../src/render/art.js';
+import { lockupSVG } from '../src/render/marks.js';
 
 const art = demoArt('geo', 300);
 
+// chestMarkSvg proof: the SAME lockupSVG() the 2D renderer calls, wrapped in an <svg>
+// and handed to the viewer as a data URL. Nothing is re-drawn with a font.
+const LOCKUP_SVG_URL = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="400" viewBox="0 0 620 200">`
+  + lockupSVG({ x: 310, y: 100, width: 600, color: '#F5F3EE' }) + `</svg>`);
+
 const CONFIGS = [
-  { id:'ls-black', title:'Black LS — sleeve text + wordmark', light:false, opts:{
+  { id:'ls-black', title:'Black LS — sleeve run + chest lockup', light:false, opts:{
       style:'ls', baseColor:'#14161b', sleeveText:'PRODIGY', sleeveTextColor:'#F5F3EE',
-      chestMark:'wordmark', chestMarkColor:'#E8A33D', backText:null, speed:0.6 } },
+      chestMark:'lockup', chestMarkColor:'#E8A33D', backText:null, speed:0.6, dragHint:true } },
   { id:'ss-white', title:"White SS — 'mono' + tiled demo art", light:true, opts:{
       style:'ss', baseColor:'#ECECEA', art, artTile:3, sleeveText:'PRODIGY',
-      sleeveTextColor:'#0B1220', chestMark:'mono', chestMarkColor:'#0B1220', speed:0.6 } },
-  { id:'ls-navy', title:'Navy LS — backText PRODIGY', light:false, opts:{
+      sleeveTextColor:'#0B1220', chestMark:'mono', chestMarkColor:'#E8A33D',
+      chestMarkBg:'#0B1220', speed:0.6, dragHint:true } },
+  { id:'ls-navy', title:'Navy LS — chestMarkSvg + back print', light:false, opts:{
       style:'ls', baseColor:'#0B1220', sleeveText:'PRODIGY', sleeveTextColor:'#E8A33D',
-      chestMark:null, backText:'PRODIGY', chestMarkColor:'#E8A33D', speed:0.6 } },
+      chestMark:null, chestMarkSvg: LOCKUP_SVG_URL, backText:'PRODIGY',
+      chestMarkColor:'#F5F3EE', speed:0.6, dragHint:true } },
+  { id:'ls-white', title:'Bone LS — light colourway, no blow-out', light:true, opts:{
+      style:'ls', baseColor:'#F4F2EC', sleeveText:'PRODIGY', sleeveTextColor:'#0B1220',
+      chestMark:'lockup', chestMarkColor:'#0B1220', speed:0.6, dragHint:true } },
 ];
 
 const row = document.getElementById('row');
@@ -80,7 +99,8 @@ for (const cfg of CONFIGS) {
   const card = document.createElement('div');
   card.className = 'card';
   card.innerHTML = `<h2>${cfg.title}</h2>
-    <div class="stage${cfg.light ? ' light' : ''}" id="stage-${cfg.id}"></div>
+    <div class="stagewrap"><div class="stage${cfg.light ? ' light' : ''}" id="stage-${cfg.id}"></div>
+      <div class="hint" id="hint-${cfg.id}">DRAG TO SPIN</div></div>
     <div class="ctl">
       <button data-act="toggle">auto-rotate: on</button>
       <button data-act="shot">snapshot</button>
@@ -92,6 +112,8 @@ for (const cfg of CONFIGS) {
 
   const el = card.querySelector('.stage');
   const api = mountSpin(el, cfg.opts);
+  const hint = card.querySelector('.hint');
+  api.onInteract(() => { hint.classList.add('gone'); });
   const v = { id: cfg.id, api, el, opts: { ...cfg.opts }, rotating: true, hasArt: !!cfg.opts.art };
   views.push(v);
 
@@ -167,6 +189,9 @@ window.__spin = {
     requestAnimationFrame(step);
   }),
   dispose: () => views.forEach(v => v.api.dispose()),
+  hints: () => views.map(v => ({ id: v.id, hidden: document.getElementById(`hint-${v.id}`).classList.contains('gone') })),
+  fakeDrag: id => { const v = views.find(x => x.id === id) || views[0];
+    v.el.querySelector('canvas').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1 })); },
 };
 window.__spinReady = true;
 </script>

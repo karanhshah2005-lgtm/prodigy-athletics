@@ -1,387 +1,491 @@
-/* store.css — Prodigy Athletics storefront (SAMPLE), Albino & Preto-style restyle.
-   =============================================================================
-   This file owns EVERY visible token on index.html. brand.css is still linked for
-   its reset, but none of its colour/type tokens are used here on purpose: the
-   storefront is a pure white / black system with no accent colour at all. Prodigy
-   Gold, Ink Navy and the display (Impact-fallback) stack are deliberately absent —
-   they belong to the Studio, which keeps its own theme.
+/* ==========================================================================
+   Prodigy Athletics — storefront
+   Implements docs/DESIGN-SYSTEM.md v1. Every colour, size, tracking and spacing
+   value here comes from that document. Nothing is a magic number.
+   Gold budget: <=2% of any viewport, <=3 instances, five permitted uses only.
+   ========================================================================== */
 
-   Measured targets (docs/AP-RESTYLE.md): header 50px · nav 11px/400 caps 43px apart
-   from x=40 · product title 14.4px/700/0.05em caps · price 14.4px/400 · PDP h1
-   20px/800/1px · add-to-cart 38px black 11px no-radius · grid 6-up ≥1200 with a
-   40px gutter and 40px page padding. */
-
-:root {
-  --ap-font: HelveticaNeue, "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --ap-white: #ffffff;
-  --ap-black: #000000;
-  --ap-grey: #767676;    /* the only non-black text colour: sample notes, meta */
-  --ap-line: #e3e3e3;
-  --ap-stage: #f4f4f2;   /* release-panel background */
-  --ap-pad: 40px;        /* page side padding */
-}
-
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-
+/* --------------------------------------------------------------------------
+   Tokens — the three that collide with older brand.css names are scoped here
+   so the studio keeps its own values.
+   -------------------------------------------------------------------------- */
 body.store {
-  margin: 0;
-  background: var(--ap-white);
-  color: var(--ap-black);
-  font-family: var(--ap-font);
-  font-size: 12px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
+  --ink: #101623;
+  --ink-70: #4A5464;
+  --ink-45: #7C8492;
+
+  --gutter: var(--s-40);
+  --maxw: 1440px;
+  --hdr-h: 72px;
+
+  --pad-major: var(--s-128);
+  --pad-standard: var(--s-96);
+  --pad-tight: var(--s-64);
+
+  --stage-shadow: radial-gradient(ellipse 46% 6% at 50% 96%, rgba(16, 22, 35, 0.16), transparent 70%);
+
+  background: var(--bone);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 16px;
+  line-height: 1.6;
   overflow-x: hidden;
 }
-/* brand.css sets h1–h6 to the display stack + tight tracking, and its own button reset;
-   the storefront uses neither. The `:where(body.store)` prefix contributes NOTHING, so
-   each neutraliser scores exactly (0,0,1) — enough to beat brand.css's bare `h1` /
-   `button` rules (store.css loads second), and low enough that every single-class rule
-   below still wins. Written as `body.store h1` it would score (0,1,1) and silently
-   outrank e.g. `.pdp__add`'s black background and `.pdp__title`'s weight. */
-:where(body.store) :is(h1, h2, h3, h4) {
-  font-family: var(--ap-font);
-  letter-spacing: normal;
-  text-transform: none;
-  font-weight: 400;
-  margin: 0;
-}
-:where(body.store) :is(a) { color: inherit; text-decoration: none; }
-:where(body.store) :is(button) {
-  font-family: inherit; color: inherit; background: none; border: 0; cursor: pointer;
-}
-:where(body.store) :is(img, svg) { display: block; max-width: 100%; }
-:where(body.store) :is(input, select) { font-family: inherit; }
-/* brand.css focuses with the gold accent; the storefront has no accent colour. */
-body.store :focus-visible { outline: 2px solid var(--ap-black); outline-offset: 2px; }
 
-.visually-hidden {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+@media (max-width: 1000px) {
+  body.store { --gutter: var(--s-24); --pad-major: var(--s-96); --pad-standard: var(--s-72); --pad-tight: var(--s-48); }
 }
+@media (max-width: 767px) {
+  body.store { --gutter: var(--s-20); --hdr-h: 56px; --pad-major: var(--s-72); --pad-standard: var(--s-56); --pad-tight: var(--s-40); }
+}
+
+/* --------------------------------------------------------------------------
+   Type registers — the 16 tokens, and nothing else
+   -------------------------------------------------------------------------- */
+.t-display-xl {
+  font-family: var(--f-display); font-weight: 700; text-transform: uppercase;
+  font-size: clamp(52px, 7.6vw, 112px); line-height: 0.90; letter-spacing: -0.015em;
+}
+.t-display-l {
+  font-family: var(--f-display); font-weight: 700; text-transform: uppercase;
+  font-size: clamp(38px, 4.6vw, 72px); line-height: 0.94; letter-spacing: -0.010em;
+}
+.t-display-m {
+  font-family: var(--f-display); font-weight: 700; text-transform: uppercase;
+  font-size: 40px; line-height: 0.98; letter-spacing: -0.005em;
+}
+.t-h1 { font-family: var(--f-display); font-weight: 600; text-transform: uppercase; font-size: 34px; line-height: 1.00; letter-spacing: 0; }
+.t-h2 { font-family: var(--f-display); font-weight: 600; text-transform: uppercase; font-size: 26px; line-height: 1.06; letter-spacing: 0; }
+.t-h3 { font-family: var(--f-body); font-weight: 600; font-size: 19px; line-height: 1.32; }
+.t-lead { font-family: var(--f-body); font-weight: 400; font-size: 18px; line-height: 1.55; max-width: 52ch; }
+.t-body { font-family: var(--f-body); font-weight: 400; font-size: 16px; line-height: 1.60; letter-spacing: 0.01em; max-width: 62ch; }
+.t-body-s { font-family: var(--f-body); font-weight: 400; font-size: 14px; line-height: 1.50; letter-spacing: 0.01em; max-width: 62ch; }
+.t-price { font-family: var(--f-body); font-weight: 500; font-size: 14px; line-height: 1.50; letter-spacing: 0.01em; }
+.t-card-title { font-family: var(--f-body); font-weight: 600; font-size: 14px; line-height: 1.20; letter-spacing: 0.045em; text-transform: uppercase; }
+.t-caption { font-family: var(--f-body); font-weight: 400; font-size: 13px; line-height: 1.45; }
+.t-label { font-family: var(--f-mono); font-weight: 500; font-size: 12px; line-height: 1.50; letter-spacing: 0.12em; text-transform: uppercase; }
+.t-micro { font-family: var(--f-mono); font-weight: 500; font-size: 10px; line-height: 1.40; letter-spacing: 0.14em; text-transform: uppercase; }
+.t-button { font-family: var(--f-body); font-weight: 600; font-size: 13px; line-height: 1.00; letter-spacing: 0.08em; text-transform: uppercase; }
+.t-nav { font-family: var(--f-body); font-weight: 500; font-size: 13px; line-height: 1.00; letter-spacing: 0.06em; text-transform: uppercase; }
+
+@media (max-width: 767px) {
+  .t-display-xl { font-size: 52px; line-height: 0.94; }
+  .t-display-l { font-size: 38px; }
+  .t-h1 { font-size: 28px; }
+  .t-h2 { font-size: 22px; }
+}
+
+/* --------------------------------------------------------------------------
+   Primitives
+   -------------------------------------------------------------------------- */
+.wrap { width: 100%; max-width: var(--maxw); margin-inline: auto; padding-inline: var(--gutter); }
 
 .skip-link {
-  position: absolute; left: 8px; top: -48px; z-index: 1000;
-  background: var(--ap-black); color: var(--ap-white);
-  padding: 8px 12px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+  position: absolute; left: -9999px; top: 0; z-index: 200;
+  background: var(--ink-navy); color: var(--on-dark); padding: var(--s-12) var(--s-16);
 }
-.skip-link:focus { top: 8px; }
-#shop:focus { outline: none; }
+.skip-link:focus { left: 0; }
 
-/* ── sample strip ─────────────────────────────────────────────────────── */
-.samplestrip {
-  position: relative;
-  font-size: 11px;
-  line-height: 1;
-  color: var(--ap-grey);
-  padding: 11px 44px 11px var(--ap-pad);
-  background: var(--ap-white);
-}
-.samplestrip.is-hidden { display: none; }
-/* 44x44 hit area, 11px glyph — this is the topmost element on a phone screen. */
-.samplestrip__close {
-  position: absolute; right: 0; top: 50%; transform: translateY(-50%);
-  width: 44px; height: 44px; padding: 0; font-size: 14px; line-height: 1;
-  color: var(--ap-grey);
+.store :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 0; }
+
+.btn {
   display: inline-flex; align-items: center; justify-content: center;
+  height: 48px; padding: 0 var(--s-24); border: 0; border-radius: 0;
+  text-decoration: none; cursor: pointer; white-space: nowrap;
+  transition: background-color var(--dur-micro) var(--ease-inout),
+              border-color var(--dur-micro) var(--ease-inout);
 }
-.samplestrip__close:hover { color: var(--ap-black); }
+.btn--gold { background: var(--gold); color: var(--ink-navy); }
+.btn--gold:hover { background: var(--gold-deep); }
+.btn--ink { background: var(--ink-navy); color: var(--bone); }
+.btn--ink:hover { background: #162034; }
+.btn--ghost { background: transparent; color: inherit; border: 1px solid currentColor; opacity: 0.75; }
+.btn--ghost:hover { opacity: 1; }
+.btn--wide { width: 100%; height: 52px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* ── header ───────────────────────────────────────────────────────────── */
-/* 50px, white, relative (NOT sticky), no border — links left, logo right. */
+.tlink {
+  display: inline-block; text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-thickness: 1px; color: inherit;
+}
+.tlink:hover { text-decoration-thickness: 2px; }
+
+.vh {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* Product stage — the ONE imagery treatment. contain, never cover. */
+.stage {
+  position: relative; background: var(--bone-deep); aspect-ratio: 1 / 1;
+  display: grid; place-items: center; overflow: hidden;
+}
+/* No CSS contact shadow: garment.js already bakes one at the garment's own baseline, and
+   stacking a second ellipse under it reads as two shadows. The stage keeps the ground. */
+.stage svg, .stage img { width: 80%; height: auto; object-fit: contain; }
+.stage--plain { background: transparent; }
+
+/* --------------------------------------------------------------------------
+   0. Sample strip
+   -------------------------------------------------------------------------- */
+.strip {
+  height: 28px; display: flex; align-items: center; justify-content: center;
+  background: var(--ink-navy); color: var(--on-dark-45); text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   1. Header — 72px sticky, transparent over the hero, ink-navy after 80px
+   -------------------------------------------------------------------------- */
 .hdr {
-  position: relative;
-  height: 50px;
-  background: var(--ap-white);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 108px 0 var(--ap-pad);   /* logo sits 108px in from the right edge */
-  z-index: 50;
+  position: sticky; top: 0; z-index: 100; height: var(--hdr-h);
+  background: transparent; border-bottom: 1px solid transparent;
+  transition: background-color var(--dur-state) var(--ease-inout),
+              border-color var(--dur-state) var(--ease-inout);
 }
-.hdr__nav { min-width: 0; }
-.hdr__links {
-  list-style: none; margin: 0; padding: 0;
-  display: flex; align-items: center;
-  gap: 43px;                          /* A&P nav rhythm */
+.hdr.is-solid { background: var(--ink-navy); border-bottom-color: var(--ink-line); }
+.hdr__inner {
+  height: 100%; display: flex; align-items: center; gap: var(--s-32);
+  max-width: var(--maxw); margin-inline: auto; padding-inline: var(--gutter);
 }
-.hdr__links > li { position: relative; }
-.hdr__links a, .hdr__links button {
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: normal;
-  text-transform: uppercase;
-  line-height: 50px;                  /* full-height hit area inside the 50px bar */
-  padding: 0;
-  white-space: nowrap;
-  display: block;
+/* The wordmark is set in the h2 token (26px Barlow Condensed 600 UPPER), not a bespoke
+   size — the type scale is closed and a logotype is not a reason to open it. */
+.hdr__wordmark {
+  display: flex; align-items: center; text-decoration: none; color: var(--on-dark);
 }
-.hdr__links a:hover, .hdr__links button:hover { opacity: .55; }
-.hdr__logo { flex: none; display: block; }
-.hdr__logo svg { height: 30px; width: auto; color: var(--ap-black); }
-.hdr__logo-fallback {
-  font-size: 15px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+.hdr__nav { display: flex; align-items: center; gap: var(--s-32); margin-left: var(--s-32); }
+.hdr__link { color: var(--on-dark); text-decoration: none; background: none; padding: 0; }
+.hdr__link:hover { color: var(--on-dark-70); }
+.hdr__spacer { flex: 1 1 auto; }
+.hdr__cart { color: var(--on-dark); text-decoration: none; background: none; padding: 0; }
+
+@media (max-width: 1000px) {
+  .hdr__nav { gap: var(--s-16); margin-left: var(--s-16); }
+  .hdr__inner { gap: var(--s-16); }
+}
+/* Mobile: the nav collapses behind a MENU toggle so the header stays 56px. */
+.hdr__menu { display: none; color: var(--on-dark); background: none; padding: 0; }
+@media (max-width: 767px) {
+  .hdr__menu { display: block; }
+  .hdr__nav {
+    position: absolute; top: 100%; left: 0; right: 0; flex-direction: column;
+    align-items: flex-start; gap: var(--s-20); margin: 0;
+    padding: var(--s-24) var(--gutter); background: var(--ink-navy);
+    border-bottom: 1px solid var(--ink-line);
+  }
+  .hdr__nav:not(.is-open) { display: none; }
 }
 
-/* Narrow widths: the 108px logo inset and the 43px nav rhythm are 1440px numbers — held
-   literally at 500px the links run straight under the wordmark. Tighten both instead of
-   collapsing the nav into a hamburger, which A&P's header does not have. */
-@media (max-width: 1023px) {
-  .hdr { padding-right: 28px; }
-  .hdr__links { gap: 24px; }
-  .hdr__logo svg { height: 24px; }
+/* --------------------------------------------------------------------------
+   2. Hero
+   -------------------------------------------------------------------------- */
+.hero {
+  position: relative; margin-top: calc(var(--hdr-h) * -1); padding-top: var(--hdr-h);
+  min-height: max(640px, calc(100svh - 28px));
+  background: var(--ink-navy); color: var(--on-dark);
+  display: flex; flex-direction: column; overflow: hidden;
 }
-@media (max-width: 719px) {
-  body.store { --ap-pad: 20px; }
-  .hdr { padding-right: 20px; }
-  .hdr__links { gap: 15px; }
-  .hdr__logo svg { height: 18px; }
+.hero::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, rgba(11, 18, 32, 0.55) 100%);
+}
+.hero__viewer {
+  flex: 1 1 auto; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding-block: var(--s-16);
+}
+.hero__spin {
+  /* 560px is the design-system height. The render is the subject of this section, so the
+     stage is sized to it and the hero is allowed to run past 100svh; the cap only keeps
+     the display line and the button on screen at 900px tall. */
+  width: min(560px, 80vw); height: min(560px, 56svh); position: relative; z-index: 1;
+}
+.hero__spin canvas { cursor: grab; }
+.hero__spin canvas:active { cursor: grabbing; }
+.hero__drag {
+  margin-top: var(--s-16); color: var(--gold); opacity: 0.6; z-index: 1;
+  transition: opacity var(--dur-state) var(--ease-inout);
+}
+.hero__drag.is-gone { opacity: 0; }
+.hero__fallback { display: none; color: var(--on-dark-45); text-align: center; padding: var(--s-24); }
+.hero__spin[data-spin-fallback='1'] + .hero__drag { display: none; }
+
+.hero__copy {
+  position: relative; z-index: 2; max-width: var(--maxw); margin-inline: auto; width: 100%;
+  padding-inline: var(--gutter); padding-bottom: var(--s-48);
+}
+.hero__copy .t-label { color: var(--on-dark-45); }
+.hero__copy h1 { margin: var(--s-16) 0 var(--s-32); white-space: nowrap; }
+
+/* The nowrap display line fits by ~1% of its own width, so it is only kept where that
+   margin is real. Below 900px the line breaks naturally instead of touching the gutter. */
+@media (max-width: 899px) {
+  .hero__copy h1 { white-space: normal; }
+}
+@media (max-width: 767px) {
+  .hero__spin { width: min(560px, 94vw); height: min(380px, 52svh); }
 }
 
-/* SHOP flyout — replaces the old filter rail. */
-.shopmenu {
-  position: absolute;
-  top: 50px; left: var(--ap-pad);
-  background: var(--ap-white);
-  padding: 14px 30px 18px 0;
-  min-width: 190px;
-  z-index: 60;
-}
-.shopmenu[hidden] { display: none; }
-.shopmenu ul { list-style: none; margin: 0; padding: 0; }
-.shopmenu li + li { margin-top: 9px; }
-.shopmenu li.is-rule { margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--ap-line); }
-.shopmenu button {
-  font-size: 11px; letter-spacing: .02em; text-transform: uppercase;
-  text-align: left; padding: 0; display: block; width: 100%;
-}
-.shopmenu button:hover { opacity: .55; }
+/* --------------------------------------------------------------------------
+   Sections
+   -------------------------------------------------------------------------- */
+.sec { padding-block: var(--pad-standard); }
+.sec--major { padding-block: var(--pad-major); }
+.sec--navy { background: var(--ink-navy); color: var(--on-dark); }
+.sec--bone { background: var(--bone); color: var(--ink); }
+.sec--bonedeep { background: var(--bone-deep); color: var(--ink); }
 
-/* ── release panels (homepage) ────────────────────────────────────────── */
-.panels { display: block; }
-.panel {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 80vh;
-  min-height: 460px;
-  /* usable stage height — drives each figure's width cap so nothing ever overflows */
-  --stage-h: calc(max(80vh, 460px) - 112px);
-  background: var(--ap-stage);
-  overflow: hidden;
-}
-.panel + .panel { margin-top: 2px; }
-/* Flat-lay row. Each figure's flex-grow is its own aspect ratio and its flex-basis is 0,
-   so every garment in a panel resolves to the SAME height whatever its silhouette — the
-   thing that makes a row of mixed cuts read as one composed flat-lay rather than a
-   line-up of differently scaled thumbnails. The renders are viewBox-cropped to the
-   garment itself (see CROP in store.js), so there is no dead margin inside the boxes. */
-.panel__stage {
-  position: absolute; inset: 0;
-  display: flex; align-items: stretch; justify-content: center;
-  gap: 1.4vw;
-  padding: 34px 40px 78px;
-}
-.panel__fig {
-  min-width: 0; display: flex; align-items: center; justify-content: center;
-}
-.panel__fig svg { width: 100%; height: auto; max-height: 100%; }
-.panel--ranked { height: 52vh; min-height: 380px; --stage-h: calc(max(52vh, 380px) - 112px); }
-.panel--ranked .panel__stage { gap: 2.4vw; padding-left: 60px; padding-right: 60px; }
-/* the cut sheet is a technical drawing — keep it, but drain its colour so it sits in a
-   black/white/off-white storefront instead of shouting cyan/magenta */
-.panel__fig--sheet svg { filter: grayscale(1) contrast(1.05); opacity: .92; }
-.panel__caption {
-  position: absolute; left: var(--ap-pad); bottom: 30px;
-  font-size: 23px; font-weight: 800; letter-spacing: 1.15px; text-transform: uppercase;
-  color: var(--ap-black);
-  line-height: 1;
-}
-@media (max-width: 719px) {
-  .panel { height: 56vw; min-height: 300px; --stage-h: calc(max(56vw, 300px) - 80px); }
-  .panel__stage { padding: 22px 20px 58px; gap: 2vw; }
-  .panel__caption { left: 20px; bottom: 18px; font-size: 15px; }
-}
+.sechead { margin-bottom: var(--s-48); }
+.sechead .t-label { display: block; color: var(--ink-45); margin-bottom: var(--s-16); }
+.sec--navy .sechead .t-label { color: var(--on-dark-45); }
+.sechead .t-lead { margin-top: var(--s-20); color: var(--ink-70); }
+.sec--navy .sechead .t-lead { color: var(--on-dark-70); }
 
-/* ── grid ─────────────────────────────────────────────────────────────── */
-.shop { padding: 46px var(--ap-pad) 90px; }
-.shop__head {
-  display: flex; align-items: center; justify-content: flex-end;   /* A&P: Sort only, top-right */
-  margin-bottom: 30px; gap: 12px;
+/* --------------------------------------------------------------------------
+   01 — Ranked
+   -------------------------------------------------------------------------- */
+.ranked__row {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--s-24);
+  align-items: end;
 }
-.shop__count { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.shop__count--x {
-  margin: 0; font-size: 11px; font-weight: 400;
-  letter-spacing: .02em; text-transform: uppercase;
-}
-.shop__sort select {
-  font-size: 11px; letter-spacing: .02em; text-transform: uppercase;
-  border: 0; background: transparent; padding: 0 2px; color: var(--ap-black);
-  height: 22px;
-}
+.ranked__item { text-align: center; }
+.ranked__item svg { width: 100%; height: auto; }
+.ranked__item .t-label { display: block; margin-top: var(--s-16); color: var(--on-dark-70); }
+.ranked__note { margin-top: var(--s-48); color: var(--on-dark-45); max-width: 72ch; }
+.ranked__note .tlink { color: var(--on-dark-70); }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  column-gap: 40px;
-  row-gap: 44px;
-}
-@media (min-width: 720px)  { .grid { grid-template-columns: repeat(3, 1fr); row-gap: 60px; } }
-@media (min-width: 1200px) { .grid { grid-template-columns: repeat(6, 1fr); row-gap: 53px; } }
+@media (max-width: 1000px) { .ranked__row { grid-template-columns: repeat(3, 1fr); row-gap: var(--s-40); } }
+@media (max-width: 639px) { .ranked__row { grid-template-columns: repeat(2, 1fr); } }
 
-/* No card chrome at all: no border, no background, no badge, no dot, no quick-add. */
-.item { display: block; cursor: pointer; }
-.item__media {
-  position: relative;
-  aspect-ratio: 1 / 1;
-  background: var(--ap-white);
-}
-.item__media svg, .item__media img { position: absolute; inset: 0; width: 100%; height: 100%; }
-.item__title {
-  margin: 12px 0 0;
-  font-size: 14.4px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-  line-height: 1.35;
-}
-.item__price {
-  margin: 4px 0 0;
-  font-size: 14.4px; font-weight: 400; letter-spacing: 0; line-height: 1.35;
-}
-.item:hover .item__title { opacity: .55; }
-.empty-state { grid-column: 1 / -1; padding: 60px 0; font-size: 12px; color: var(--ap-grey); }
+/* --------------------------------------------------------------------------
+   02 — Core
+   -------------------------------------------------------------------------- */
+.core__row { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s-32); }
+.core__item .t-card-title { display: block; margin-top: var(--s-12); }
+.core__item .t-price { display: block; margin-top: var(--s-4); color: var(--ink-70); }
+@media (max-width: 767px) { .core__row { grid-template-columns: 1fr; } }
 
-/* ── footer ───────────────────────────────────────────────────────────── */
-.ftr {
-  padding: 46px var(--ap-pad) 54px;
-  border-top: 1px solid var(--ap-line);
-  background: var(--ap-white);
-  color: var(--ap-black);
-}
-.ftr__links {
-  list-style: none; margin: 0 0 26px; padding: 0;
-  display: flex; flex-wrap: wrap; gap: 26px;
-  font-size: 11px; letter-spacing: .02em; text-transform: uppercase;
-}
-.ftr__links a:hover { opacity: .55; }
-.ftr__signup { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 24px; }
-.ftr__signup input {
-  width: 240px; max-width: 100%; height: 32px; padding: 0 10px;
-  border: 1px solid var(--ap-line); border-radius: 0; font-size: 11px; background: var(--ap-white);
-}
-.ftr__signup button {
-  height: 32px; padding: 0 18px; background: var(--ap-black); color: var(--ap-white);
-  font-size: 11px; letter-spacing: .06em; text-transform: uppercase; border-radius: 0;
-}
-.ftr__signup-note { font-size: 11px; color: var(--ap-grey); }
-.ftr__legal { margin: 0; font-size: 11px; color: var(--ap-grey); line-height: 1.7; max-width: 780px; }
+/* --------------------------------------------------------------------------
+   03 — Sets
+   -------------------------------------------------------------------------- */
+.sets__row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-32); align-items: end; }
+.sets__item svg { width: 100%; height: auto; }
+.sets__item .t-label { display: block; margin-top: var(--s-16); color: var(--ink-45); text-align: center; }
+.sets__cta { margin-top: var(--s-48); }
+@media (max-width: 639px) { .sets__row { grid-template-columns: 1fr; } }
 
-/* ── cart drawer (demo) ───────────────────────────────────────────────── */
-.drawer-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.35);
-  opacity: 0; pointer-events: none; transition: opacity .18s ease; z-index: 90;
+/* --------------------------------------------------------------------------
+   04 — Detail (hotspot crops)
+   -------------------------------------------------------------------------- */
+.detail__grid { display: grid; grid-template-columns: 55% 1fr; gap: var(--s-48); align-items: start; }
+.detail__stage {
+  position: relative; aspect-ratio: 3 / 2; background: var(--ink-raise);
+  display: grid; place-items: center; overflow: hidden;
 }
-.drawer-overlay.is-open { opacity: 1; pointer-events: auto; }
-.drawer {
-  position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 88vw);
-  background: var(--ap-white); z-index: 95;
-  transform: translateX(100%); transition: transform .22s ease;
-  display: flex; flex-direction: column; border-left: 1px solid var(--ap-line);
+.detail__stage svg { width: 100%; height: 100%; }
+.detail__dot {
+  position: absolute; width: 24px; height: 24px; border-radius: 50%; padding: 0;
+  transform: translate(-50%, -50%); background: transparent;
+  border: 1px solid var(--on-dark-45); color: var(--on-dark-70);
+  display: grid; place-items: center; line-height: 1;
+  transition: border-color var(--dur-micro) var(--ease-inout), color var(--dur-micro) var(--ease-inout);
 }
-.drawer.is-open { transform: translateX(0); }
-.drawer__head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 10px 14px 20px; border-bottom: 1px solid var(--ap-line);
+.detail__dot:hover { border-color: var(--on-dark); color: var(--on-dark); }
+.detail__dot.is-active { border-color: var(--gold); color: var(--gold); }
+.detail__lead {
+  position: absolute; height: 1px; background: var(--gold); opacity: 0.7; pointer-events: none;
+  transform: translateY(-50%);
 }
-.drawer__head h2 { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; }
-.drawer__close {
-  width: 44px; height: 44px; font-size: 18px; line-height: 1;
-  display: inline-flex; align-items: center; justify-content: center;
+.detail__list { list-style: none; margin: 0; padding: 0; }
+.detail__row {
+  display: grid; grid-template-columns: 40px 1fr; gap: var(--s-16);
+  padding-block: var(--s-20); border-top: 1px solid var(--ink-line); width: 100%;
+  text-align: left; background: none; color: var(--on-dark-45);
+  transition: color var(--dur-micro) var(--ease-inout);
 }
-.drawer__body { padding: 20px; overflow-y: auto; flex: 1; font-size: 12px; }
-.cart-empty { color: var(--ap-grey); line-height: 1.7; margin: 0; }
-.cart-empty strong { display: block; color: var(--ap-black); margin-bottom: 6px; }
-.cart-line { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--ap-line); }
-.cart-line__thumb { width: 56px; height: 56px; flex: none; background: var(--ap-white); }
-.cart-line__thumb svg { width: 100%; height: 100%; }
-.cart-line__meta { flex: 1; min-width: 0; }
-.cart-line__meta b { display: block; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; }
-.cart-line__meta span { color: var(--ap-grey); font-size: 11px; }
-.cart-line__remove { width: 32px; height: 32px; font-size: 15px; color: var(--ap-grey); }
-.cart-total { margin: 16px 0 8px; font-size: 12px; font-weight: 700; }
+.detail__list li:last-child .detail__row { border-bottom: 1px solid var(--ink-line); }
+.detail__row:hover { color: var(--on-dark-70); }
+.detail__row.is-active { color: var(--on-dark); }
+.detail__row .t-h3 { text-transform: uppercase; font-family: var(--f-display); font-weight: 600; letter-spacing: 0; }
+.detail__cap { margin-top: var(--s-8); color: var(--on-dark-70); display: none; }
+.detail__row.is-active .detail__cap { display: block; }
+.detail__cap .todo { color: var(--on-dark-45); }
 
-/* ── PDP modal ────────────────────────────────────────────────────────── */
+@media (max-width: 1000px) { .detail__grid { grid-template-columns: 1fr; } }
+
+/* --------------------------------------------------------------------------
+   05 — Gis
+   -------------------------------------------------------------------------- */
+.gis__grid { display: grid; grid-template-columns: 1fr 380px; gap: var(--s-48); align-items: start; }
+.gis__placeholder {
+  aspect-ratio: 3 / 2; border: 1px dashed var(--bone-line); background: var(--bone-deep);
+  display: grid; place-content: center; gap: var(--s-12); text-align: center; padding: var(--s-24);
+}
+.gis__placeholder .t-label { color: var(--ink-45); }
+.gis__placeholder .t-caption { color: var(--ink-45); max-width: 42ch; }
+.spec { width: 100%; border-collapse: collapse; }
+.spec th, .spec td { height: 44px; text-align: left; border-bottom: 1px solid var(--bone-line); vertical-align: middle; }
+.spec th { color: var(--ink-45); font-weight: 500; width: 45%; }
+.spec td { color: var(--ink); }
+.spec .todo { color: var(--ink-45); font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.12em; }
+@media (max-width: 1000px) { .gis__grid { grid-template-columns: 1fr; } }
+
+/* --------------------------------------------------------------------------
+   06 — Studio
+   -------------------------------------------------------------------------- */
+/* Both panes start at the same top edge and run to the same stage height, so the two mono
+   captions land on one baseline instead of 108px apart. */
+.studio__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-48); align-items: start; }
+.studio__pane svg { width: 100%; height: auto; }
+.studio__stage {
+  aspect-ratio: 3 / 2; background: var(--ink-raise); overflow: hidden;
+  display: grid; place-items: center;
+}
+.studio__stage svg { width: auto; height: 100%; }
+.studio__sheet {
+  aspect-ratio: 3 / 2; background: var(--bone); padding: var(--s-16); filter: grayscale(1);
+  display: grid; place-items: center; overflow: hidden;
+}
+.studio__sheet svg { width: auto; height: 100%; }
+.studio__cta { margin-top: var(--s-48); }
+.studio__pane .t-label { display: block; margin-top: var(--s-16); color: var(--on-dark-45); }
+@media (max-width: 1000px) { .studio__grid { grid-template-columns: 1fr; } }
+
+/* --------------------------------------------------------------------------
+   07 — Shop grid
+   -------------------------------------------------------------------------- */
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: var(--s-32); row-gap: var(--s-72); }
+@media (max-width: 1279px) { .grid { grid-template-columns: repeat(3, 1fr); column-gap: 28px; row-gap: var(--s-56); } }
+@media (max-width: 999px) { .grid { grid-template-columns: repeat(2, 1fr); column-gap: var(--s-24); row-gap: var(--s-48); } }
+@media (max-width: 639px) { .grid { grid-template-columns: repeat(2, 1fr); column-gap: var(--s-12); row-gap: var(--s-48); } }
+
+.card { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; }
+.card .stage svg { width: 80%; }
+.card__title { display: block; margin-top: var(--s-12); }
+.card__price { display: block; margin-top: var(--s-4); color: var(--ink-70); }
+.card:hover .card__title { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.card .stage--back { position: absolute; inset: 0; opacity: 0; transition: opacity var(--dur-state) var(--ease-inout); }
+@media (hover: hover) and (pointer: fine) {
+  .card:hover .stage--back { opacity: 1; }
+}
+.card--more { display: none; }
+.grid.is-all .card--more { display: block; }
+.card__todo { display: block; margin-top: var(--s-8); }
+/* tiles: a centred card used by the ranked row and the sets row */
+.card--tile { text-align: center; }
+.card--tile:hover .t-label, .card--tile:focus-visible .t-label {
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px;
+}
+.shopall { margin-top: var(--s-64); }
+.shopall button { background: none; color: inherit; padding: 0; }
+
+/* unconfirmed-fact token, wherever it appears outside a spec table */
+.todo { color: var(--ink-45); }
+.sec--navy .todo, .ftr .todo { color: var(--on-dark-45); }
+
+/* --------------------------------------------------------------------------
+   Footer
+   -------------------------------------------------------------------------- */
+.ftr { background: var(--ink-navy); color: var(--on-dark); padding-block: var(--s-96); }
+.ftr__cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-32); }
+.ftr__col h2 { color: var(--on-dark-45); margin-bottom: var(--s-16); }
+.ftr__col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-12); }
+.ftr__col a, .ftr__col span { color: var(--on-dark-70); text-decoration: none; }
+.ftr__col a:hover { color: var(--on-dark); text-decoration: underline; text-underline-offset: 3px; }
+.ftr__col .todo { color: var(--on-dark-45); font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.12em; }
+.ftr__rule { border: 0; border-top: 1px solid var(--ink-line); margin-block: var(--s-40); }
+.ftr__bottom { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--s-32); flex-wrap: wrap; }
+.ftr__mark { color: var(--on-dark); }
+.ftr__legal { color: var(--on-dark-45); text-align: right; }
+@media (max-width: 999px) { .ftr__cols { grid-template-columns: repeat(2, 1fr); row-gap: var(--s-40); } .ftr__legal { text-align: left; } }
+
+/* --------------------------------------------------------------------------
+   PDP modal
+   -------------------------------------------------------------------------- */
 .pdp-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 120;
-  display: none; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 24px 14px;
+  position: fixed; inset: 0; z-index: 300; background: rgba(11, 18, 32, 0.72);
+  display: none; overflow-y: auto; padding: var(--s-40) var(--s-20);
 }
-.pdp-overlay.is-open { display: flex; }
+.pdp-overlay.is-open { display: block; }
 .pdp {
-  background: var(--ap-white); width: min(1120px, 100%); position: relative; margin: auto;
-  border-radius: 0;
+  position: relative; background: var(--bone); color: var(--ink);
+  max-width: 1200px; margin-inline: auto; padding: var(--s-48);
 }
+.pdp:focus { outline: none; }
 .pdp__close {
-  position: absolute; top: 4px; right: 4px; z-index: 5;
-  width: 44px; height: 44px; font-size: 18px; line-height: 1;
-  display: inline-flex; align-items: center; justify-content: center;
+  position: absolute; top: var(--s-16); right: var(--s-16); width: 40px; height: 40px;
+  display: grid; place-items: center; color: var(--ink); background: none;
 }
-.pdp__body { display: grid; grid-template-columns: 1fr; }
-@media (min-width: 860px) { .pdp__body { grid-template-columns: 55% 45%; } }
-.pdp__gallery { position: relative; min-width: 0; }
-.pdp__stage { position: relative; aspect-ratio: 1 / 1; background: var(--ap-white); }
-.pdp__stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.pdp__chev {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center;
-  color: var(--ap-black); z-index: 3;
-}
-.pdp__chev--prev { left: 2px; }
-.pdp__chev--next { right: 2px; }
-.pdp__chev svg { width: 13px; height: 13px; }
-.pdp__viewlabel {
-  position: absolute; left: 0; bottom: 6px; width: 100%; text-align: center;
-  font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ap-grey);
-}
-.pdp__info { padding: 40px 44px 44px; min-width: 0; }
-@media (max-width: 859px) { .pdp__info { padding: 22px 20px 34px; } }
-.pdp__title {
-  font-size: 20px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
-  line-height: 1.2; margin: 0 0 8px;
-}
-.pdp__price { font-size: 16px; font-weight: 400; margin: 0 0 22px; }
+.pdp__crumb { color: var(--ink-45); margin-bottom: var(--s-24); }
+.pdp__grid { display: grid; grid-template-columns: 58% 1fr; gap: var(--s-64); align-items: start; }
+.pdp__gallery .seg { margin-bottom: var(--s-16); }
+.pdp__stage { position: relative; aspect-ratio: 1 / 1; background: var(--bone-deep); display: grid; place-items: center; overflow: hidden; }
+.pdp__stage svg { width: 80%; height: auto; }
+.pdp__stage.is-spin svg { display: none; }
+.pdp__spin { position: absolute; inset: 0; display: none; }
+.pdp__stage.is-spin .pdp__spin { display: block; }
+.pdp__spin canvas { cursor: grab; }
 
-.pdp__fields { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 14px 0 12px; }
-.pdp__field { margin: 0; }
-.pdp__field label {
-  display: block; font-size: 12px; letter-spacing: 0; text-transform: none;
-  margin-bottom: 6px;
+.seg { display: inline-flex; height: 36px; border: 1px solid var(--bone-line); }
+.seg button {
+  padding: 0 var(--s-16); background: transparent; color: var(--ink-70);
+  border-right: 1px solid var(--bone-line); text-transform: uppercase;
 }
+.seg button:last-child { border-right: 0; }
+.seg button.is-on { background: var(--ink-navy); color: var(--bone); }
+
+.pdp__eyebrow { display: block; color: var(--ink-45); }
+.pdp__buy h2 { margin: var(--s-12) 0 var(--s-8); }
+.pdp__price { color: var(--ink-70); }
+.pdp__field { margin-top: var(--s-24); }
+.pdp__field > label, .pdp__field > .pdp__flabel { display: block; color: var(--ink-45); margin-bottom: var(--s-8); }
 .pdp__field select {
-  min-width: 0 !important; width: auto; padding-right: 28px;
-  height: 36px; min-width: 120px; padding: 0 8px; font-size: 12px;
-  border: 1px solid var(--ap-line); border-radius: 0; background: var(--ap-white);
+  width: 100%; height: 44px; padding: 0 var(--s-12); border: 1px solid var(--bone-line);
+  border-radius: 0; background: var(--bone); color: var(--ink); font-size: 14px;
 }
-/* Full-width, 38px, pure black, 11px, no radius — the A&P add-to-cart exactly. */
-.pdp__add {
-  width: 100%; height: 38px; background: var(--ap-black); color: var(--ap-white);
-  font-size: 11px; letter-spacing: .06em; text-transform: uppercase; border-radius: 0;
-  margin-top: 8px;
+.pdp__add { margin-top: var(--s-32); }
+.pdp__note { margin-top: var(--s-12); color: var(--ink-45); }
+.pdp__sec { margin-top: var(--s-40); }
+.pdp__sec > .t-label { display: block; color: var(--ink-45); margin-bottom: var(--s-12); }
+.pdp__sec p + p { margin-top: var(--s-12); }
+.pdp__sec p { color: var(--ink-70); }
+.pdp__crops { margin-top: var(--s-64); display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-32); }
+.pdp__crops .cropstage { aspect-ratio: 3 / 2; background: var(--bone-deep); overflow: hidden; }
+.pdp__crops .cropstage svg { width: 100%; height: 100%; }
+.pdp__crops .t-label { display: block; margin-top: var(--s-12); color: var(--ink-45); }
+.pdp__row { margin-top: var(--s-24); display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-32); }
+.pdp__row--4 { grid-template-columns: repeat(4, 1fr); }
+.pdp__sec > .t-body-s { color: var(--ink-70); }
+@media (max-width: 999px) {
+  .pdp { padding: var(--s-24); }
+  .pdp__grid { grid-template-columns: 1fr; gap: var(--s-32); }
+  .pdp__crops { grid-template-columns: 1fr; }
+  .pdp__row, .pdp__row--4 { grid-template-columns: repeat(2, 1fr); gap: var(--s-24); }
 }
-.pdp__add[disabled] { opacity: 1; }
-.pdp__copy { margin-top: 26px; }
-.pdp__copy p { margin: 0 0 14px; font-size: 12px; line-height: 1.75; }
-.pdp__copy p b { font-weight: 700; }
-.pdp__copy p.pdp__quote { color: var(--ap-black); }
-.pdp__copy p.pdp__muted { color: var(--ap-grey); }
-.pdp__studio-link { display: inline-block; margin-top: 4px; font-size: 12px; text-decoration: underline; }
+@media (max-width: 639px) {
+  .pdp__row, .pdp__row--4 { column-gap: var(--s-12); }
+}
 
-.ftr__policies { max-width: 720px; margin: 14px 0 6px; }
-.ftr__policies p { font-size: 11px; line-height: 1.5; color: var(--ap-grey, #767676); margin: 0 0 4px; }
-.ftr__policies b { color: var(--ap-black, #000); font-weight: 700; }
-
-/* narrow: five ranked figures shrink to thumbnails — show white / purple / black and pull
-   the stage in so the panel reads as an editorial frame, not an empty band */
-@media (max-width: 719px) {
-  .panel--ranked { height: 44vw; min-height: 240px; --stage-h: calc(max(44vw, 240px) - 80px); }
-  .panel--ranked .panel__fig:nth-child(2), .panel--ranked .panel__fig:nth-child(4) { display: none; }
-  .panel--ranked .panel__stage { gap: 4vw; padding-left: 20px; padding-right: 20px; }
+/* --------------------------------------------------------------------------
+   Motion — one entrance per viewport height, honoured for reduced motion
+   -------------------------------------------------------------------------- */
+.reveal { opacity: 0; transform: translateY(16px); }
+.reveal.is-in {
+  opacity: 1; transform: none;
+  transition: opacity var(--dur-reveal) var(--ease-out), transform var(--dur-reveal) var(--ease-out);
 }
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .reveal.is-in { opacity: 1; transform: none; transition: none; }
+  .store * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+/* Sticky header clearance for in-page anchors */
+.store section[id] { scroll-margin-top: calc(var(--hdr-h) + var(--s-16)); }
+
+/* Sets row — every piece dropped onto one horizon (see HEM_Y in store.js) */
+.sets__piece { display: block; }
+
+/* 05 — gis: three jackets beside the spec table */
+.gis__row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-24); align-items: end; }
+.gis__item svg { width: 100%; height: auto; }
+.gis__item .t-label { display: block; margin-top: var(--s-12); color: var(--ink-45); text-align: center; }
+.gis__note { margin-top: var(--s-24); color: var(--ink-45); }
+@media (max-width: 1000px) { .gis__grid { grid-template-columns: 1fr; } }

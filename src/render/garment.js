@@ -17,6 +17,8 @@
  * wearer's left is on the viewer's right; in the back view it is on the viewer's left.
  */
 
+import { WORD_PRODIGY, wordSVG, lockupSVG, monoSVG } from './marks.js';
+
 // ───────────────────────────── geometry ─────────────────────────────
 
 const TORSO_F = `M 438 224 C 470 246 530 246 562 224
@@ -536,7 +538,61 @@ function rashguardSeams(kit, { view, style }) {
   return seamGroup(kit, seams, [{ d: c.collarEdge, o: 0.3 }]);
 }
 
-function renderRashguard(h, { style, view, baseColor, slots, size, detail, defs }) {
+/**
+ * Brand marks (chest lockup / monogram, "PRODIGY" down each sleeve, back print).
+ * Drawn in authored geometry space BEFORE shading so the light falls on them too.
+ *   marks = {
+ *     chest:   { kind:'lockup'|'mono'|'word', color:'auto'|hex, width },   // front only
+ *     back:    { kind:'word'|'lockup', color, width },                       // back only
+ *     sleeves: { text:'PRODIGY', color:'auto'|hex, height },                // both views
+ *   }
+ * color 'auto' → Bone on dark bases, Ink on light bases.
+ */
+const SLEEVE_AXIS = {
+  // [x0,y0] near the shoulder → [x1,y1] near the cuff, in authored space (viewer-left / viewer-right)
+  ls: { vl: [[318, 352], [175, 706]], vr: [[682, 352], [825, 706]] },
+  ss: { vl: [[318, 318], [262, 436]], vr: [[682, 318], [738, 436]] },
+};
+function marksLayer(h, { view, style, marks, tone, url }) {
+  if (!marks) return '';
+  const front = view === 'front';
+  const autoCol = tone && tone.light ? '#0B1220' : '#F5F3EE';
+  const col = c => (!c || c === 'auto') ? autoCol : c;
+  let out = '';
+  // chest / back
+  const zone = front ? marks.chest : marks.back;
+  if (zone) {
+    const w = zone.width || (front ? 150 : 250);
+    const cy = front ? 372 : 336;
+    const c = col(zone.color);
+    let m = '';
+    if (zone.kind === 'mono') m = monoSVG({ cx: front ? 448 : 500, cy: front ? 352 : cy, size: zone.width || 54, color: zone.color && zone.color !== 'auto' ? zone.color : '#E8A33D', bg: zone.bg || (tone && tone.light ? '#0B1220' : '#0B1220') });
+    else if (zone.kind === 'word') m = wordSVG(WORD_PRODIGY, { x: 500, y: cy, height: w / WORD_PRODIGY.w * WORD_PRODIGY.h, color: c });
+    else m = lockupSVG({ x: 500, y: cy, width: w, color: c });
+    out += `<g clip-path="${url('cTor')}">${m}</g>`;
+  }
+  // sleeves — the word runs shoulder → cuff on BOTH arms, letter tops facing viewer-right
+  if (marks.sleeves && marks.sleeves.text !== null) {
+    const ax = SLEEVE_AXIS[style] || SLEEVE_AXIS.ls;
+    const c = col(marks.sleeves.color);
+    const hgt = marks.sleeves.height || (style === 'ls' ? 38 : 24);
+    for (const side of ['vl', 'vr']) {
+      const [[x0, y0], [x1, y1]] = ax[side];
+      const dx = x1 - x0, dy = y1 - y0;
+      const len = Math.hypot(dx, dy);
+      const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+      const wordW = hgt / WORD_PRODIGY.h * WORD_PRODIGY.w;
+      // centre the word on the axis, leaving a little more room at the shoulder end
+      const t = 0.5 + (style === 'ls' ? 0.03 : 0.0);
+      const cx = x0 + dx * t, cy2 = y0 + dy * t;
+      const height = Math.min(hgt, (len * 0.86) / WORD_PRODIGY.w * WORD_PRODIGY.h);
+      out += `<g clip-path="${url(side === 'vl' ? 'cVL' : 'cVR')}">${wordSVG(WORD_PRODIGY, { x: cx, y: cy2, height, color: c, rotate: ang })}</g>`;
+    }
+  }
+  return out;
+}
+
+function renderRashguard(h, { style, view, baseColor, slots, size, detail, defs, marks }) {
   const { u, url } = h;
   const front = view === 'front';
   const S = k => paint(slots[k]);
@@ -569,6 +625,7 @@ function renderRashguard(h, { style, view, baseColor, slots, size, detail, defs 
     ${fill('cVR', vr)}
     ${fill('cCol', collar)}
     ${zone ? `<g clip-path="${url('cTor')}">${fill('cZone', zone)}</g>` : ''}
+    ${flat ? '' : marksLayer(h, { view, style, marks, tone, url })}
     ${flat ? '' : bandLayer(h, tone, cons.bands, 'cGar')}
     ${flat ? '' : rashguardShading(h, { view, style, tone })}
     ${flat ? '' : textureLayer(h, detail)}
@@ -757,12 +814,12 @@ function renderSpats(h, { view, baseColor, slots, size, detail, defs }) {
  */
 export function renderGarment({
   style = 'ls', view = 'front', baseColor = BASE_PRESETS.black,
-  slots = {}, size = 1000, detail = 'full', uid, defs = '',
+  slots = {}, size = 1000, detail = 'full', uid, defs = '', marks = null,
 } = {}) {
   if (!STYLES[style]) throw new Error(`Unknown style "${style}"`);
   if (view !== 'front' && view !== 'back') throw new Error(`Unknown view "${view}"`);
   const h = ns(uid);
-  const args = { style, view, baseColor, slots: slots || {}, size, detail, defs };
+  const args = { style, view, baseColor, slots: slots || {}, size, detail, defs, marks };
   switch (STYLES[style].family) {
     case 'rashguard': return renderRashguard(h, args);
     case 'shorts': return renderShorts(h, args);
@@ -778,7 +835,7 @@ export function renderGarment({
  */
 export function renderRanked({
   style = 'ss', view = 'front', belt = 'white', body = 'black',
-  uid, size = 1000, detail = 'full', defs = '', slots = {},
+  uid, size = 1000, detail = 'full', defs = '', slots = {}, marks = null,
 } = {}) {
   const hex = BELT_HEX[belt];
   if (!hex) throw new Error(`Unknown belt "${belt}"`);
@@ -790,7 +847,7 @@ export function renderRanked({
   const rankSlots = fam === 'rashguard'
     ? { sleeveL: hex, sleeveR: hex, collar: hex }
     : fam === 'shorts' ? { waistband: hex } : { waistband: hex };
-  return renderGarment({ style, view, baseColor, size, detail, uid, defs, slots: { ...rankSlots, ...slots } });
+  return renderGarment({ style, view, baseColor, size, detail, uid, defs, marks, slots: { ...rankSlots, ...slots } });
 }
 
 /**

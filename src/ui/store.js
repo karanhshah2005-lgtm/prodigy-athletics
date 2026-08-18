@@ -1,25 +1,28 @@
 /**
- * store.js — Prodigy Athletics storefront (SAMPLE). Wires src/data/catalog.js +
- * src/data/patterns.js through src/render/garment.js into the grid / filters / PDP /
- * cart-count UI in index.html. No backend, no checkout — this is a relaunch showcase.
+ * store.js — Prodigy Athletics storefront (SAMPLE), Albino & Preto-style restyle.
  *
- * Every product image is produced by renderGarment()/renderRanked() at call time. There
- * is no photography anywhere in this file.
+ * Wires src/data/catalog.js + src/data/patterns.js through src/render/garment.js (and
+ * src/render/panel.js for the cut sheet) into: the release panels, the product grid, the
+ * PDP modal and the demo cart in index.html.
+ *
+ * Every product image is produced by renderGarment()/renderRanked()/renderCutSheet() at
+ * call time. There is no photography anywhere in this file, and no claim about the brand
+ * that is not marked as sample data.
  */
 
 import { renderGarment, renderRanked, slotBBox, BELT_HEX, estimateRankCoverage } from '../render/garment.js';
 import { artPatternDef, artPatternRef } from '../render/art.js';
-import { svgToPng } from '../render/export.js';
+import { renderCutSheet } from '../render/panel.js';
 import { makePattern } from '../data/patterns.js';
-import { PRODUCTS, THEMES, CUTS, GENDERS, findProduct, pairedProduct } from '../data/catalog.js';
+import { PRODUCTS, THEMES, findProduct, pairedProduct } from '../data/catalog.js';
 
 // ───────────────────────────── constants ─────────────────────────────
 
 const SIZE_LIST = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
-const BELTS = ['white', 'blue', 'purple', 'brown', 'black'];
 const HEX_TO_BELT = Object.fromEntries(Object.entries(BELT_HEX).map(([k, v]) => [v.toLowerCase(), k]));
 const beltFromHex = hex => (hex ? HEX_TO_BELT[String(hex).toLowerCase()] || null : null);
 
+/** IBJJF Art. 8.1.14, verbatim. Never paraphrase this into a rule it does not state. */
 const RANK_RULE_TEXT = '"Both genders must wear a shirt of elastic material (skin tight) long enough to cover the torso all the way to the waistband of the shorts, colored black, white, or black and white, and with at least 10% of the rank color(belt) to which the athlete belongs."';
 
 let UID_N = 0;
@@ -29,12 +32,11 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-// ───────────────────────────── rendering ─────────────────────────────
+// ───────────────────────────── rendering helpers ─────────────────────────────
 
 /**
  * Render one product (or its set partner) to an SVG string. Always mints a fresh uid
- * (see docs/AGENT-CONTEXT.md rule 2) — never reuse a returned string in two DOM
- * locations at once, call this again instead.
+ * (docs/AGENT-CONTEXT.md rule 2) — never reuse a returned string in two DOM locations.
  */
 function renderPiece(product, { view = 'front', colorHex = null, size = 300, detail = 'lite', uidPrefix = 'p', asPartner = false } = {}) {
   const uid = nextUid(uidPrefix);
@@ -65,40 +67,20 @@ function renderPiece(product, { view = 'front', colorHex = null, size = 300, det
   return renderGarment({ style, view, baseColor, slots, size, detail, uid, defs });
 }
 
-function cardSvgs(product, colorHex) {
-  return {
-    front: renderPiece(product, { view: 'front', colorHex, size: 300, detail: 'lite', uidPrefix: 'c' }),
-    back: renderPiece(product, { view: 'back', colorHex, size: 300, detail: 'lite', uidPrefix: 'c' }),
-  };
-}
-
-function zoomSvg(svgString, [x, y, w, h]) {
-  const f = n => Math.round(n * 10) / 10;
-  return svgString.replace('viewBox="0 0 1000 1000"', `viewBox="${f(x)} ${f(y)} ${f(w)} ${f(h)}"`);
-}
-/** A generic "zoom toward the upper-centre of the garment" crop for the PDP detail thumb. */
-function detailCropBox(style, view) {
-  const [x, y, w, h] = slotBBox(style, view, 'all');
-  const cx = x + w / 2, cy = y + h * 0.34;
-  const zw = w * 0.42, zh = h * 0.42;
-  return [cx - zw / 2, cy - zh / 2, zw, zh];
+/** Flood any cut with one artSpec — used by the SETS panel to share art across 3 cuts. */
+function renderArtPiece({ style, view = 'front', artSpec, baseColor, size = 520, detail = 'full', uidPrefix = 'ap' }) {
+  const uid = nextUid(uidPrefix);
+  const art = makePattern(artSpec, 320);
+  const defs = artPatternDef({ uid, key: 'all', art, tile: true, transform: { scale: 0.65 } });
+  return renderGarment({ style, view, baseColor, slots: { all: artPatternRef({ uid, key: 'all' }) }, size, detail, uid, defs });
 }
 
 // ───────────────────────────── colourway resolution ─────────────────────────────
-// selectedColorway is unset (authored default) until a shopper actually clicks a dot —
-// this avoids collapsing a two-tone design (e.g. black body / red sleeve accent) to a
-// flat single hue before anyone has asked for a recolour.
 
-function effectiveHex(product) {
-  const idx = state.selectedColorway.get(product.id);
-  if (idx != null) return product.colorways?.[idx] ?? null;
-  if (product.ranked) return BELT_HEX[product.ranked.belt];
-  return product.artSpec?.colors?.[0] ?? product.baseColor;
-}
 function activeColorwayIndex(product) {
   const idx = state.selectedColorway.get(product.id);
   if (idx != null) return idx;
-  const hex = String(effectiveHex(product) || '').toLowerCase();
+  const hex = String(product.ranked ? BELT_HEX[product.ranked.belt] : (product.artSpec?.colors?.[0] ?? product.baseColor) ?? '').toLowerCase();
   const found = (product.colorways || []).findIndex(c => c.toLowerCase() === hex);
   return found >= 0 ? found : 0;
 }
@@ -110,51 +92,36 @@ function colorwayLabel(product, hex) {
   if (product.ranked) { const b = beltFromHex(hex); return b ? `${b[0].toUpperCase()}${b.slice(1)} belt` : hex; }
   return hex;
 }
+const priceMarkup = product => `$${product.price.amount} sample`;
+
+// ───────────────────────────── collections ─────────────────────────────
+// The SHOP flyout replaces the old filter rail: one collection at a time, exactly like
+// A&P's /collections/* pages. No multi-facet state, no drawer.
+
+const COLLECTIONS = [
+  { key: 'new', label: 'New releases', match: p => (p.badges || []).includes('New') },
+  { key: 'all', label: 'All', match: () => true },
+  { key: 'ls', label: 'Long sleeve', match: p => p.style === 'ls' },
+  { key: 'ss', label: 'Short sleeve', match: p => p.style === 'ss' },
+  { key: 'ranked', label: 'Ranked', match: p => p.theme === 'Ranked' },
+  { key: 'shorts', label: 'Shorts', match: p => p.style === 'shorts' },
+  { key: 'spats', label: 'Spats', match: p => p.style === 'spats' },
+  { key: 'sets', label: 'Sets', match: p => p.isSet },
+  ...THEMES.filter(t => t !== 'Ranked').map((t, i) => ({
+    key: `theme-${t.toLowerCase()}`, label: t, match: p => p.theme === t, rule: i === 0,
+  })),
+];
+const collectionByKey = key => COLLECTIONS.find(c => c.key === key) || COLLECTIONS[1];
 
 // ───────────────────────────── state ─────────────────────────────
 
 const state = {
-  filters: { cuts: new Set(), themes: new Set(), genders: new Set(), colors: new Set() },
-  openGroups: new Set(['cut', 'theme']),
-  query: '',
+  collection: 'all',
   sort: 'featured',
-  selectedColorway: new Map(),  // productId -> colourway index (only once user picks one)
+  selectedColorway: new Map(),  // productId -> colourway index (only once a shopper picks one)
   cart: [],                     // { productId, name, size, colorHex, priceAmount }
-  pdp: null,                    // { product, activeThumb }
+  pdp: null,                    // { product, view }
 };
-
-const priceLabel = a => `$${a} CAD`;
-const ALL_COLOR_HEX = [...new Set(PRODUCTS.flatMap(p => p.colorways || []).map(h => h.toLowerCase()))].slice(0, 14);
-const PRICE_MIN = Math.min(...PRODUCTS.map(p => p.price.amount));
-const PRICE_MAX = Math.max(...PRODUCTS.map(p => p.price.amount));
-
-// ───────────────────────────── filtering / sorting ─────────────────────────────
-
-function productMatchesDim(p, dim, value) {
-  if (dim === 'cuts') return value === 'sets' ? p.isSet : p.style === value;
-  if (dim === 'themes') return p.theme === value;
-  if (dim === 'genders') return p.gender === value;
-  if (dim === 'colors') return (p.colorways || []).some(c => c.toLowerCase() === value);
-  return true;
-}
-
-function matchesFilters(p, excludeDim) {
-  const f = state.filters;
-  if (excludeDim !== 'cuts' && f.cuts.size && ![...f.cuts].some(v => productMatchesDim(p, 'cuts', v))) return false;
-  if (excludeDim !== 'themes' && f.themes.size && !f.themes.has(p.theme)) return false;
-  if (excludeDim !== 'genders' && f.genders.size && !f.genders.has(p.gender)) return false;
-  if (excludeDim !== 'colors' && f.colors.size && !(p.colorways || []).some(c => f.colors.has(c.toLowerCase()))) return false;
-  if (f.priceMax != null && p.price.amount > f.priceMax) return false;
-  if (state.query) {
-    const hay = `${p.name} ${p.theme} ${p.gender} ${p.style} ${p.isSet ? 'set' : ''}`.toLowerCase();
-    if (!hay.includes(state.query)) return false;
-  }
-  return true;
-}
-
-function countFor(dim, value) {
-  return PRODUCTS.filter(p => matchesFilters(p, dim) && productMatchesDim(p, dim, value)).length;
-}
 
 function sortProducts(list) {
   const arr = [...list];
@@ -163,401 +130,252 @@ function sortProducts(list) {
   else if (state.sort === 'name-asc') arr.sort((a, b) => a.name.localeCompare(b.name));
   return arr;
 }
+function currentList() { return sortProducts(PRODUCTS.filter(collectionByKey(state.collection).match)); }
 
-function currentList() { return sortProducts(PRODUCTS.filter(p => matchesFilters(p))); }
+// ───────────────────────────── header ─────────────────────────────
 
-// ───────────────────────────── card markup ─────────────────────────────
+const hdrLinks = document.getElementById('hdrLinks');
+const shopMenu = document.getElementById('shopMenu');
+
+hdrLinks.innerHTML = `
+  <li><button type="button" id="shopBtn" aria-expanded="false" aria-controls="shopMenu">Shop</button></li>
+  <li><a href="#shop" data-collection="ranked">Ranked</a></li>
+  <li><a href="#shop" data-collection="sets">Sets</a></li>
+  <li><a href="studio.html">Studio</a></li>
+  <li><button type="button" id="cartBtn">Cart <span id="cartCount">0</span></button></li>`;
+
+document.getElementById('shopMenuList').innerHTML = COLLECTIONS.map(c =>
+  `<li${c.rule ? ' class="is-rule"' : ''}><button type="button" data-collection="${c.key}">${escapeHtml(c.label)}</button></li>`
+).join('');
+
+const shopBtn = document.getElementById('shopBtn');
+function setShopMenu(open) {
+  shopMenu.hidden = !open;
+  shopBtn.setAttribute('aria-expanded', String(open));
+}
+shopBtn.addEventListener('click', (e) => { e.stopPropagation(); setShopMenu(shopMenu.hidden); });
+document.addEventListener('click', (e) => {
+  if (!shopMenu.hidden && !shopMenu.contains(e.target) && e.target !== shopBtn) setShopMenu(false);
+});
+
+// Logo: wordmark.svg is inlined (not <img>) so its `color` can be forced to black — the
+// file carries color="#F5F3EE" as a presentation attribute on the <svg> itself, which
+// plain inheritance from a parent can never override.
+const hdrLogo = document.getElementById('hdrLogo');
+fetch('assets/wordmark.svg')
+  .then(r => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
+  .then(txt => {
+    const doc = new DOMParser().parseFromString(txt, 'image/svg+xml');
+    const svg = doc.querySelector('svg');
+    if (!svg) return;
+    svg.removeAttribute('color');
+    svg.style.color = '#000';
+    svg.setAttribute('aria-hidden', 'true');
+    hdrLogo.replaceChildren(svg);
+  })
+  .catch(() => { /* the text fallback already in the markup stays */ });
+
+// Every [data-collection] control anywhere on the page routes through here.
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-collection]');
+  if (!el) return;
+  e.preventDefault();
+  setShopMenu(false);
+  applyCollection(el.dataset.collection);
+});
+
+function applyCollection(key) {
+  state.collection = key;
+  renderGrid();
+  document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+document.getElementById('sampleStripClose').addEventListener('click', () => {
+  document.getElementById('sampleStrip').classList.add('is-hidden');
+});
+
+// ───────────────────────────── release panels ─────────────────────────────
+// A&P's homepage is a stack of full-bleed editorial photographs. We have renders, not
+// photography, so each panel is a light stage with 3–5 large garments composed flat-lay
+// style. Honest by construction: they are obviously renders.
+
+const PANEL_SIZE = 520;
 
 /**
- * Two separate corner stacks, deliberately: merchandising badges (New / Flagship) sit
- * top-LEFT, and the sample marker always sits top-RIGHT, alone. Stacking both kinds in
- * one corner made cards look like they carried two competing pills; the sample marker
- * is required on every card (docs/AGENT-CONTEXT.md) so it gets its own fixed slot.
+ * Tight crop boxes per cut, derived from slotBBox(style, view, 'all') plus a small
+ * margin for the renderer's own contact shadow (ellipse at cy≈898). The renderer emits a
+ * 1000x1000 viewBox with a lot of empty margin; on a full-bleed editorial panel that
+ * margin is what makes a 520px render look small. Cropping the viewBox — not scaling the
+ * artwork — is what fills the stage.
  */
-function badgesMarkup(product) {
-  const cls = { New: 'badge--new', 'Best seller': 'badge--bestseller', Flagship: 'badge--bestseller', Sale: 'badge--sale' };
-  const specific = (product.badges || []).map(b => {
-    if (b === 'Sale' && product.price.compareAt) {
-      const save = product.price.compareAt - product.price.amount;
-      return `<span class="badge ${cls[b]}">Save $${save}</span>`;
-    }
-    return `<span class="badge ${cls[b] || ''}">${b}</span>`;
-  }).join('');
-  return `<div class="card__badges card__badges--merch">${specific}</div>
-          <div class="card__badges card__badges--sample"><span class="badge badge--sample" title="Sample data — not a real product listing">Sample</span></div>`;
+const CROP = {
+  ls:     [90, 178, 820, 760],
+  ss:     [165, 178, 670, 760],
+  shorts: [232, 215, 536, 723],
+  spats:  [325, 186, 350, 752],
+};
+const aspectOf = style => CROP[style][2] / CROP[style][3];
+
+/**
+ * One shared crop for grid cards and the PDP stage: the union of every cut's extents.
+ * Using ONE box (rather than the per-cut boxes above) keeps relative scale honest —
+ * shorts stay smaller than a long-sleeve instead of being blown up to the same height —
+ * while still removing ~35% of the renderer's dead margin.
+ */
+const GRID_CROP = [90, 175, 820, 765];
+const cropUniform = svgString =>
+  svgString.replace('viewBox="0 0 1000 1000"', `viewBox="${GRID_CROP.join(' ')}"`);
+
+/** Re-viewBox a render to its crop and drop the fixed width/height so CSS can size it. */
+function cropSvg(svgString, style) {
+  const [x, y, w, h] = CROP[style];
+  return svgString
+    .replace(/\swidth="\d+"\sheight="\d+"/, '')
+    .replace('viewBox="0 0 1000 1000"', `viewBox="${x} ${y} ${w} ${h}"`);
 }
 
-function priceMarkup(product) {
-  const { amount, compareAt } = product.price;
-  const was = compareAt ? `<span class="was">$${compareAt}</span>` : '';
-  return `${was}$${amount} <span class="sample-tag" title="Sample pricing — real prices to be confirmed by Prodigy Athletics">sample</span>`;
+/**
+ * One figure in a panel row. flex-grow = aspect ⇒ every figure in the row resolves to the
+ * same height. max-width = stageHeight × aspect is the ceiling that keeps that height from
+ * exceeding the stage: `max-height` on the <svg> cannot do this job — with width:100%
+ * already definite, a percentage max-height squashes the render instead of scaling it.
+ */
+const fig = (svgString, aspect, cls = '') =>
+  `<div class="panel__fig ${cls}" style="flex:${aspect.toFixed(3)} 1 0%;max-width:calc(var(--stage-h) * ${aspect.toFixed(3)})">${svgString}</div>`;
+
+const garmentFig = (svgString, style) => fig(cropSvg(svgString, style), aspectOf(style));
+
+function panelRanked() {
+  return ['white', 'blue', 'purple', 'brown', 'black']
+    .map(belt => garmentFig(renderRanked({ style: 'ss', view: 'front', belt, uid: nextUid('rk'), size: PANEL_SIZE, detail: 'full' }), 'ss'))
+    .join('');
 }
 
-function colorDotsMarkup(product) {
-  const activeIdx = activeColorwayIndex(product);
-  return (product.colorways || []).map((hex, i) =>
-    // 44x44 button (touch target) wrapping a 15px visual swatch — see .dot in store.css
-    `<button class="dot ${i === activeIdx ? 'is-active' : ''}" data-idx="${i}" aria-label="${escapeHtml(colorwayLabel(product, hex))}" title="${escapeHtml(colorwayLabel(product, hex))}"><span class="dot__swatch" style="background:${hex}"></span></button>`
-  ).join('');
+function panelSets() {
+  // One artSpec across three cuts — the same camo the "Set: Recon Camo" product uses.
+  const src = findProduct('set-camo-recon');
+  const spec = src.artSpec, base = src.baseColor;
+  return ['ss', 'shorts', 'spats']
+    .map(style => garmentFig(renderArtPiece({ style, artSpec: spec, baseColor: base, size: PANEL_SIZE, uidPrefix: 'set' }), style))
+    .join('');
 }
 
-function quickAddMarkup() {
-  return SIZE_LIST.map(s => `<button class="qsize" data-size="${s}">${s}</button>`).join('');
+function panelNew() {
+  return ['flag-maple-ls', 'halftone-fade-ss', 'brushline-ls']
+    .map(id => {
+      const p = findProduct(id);
+      return garmentFig(renderPiece(p, { view: 'front', size: PANEL_SIZE, detail: 'full', uidPrefix: 'nw' }), p.style);
+    }).join('');
 }
 
-function mediaMarkup(product) {
-  const colorHex = currentColorHex(product);
-  if (product.isSet) {
-    const topF = renderPiece(product, { view: 'front', colorHex, size: 300, detail: 'lite', uidPrefix: 'st' });
-    const topB = renderPiece(product, { view: 'back', colorHex, size: 300, detail: 'lite', uidPrefix: 'st' });
-    const botF = renderPiece(product, { view: 'front', colorHex, size: 300, detail: 'lite', uidPrefix: 'sb', asPartner: true });
-    const botB = renderPiece(product, { view: 'back', colorHex, size: 300, detail: 'lite', uidPrefix: 'sb', asPartner: true });
-    return `<div class="card__front card__front--set"><div class="set-half">${topF}</div><div class="set-half">${botF}</div></div>
-            <div class="card__back card__back--set"><div class="set-half">${topB}</div><div class="set-half">${botB}</div></div>`;
-  }
-  const { front, back } = cardSvgs(product, colorHex);
-  return `<div class="card__front">${front}</div><div class="card__back">${back}</div>`;
+function panelStudio() {
+  const garment = renderGarment({ style: 'ls', view: 'front', baseColor: '#14161b', size: PANEL_SIZE, detail: 'full', uid: nextUid('dy') });
+  const sheet = renderCutSheet({ style: 'ls', slots: {}, baseColor: '#14161b', uid: nextUid('cs') });
+  const m = sheet.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+  const sheetAspect = m ? Number(m[1]) / Number(m[2]) : 1.5;
+  return garmentFig(garment, 'ls') + fig(sheet, sheetAspect, 'panel__fig--sheet');
 }
 
-function buildCardEl(product) {
-  const el = document.createElement('article');
-  el.className = 'card';
-  el.dataset.id = product.id;
-  el.innerHTML = `
-    <div class="card__media">
-      ${badgesMarkup(product)}
-      ${mediaMarkup(product)}
-      <div class="card__quickadd">${quickAddMarkup()}</div>
-    </div>
-    <div class="card__info">
-      <p class="card__title"><a href="#p-${product.id}" data-role="open">${escapeHtml(product.name)}</a></p>
-      <p class="card__price">${priceMarkup(product)}</p>
-      <div class="card__dots">${colorDotsMarkup(product)}</div>
-    </div>`;
-  return el;
-}
+const PANELS = [
+  { caption: 'Ranked', href: '#shop', collection: 'ranked', build: panelRanked },
+  { caption: 'Sets', href: '#shop', collection: 'sets', build: panelSets },
+  { caption: 'New releases', href: '#shop', collection: 'new', build: panelNew },
+  { caption: 'Design your own', href: 'studio.html', collection: null, build: panelStudio },
+];
 
-function refreshCardMedia(el, product) {
-  const media = el.querySelector('.card__media');
-  const quickadd = media.querySelector('.card__quickadd');
-  media.querySelectorAll('.card__front, .card__back').forEach(n => n.remove());
-  // insert before the quick-add row (the badge stacks are two separate nodes now, so
-  // "after the badges" is no longer a single unambiguous anchor)
-  quickadd.insertAdjacentHTML('beforebegin', mediaMarkup(product));
-  el.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('is-active', i === activeColorwayIndex(product)));
+function renderPanels() {
+  document.getElementById('panels').innerHTML = PANELS.map(p => `
+    <a class="panel${p.collection === 'ranked' ? ' panel--ranked' : ''}" href="${p.href}"${p.collection ? ` data-collection="${p.collection}"` : ''}>
+      <div class="panel__stage" aria-hidden="true">${p.build()}</div>
+      <span class="panel__caption">${escapeHtml(p.caption)}</span>
+    </a>`).join('');
 }
 
 // ───────────────────────────── grid ─────────────────────────────
 
 const gridEl = document.getElementById('grid');
 const gridCountEl = document.getElementById('gridCount');
-const perfNoteEl = document.getElementById('perfNote');
-const pngCache = new Map(); // `${id}|${idx}` -> { frontUrl, backUrl }
+
+/** Front view only — A&P's grid has no hover swap and no second image. */
+function itemMediaMarkup(product) {
+  const svg = renderPiece(product, { view: 'front', colorHex: currentColorHex(product), size: 300, detail: 'lite', uidPrefix: 'g' });
+  return `<div class="item__media">${cropUniform(svg)}</div>`;
+}
 
 function renderGrid() {
   const list = currentList();
   gridCountEl.textContent = `${list.length} product${list.length === 1 ? '' : 's'}`;
   if (!list.length) {
-    gridEl.replaceChildren();
-    gridEl.insertAdjacentHTML('beforeend', `<div class="empty-state">No products match these filters.<br><button class="clear-filters" data-clear style="margin-top:10px">Clear filters</button></div>`);
-    perfNoteEl.textContent = '';
+    gridEl.innerHTML = `<p class="empty-state">No products in this collection.</p>`;
     return;
   }
   const t0 = performance.now();
-  const frag = document.createDocumentFragment();
-  const cards = [];
-  for (const p of list) { const el = buildCardEl(p); frag.appendChild(el); cards.push(el); }
-  gridEl.replaceChildren(frag);
+  gridEl.innerHTML = list.map(p => `
+    <article class="item" data-id="${p.id}">
+      ${itemMediaMarkup(p)}
+      <p class="item__title"><a href="#p-${p.id}" data-role="open">${escapeHtml(p.name)}</a></p>
+      <p class="item__price">${priceMarkup(p)}</p>
+    </article>`).join('');
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    const paintMs = Math.round(performance.now() - t0);
     window.__prodigyStore = window.__prodigyStore || {};
-    window.__prodigyStore.lastGridPaintMs = paintMs;
-    const svgCount = cards.reduce((n, el) => n + el.querySelectorAll('svg').length, 0);
-    perfNoteEl.textContent = new URLSearchParams(location.search).has('debug')
-      ? `Grid rendered ${cards.length} product cards (${svgCount} SVGs) in ${paintMs} ms.`
-      : `All ${cards.length} product images are rendered live in your browser — no product photography.`;
-    if (paintMs > 400) rasterizeGrid(cards, list);
+    window.__prodigyStore.lastGridPaintMs = Math.round(performance.now() - t0);
   }));
-}
-
-async function rasterizeGrid(cards, list) {
-  await Promise.all(cards.map(async (el, i) => {
-    const product = list[i];
-    if (product.isSet) return; // two-garment cards aren't rasterised — keep them live SVG
-    const idx = activeColorwayIndex(product);
-    const key = `${product.id}|${idx}`;
-    let entry = pngCache.get(key);
-    if (!entry) {
-      const colorHex = currentColorHex(product);
-      const { front, back } = cardSvgs(product, colorHex);
-      try {
-        const [fBlob, bBlob] = await Promise.all([svgToPng(front, { width: 600 }), svgToPng(back, { width: 600 })]);
-        entry = { frontUrl: URL.createObjectURL(fBlob), backUrl: URL.createObjectURL(bBlob) };
-        pngCache.set(key, entry);
-      } catch { return; }
-    }
-    const frontHost = el.querySelector('.card__front');
-    const backHost = el.querySelector('.card__back');
-    if (frontHost) frontHost.innerHTML = `<img src="${entry.frontUrl}" alt="">`;
-    if (backHost) backHost.innerHTML = `<img src="${entry.backUrl}" alt="">`;
-  }));
-  window.__prodigyStore.rasterized = true;
-  window.__prodigyStore.rasterizedAt = Math.round(performance.now());
 }
 
 gridEl.addEventListener('click', (e) => {
-  const clearBtn = e.target.closest('[data-clear]');
-  if (clearBtn) { clearFilters(); return; }
-
-  const card = e.target.closest('.card');
-  if (!card) return;
-  const product = findProduct(card.dataset.id);
+  const item = e.target.closest('.item');
+  if (!item) return;
+  const product = findProduct(item.dataset.id);
   if (!product) return;
-
-  const dot = e.target.closest('.dot');
-  if (dot) { e.stopPropagation(); state.selectedColorway.set(product.id, Number(dot.dataset.idx)); refreshCardMedia(card, product); return; }
-
-  const qsize = e.target.closest('.qsize');
-  if (qsize) { e.stopPropagation(); addToCart(product, qsize.dataset.size); flashAdded(qsize); return; }
-
-  if (e.target.closest('.card__quickadd')) return;
-
-  const media = e.target.closest('.card__media');
   const opener = e.target.closest('[data-role="open"]');
-  if (media || opener) {
-    if (opener) e.preventDefault();
-    if (media && isTouch() && !card.classList.contains('touch-flip')) { card.classList.add('touch-flip'); return; }
-    openPDP(product);
-  }
+  if (opener) e.preventDefault();
+  openPDP(product);
 });
-
-function isTouch() { return typeof matchMedia === 'function' && matchMedia('(hover: none)').matches; }
-
-function flashAdded(btn) {
-  const original = btn.textContent;
-  btn.textContent = '✓';
-  btn.disabled = true;
-  setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 900);
-}
-
-// ───────────────────────────── filters ─────────────────────────────
-
-function fopt(dim, value, label) {
-  const active = state.filters[dim].has(value);
-  const count = countFor(dim, value);
-  const disabled = count === 0 && !active ? 'style="opacity:.45"' : '';
-  return `<label class="fopt" ${disabled}><input type="checkbox" data-dim="${dim}" data-value="${escapeHtml(value)}" ${active ? 'checked' : ''}> ${escapeHtml(label)} <span class="fopt__count">${count}</span></label>`;
-}
-function swatchBtn(hex) {
-  const active = state.filters.colors.has(hex);
-  return `<button class="fswatch ${active ? 'is-active' : ''}" data-dim="colors" data-value="${hex}" title="${hex}" aria-label="Filter by ${hex}"><span class="fswatch__swatch" style="background:${hex}"></span></button>`;
-}
-
-function buildFilterHTML() {
-  const open = g => state.openGroups.has(g) ? 'is-open' : '';
-  const chevron = `<svg class="fgroup__chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>`;
-  const priceMax = state.filters.priceMax ?? PRICE_MAX;
-  return `
-  <div class="fgroup ${open('cut')}" data-fg="cut">
-    <button class="fgroup__head" data-toggle>Cut ${chevron}</button>
-    <div class="fgroup__body">${CUTS.map(c => fopt('cuts', c.key, c.label)).join('')}</div>
-  </div>
-  <div class="fgroup ${open('theme')}" data-fg="theme">
-    <button class="fgroup__head" data-toggle>Theme ${chevron}</button>
-    <div class="fgroup__body">${THEMES.map(t => fopt('themes', t, t)).join('')}</div>
-  </div>
-  <div class="fgroup ${open('gender')}" data-fg="gender">
-    <button class="fgroup__head" data-toggle>Gender ${chevron}</button>
-    <div class="fgroup__body">${GENDERS.map(g => fopt('genders', g, g)).join('')}</div>
-  </div>
-  <div class="fgroup ${open('color')}" data-fg="color">
-    <button class="fgroup__head" data-toggle>Colour ${chevron}</button>
-    <div class="fgroup__body"><div class="fswatches">${ALL_COLOR_HEX.map(swatchBtn).join('')}</div></div>
-  </div>
-  <div class="fgroup ${open('size')}" data-fg="size">
-    <button class="fgroup__head" data-toggle>Size ${chevron}</button>
-    <div class="fgroup__body">
-      <div class="fsizes">${SIZE_LIST.map(s => `<span class="fsize">${s}</span>`).join('')}</div>
-      <p class="search-hint" style="margin-top:8px">Display only — size filtering is not wired in this sample, and no stock data exists yet.</p>
-    </div>
-  </div>
-  <div class="fgroup ${open('price')}" data-fg="price">
-    <button class="fgroup__head" data-toggle>Price ${chevron}</button>
-    <div class="fgroup__body">
-      <div class="fprice">
-        <input type="range" min="${PRICE_MIN}" max="${PRICE_MAX}" step="1" value="${priceMax}" data-price-range style="width:100%">
-        <span class="text-sm">Up to $${priceMax} sample</span>
-      </div>
-    </div>
-  </div>
-  <button class="clear-filters" data-clear>Clear filters</button>`;
-}
-
-const filterRailDesktop = document.getElementById('filterRailDesktop');
-const filterDrawerBody = document.getElementById('filterDrawerBody');
-
-function renderFilters() {
-  const html = buildFilterHTML();
-  filterRailDesktop.innerHTML = html;
-  filterDrawerBody.innerHTML = html;
-}
-
-function wireFilterContainer(container) {
-  container.addEventListener('click', (e) => {
-    const head = e.target.closest('[data-toggle]');
-    if (head) {
-      const fg = head.closest('.fgroup').dataset.fg;
-      state.openGroups.has(fg) ? state.openGroups.delete(fg) : state.openGroups.add(fg);
-      renderFilters();
-      return;
-    }
-    const sw = e.target.closest('button[data-dim][data-value]');
-    if (sw) { toggleFilter(sw.dataset.dim, sw.dataset.value); return; }
-    if (e.target.closest('[data-clear]')) { clearFilters(); return; }
-  });
-  container.addEventListener('change', (e) => {
-    const cb = e.target.closest('input[type="checkbox"][data-dim]');
-    if (cb) toggleFilter(cb.dataset.dim, cb.dataset.value);
-  });
-  container.addEventListener('input', (e) => {
-    const range = e.target.closest('[data-price-range]');
-    if (!range) return;
-    // Keep the slider element persistent while dragging / arrow-keying: update the
-    // model + label + grid only; the full facet rebuild waits for 'change'.
-    state.filters.priceMax = Number(range.value);
-    const lbl = range.parentElement && range.parentElement.querySelector('.text-sm');
-    if (lbl) lbl.textContent = `Up to $${state.filters.priceMax} sample`;
-    renderGrid();
-  });
-  container.addEventListener('change', (e) => {
-    if (e.target.closest('[data-price-range]')) renderFilters();
-  });
-}
-function toggleFilter(dim, value) {
-  const s = state.filters[dim];
-  s.has(value) ? s.delete(value) : s.add(value);
-  renderFilters(); renderGrid();
-}
-function clearFilters() {
-  state.filters = { cuts: new Set(), themes: new Set(), genders: new Set(), colors: new Set() };
-  state.query = '';
-  const si = document.getElementById('searchInput'); if (si) si.value = '';
-  renderFilters(); renderGrid();
-}
-wireFilterContainer(filterRailDesktop);
-wireFilterContainer(filterDrawerBody);
 
 document.getElementById('sortSelect').addEventListener('change', (e) => { state.sort = e.target.value; renderGrid(); });
 
-// ───────────────────────────── nav / drawers / tiles / footer ─────────────────────────────
+// ───────────────────────────── footer ─────────────────────────────
 
-const CATEGORY_LINKS = [
-  { label: 'Long sleeve', cut: 'ls' },
-  { label: 'Short sleeve', cut: 'ss' },
-  { label: 'Ranked', theme: 'Ranked' },
-  { label: 'Shorts', cut: 'shorts' },
-  { label: 'Spats', cut: 'spats' },
-  { label: 'Sets', cut: 'sets' },
-];
+document.getElementById('ftrLinks').innerHTML = `
+  <li><a href="#shop" data-collection="all">Shop</a></li>
+  <li><a href="studio.html">Studio</a></li>
+  <li><a href="#policies" data-policy="shipping">Shipping (sample)</a></li>
+  <li><a href="#policies" data-policy="returns">Returns (sample)</a></li>
+  <li><a href="#policies" data-policy="sizing">Sizing (sample)</a></li>
+  <li><a href="https://instagram.com/prodigy_athletics_canada" target="_blank" rel="noopener">@prodigy_athletics_canada</a></li>`;
 
-function catLinkAttrs(link) {
-  const attrs = [];
-  if (link.cut) attrs.push(`data-set-cut="${link.cut}"`);
-  if (link.theme) attrs.push(`data-set-theme="${link.theme}"`);
-  return attrs.join(' ');
-}
-
-document.getElementById('navRowList').innerHTML =
-  CATEGORY_LINKS.map(l => `<li><a href="#shop" ${catLinkAttrs(l)}>${l.label}</a></li>`).join('') +
-  `<li><a href="studio.html">Design your own</a></li>`;
-
-document.getElementById('drawerNavTree').innerHTML =
-  CATEGORY_LINKS.map(l => `<li><a href="#shop" ${catLinkAttrs(l)}>${l.label}</a></li>`).join('') +
-  `<li><a href="studio.html">Design your own</a></li>`;
-
-document.getElementById('footerShopList').innerHTML =
-  CATEGORY_LINKS.map(l => `<li><a href="#shop" ${catLinkAttrs(l)}>${l.label}</a></li>`).join('');
-
-// Category tiles — one representative render each
-const TILE_DEFS = [
-  { label: 'Long sleeve', cut: 'ls', render: () => renderGarment_LSTile() },
-  { label: 'Short sleeve', cut: 'ss', render: () => renderTileFor('current-waves-ss') },
-  { label: 'Ranked', theme: 'Ranked', render: () => renderRanked({ style: 'ss', view: 'front', belt: 'black', uid: nextUid('tile'), size: 260, detail: 'lite' }) },
-  { label: 'Shorts', cut: 'shorts', render: () => renderTileFor('prism-grid-shorts') },
-  { label: 'Spats', cut: 'spats', render: () => renderTileFor('tide-waves-spats') },
-  { label: 'Sets', cut: 'sets', render: () => renderTileFor('set-camo-recon') },
-];
-function renderGarment_LSTile() { return renderTileFor('fracture-geo-ls'); }
-function renderTileFor(id) {
-  const p = findProduct(id);
-  return renderPiece(p, { view: 'front', size: 260, detail: 'lite', uidPrefix: 'tile' });
-}
-document.getElementById('tiles').innerHTML = TILE_DEFS.map(t =>
-  `<a class="tile" href="#shop" ${catLinkAttrs(t)}>${t.render()}<span class="tile__label">${t.label}</span></a>`
-).join('');
-
-function applyCategoryLink(el) {
-  clearFiltersSilent();
-  const cut = el.dataset.setCut, theme = el.dataset.setTheme;
-  if (cut) state.filters.cuts.add(cut);
-  if (theme) state.filters.themes.add(theme);
-  renderFilters(); renderGrid();
-  closeAllDrawers();
-  document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-function clearFiltersSilent() {
-  state.filters = { cuts: new Set(), themes: new Set(), genders: new Set(), colors: new Set() };
-}
-document.addEventListener('click', (e) => {
-  const link = e.target.closest('[data-set-cut],[data-set-theme]');
-  if (link) { e.preventDefault(); applyCategoryLink(link); }
+document.getElementById('ftrSignup').addEventListener('submit', (e) => {
+  e.preventDefault();   // inert by design — there is no list behind this field
 });
 
-// hero product render — the storefront's own renderer, at full detail, as the hero figure
-document.getElementById('heroProduct').innerHTML =
-  renderRanked({ style: 'ss', view: 'front', belt: 'blue', uid: nextUid('hero'), size: 560, detail: 'full' });
+// ───────────────────────────── cart (demo) ─────────────────────────────
 
-// ── drawers ──
 const overlay = document.getElementById('drawerOverlay');
-const drawers = { nav: document.getElementById('navDrawer'), search: document.getElementById('searchDrawer'), cart: document.getElementById('cartDrawer'), filter: document.getElementById('filterDrawer') };
-function openDrawer(name) {
-  closeAllDrawers();
-  drawers[name].classList.add('is-open');
-  drawers[name].setAttribute('aria-hidden', 'false');
+const cartDrawer = document.getElementById('cartDrawer');
+const cartCountEl = document.getElementById('cartCount');
+
+function openCart() {
+  renderCartDrawer();
+  cartDrawer.classList.add('is-open');
+  cartDrawer.setAttribute('aria-hidden', 'false');
   overlay.classList.add('is-open');
 }
-function closeAllDrawers() {
-  Object.values(drawers).forEach(d => { d.classList.remove('is-open'); d.setAttribute('aria-hidden', 'true'); });
+function closeCart() {
+  cartDrawer.classList.remove('is-open');
+  cartDrawer.setAttribute('aria-hidden', 'true');
   overlay.classList.remove('is-open');
 }
-document.getElementById('hamburgerBtn').addEventListener('click', () => openDrawer('nav'));
-document.getElementById('searchBtn').addEventListener('click', () => { openDrawer('search'); document.getElementById('searchInput').focus(); });
-document.getElementById('cartBtn').addEventListener('click', () => { renderCartDrawer(); openDrawer('cart'); });
-document.getElementById('filterToggleBtn').addEventListener('click', () => openDrawer('filter'));
-overlay.addEventListener('click', closeAllDrawers);
-document.querySelectorAll('[data-close-drawer]').forEach(b => b.addEventListener('click', closeAllDrawers));
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeAllDrawers(); closePDP(); } });
+document.getElementById('cartBtn').addEventListener('click', openCart);
+document.getElementById('cartClose').addEventListener('click', closeCart);
+overlay.addEventListener('click', closeCart);
 
-document.getElementById('searchInput').addEventListener('input', (e) => {
-  state.query = e.target.value.trim().toLowerCase();
-  renderGrid();
-});
-
-// announcement bar
-document.getElementById('annbarClose').addEventListener('click', () => {
-  document.getElementById('annbar').classList.add('is-hidden');
-});
-
-// ───────────────────────────── cart ─────────────────────────────
-
-const cartCountEl = document.getElementById('cartCount');
-function addToCart(product, size, colorHexOverride) {
-  const colorHex = colorHexOverride !== undefined ? colorHexOverride : currentColorHex(product);
+function addToCart(product, size, colorHex) {
   state.cart.push({ productId: product.id, name: product.name, size, colorHex, priceAmount: product.price.amount, ranked: !!product.ranked });
   updateCartCount();
 }
-function removeFromCart(index) { state.cart.splice(index, 1); updateCartCount(); renderCartDrawer(); }
+function removeFromCart(i) { state.cart.splice(i, 1); updateCartCount(); renderCartDrawer(); }
 function updateCartCount() { cartCountEl.textContent = String(state.cart.length); }
+
 function renderCartDrawer() {
   const body = document.getElementById('cartDrawerBody');
   if (!state.cart.length) {
@@ -569,18 +387,18 @@ function renderCartDrawer() {
     const svg = product ? renderPiece(product, { view: 'front', colorHex: line.colorHex, size: 120, detail: 'lite', uidPrefix: 'cart' }) : '';
     const colorNote = line.ranked ? colorwayLabel(product, line.colorHex) : '';
     return `<div class="cart-line">
-      <div style="width:56px;height:56px;background:#fff;border-radius:4px;overflow:hidden;flex:none">${svg}</div>
+      <div class="cart-line__thumb">${svg}</div>
       <div class="cart-line__meta">
         <b>${escapeHtml(line.name)}</b>
-        <span>Size ${line.size}${colorNote ? ' · ' + escapeHtml(colorNote) : ''} · $${line.priceAmount} sample</span>
+        <span>Size ${escapeHtml(line.size)}${colorNote ? ' · ' + escapeHtml(colorNote) : ''} · $${line.priceAmount} sample</span>
       </div>
-      <button class="icon-btn" data-remove="${i}" aria-label="Remove" style="width:26px;height:26px">&times;</button>
+      <button class="cart-line__remove" data-remove="${i}" aria-label="Remove">&times;</button>
     </div>`;
   }).join('');
   const subtotal = state.cart.reduce((s, l) => s + l.priceAmount, 0);
   body.innerHTML = `${lines}
-    <p style="margin-top:14px;font-size:13px"><strong>Subtotal: $${subtotal} sample</strong></p>
-    <p class="cart-empty" style="margin-top:6px"><strong>Demo cart — checkout not connected.</strong>This total is illustrative only.</p>`;
+    <p class="cart-total">Subtotal: $${subtotal} sample</p>
+    <p class="cart-empty"><strong>Demo cart — checkout not connected.</strong>This total is illustrative only.</p>`;
   body.querySelectorAll('[data-remove]').forEach(b => b.addEventListener('click', () => removeFromCart(Number(b.dataset.remove))));
 }
 
@@ -590,147 +408,129 @@ const pdpOverlay = document.getElementById('pdpOverlay');
 const pdpBody = document.getElementById('pdpBody');
 document.getElementById('pdpClose').addEventListener('click', closePDP);
 pdpOverlay.addEventListener('click', (e) => { if (e.target === pdpOverlay) closePDP(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closePDP(); closeCart(); setShopMenu(false); } });
 
 let pdpReturnFocus = null;
 function openPDP(product) {
   pdpReturnFocus = document.activeElement;
-  state.pdp = { product, activeThumb: 'front', size: SIZE_LIST[2] };
+  state.pdp = { product, view: 'front', size: SIZE_LIST[2] };
   renderPDP();
   pdpOverlay.classList.add('is-open');
-  const closeBtn = document.getElementById('pdpClose');
-  if (closeBtn) closeBtn.focus();
+  document.getElementById('pdpClose')?.focus();
 }
 function closePDP() {
-  pdpOverlay.classList.remove('is-open'); state.pdp = null;
+  if (!pdpOverlay.classList.contains('is-open')) return;
+  pdpOverlay.classList.remove('is-open');
+  state.pdp = null;
   if (pdpReturnFocus && typeof pdpReturnFocus.focus === 'function') pdpReturnFocus.focus();
   pdpReturnFocus = null;
 }
 // keep Tab inside the open dialog
 pdpOverlay.addEventListener('keydown', (e) => {
   if (e.key !== 'Tab' || !pdpOverlay.classList.contains('is-open')) return;
-  const f = [...pdpOverlay.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter(el => !el.disabled && el.offsetParent !== null);
+  const f = [...pdpOverlay.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')]
+    .filter(el => !el.disabled && el.offsetParent !== null);
   if (!f.length) return;
   const first = f[0], last = f[f.length - 1];
   if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 });
 
+const CHEV_LEFT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 5 8 12 15 19"/></svg>`;
+const CHEV_RIGHT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 5 16 12 9 19"/></svg>`;
+
+function cutNoun(style) {
+  return style === 'shorts' ? 'grappling shorts' : style === 'spats' ? 'spats' : 'rashguards';
+}
+
 function renderPDP() {
-  const { product, activeThumb } = state.pdp;
+  const { product, view } = state.pdp;
   const colorHex = currentColorHex(product);
-
-  const thumbFront = renderPiece(product, { view: 'front', colorHex, size: 200, detail: 'lite', uidPrefix: 'th' });
-  const thumbBack = renderPiece(product, { view: 'back', colorHex, size: 200, detail: 'lite', uidPrefix: 'th' });
-  const thumbDetail = zoomSvg(renderPiece(product, { view: 'front', colorHex, size: 200, detail: 'lite', uidPrefix: 'th' }), detailCropBox(product.style, 'front'));
-  let main;
-  if (activeThumb === 'back') main = renderPiece(product, { view: 'back', colorHex, size: 800, detail: 'full', uidPrefix: 'main' });
-  else if (activeThumb === 'detail') main = zoomSvg(renderPiece(product, { view: 'front', colorHex, size: 800, detail: 'full', uidPrefix: 'main' }), detailCropBox(product.style, 'front'));
-  else main = renderPiece(product, { view: 'front', colorHex, size: 800, detail: 'full', uidPrefix: 'main' });
-
+  const main = cropUniform(renderPiece(product, { view, colorHex, size: 800, detail: 'full', uidPrefix: 'main' }));
   const paired = pairedProduct(product);
-  const sleevePills = paired ? `
-    <div class="variant-group">
-      <label>Sleeve</label>
-      <div class="pills">
-        <button class="pill ${product.style === 'ls' ? 'is-active' : ''}" data-open-product="${product.style === 'ls' ? product.id : paired.id}">Long sleeve</button>
-        <button class="pill ${product.style === 'ss' ? 'is-active' : ''}" data-open-product="${product.style === 'ss' ? product.id : paired.id}">Short sleeve</button>
-      </div>
+
+  const sleeveField = paired ? `
+    <div class="pdp__field">
+      <label for="pdpSleeve">Sleeve</label>
+      <select id="pdpSleeve">
+        <option value="${product.style === 'ls' ? product.id : paired.id}" ${product.style === 'ls' ? 'selected' : ''}>Long sleeve</option>
+        <option value="${product.style === 'ss' ? product.id : paired.id}" ${product.style === 'ss' ? 'selected' : ''}>Short sleeve</option>
+      </select>
     </div>` : '';
 
-  const sizePills = `
-    <div class="variant-group">
-      <label>Size</label>
-      <div class="pills">${SIZE_LIST.map(s => `<button class="pill ${s === state.pdp.size ? 'is-active' : ''}" data-pick-size="${s}">${s}</button>`).join('')}</div>
+  const sizeField = `
+    <div class="pdp__field">
+      <label for="pdpSize">Size</label>
+      <select id="pdpSize">${SIZE_LIST.map(s => `<option ${s === state.pdp.size ? 'selected' : ''}>${s}</option>`).join('')}</select>
     </div>`;
 
-  const colorwayPills = (product.colorways || []).length ? `
-    <div class="variant-group">
-      <label>Colourway</label>
-      <div class="pdp__dots">${(product.colorways || []).map((hex, i) =>
-        `<button class="dot ${i === activeColorwayIndex(product) ? 'is-active' : ''}" data-pick-color="${i}" title="${escapeHtml(colorwayLabel(product, hex))}" aria-label="${escapeHtml(colorwayLabel(product, hex))}"><span class="dot__swatch" style="background:${hex}"></span></button>`
-      ).join('')}</div>
+  const colorField = (product.colorways || []).length ? `
+    <div class="pdp__field">
+      <label for="pdpColor">Colourway</label>
+      <select id="pdpColor">${(product.colorways || []).map((hex, i) =>
+        `<option value="${i}" ${i === activeColorwayIndex(product) ? 'selected' : ''}>${escapeHtml(colorwayLabel(product, hex))}</option>`).join('')}</select>
     </div>` : '';
 
-  const rankAccordion = product.ranked ? `
-    <div class="acc-item" data-acc>
-      <button class="acc-item__head">Rank colour (IBJJF Art. 8.1.14) <svg class="acc-item__chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
-      <div class="acc-item__body">
-        <p>Approx. ${Math.round(estimateCoverage(product) * 100)}% rank colour on this construction — IBJJF Art. 8.1.14 requires at least 10%.</p>
-        <blockquote class="rule">${RANK_RULE_TEXT}</blockquote>
-        <p>This is an area estimate from the garment geometry, not a measurement of a physical sample, and it is not a legality ruling — inspection at weigh-in is a visual judgment call by tournament officials.</p>
-      </div>
-    </div>` : '';
+  const rankCopy = product.ranked ? `
+    <p><b>Rank colour (IBJJF Art. 8.1.14) —</b> Approx. ${Math.round(estimateCoverage(product) * 100)}% rank colour on this construction; IBJJF Art. 8.1.14 requires at least 10%. The rule reads: ${escapeHtml(RANK_RULE_TEXT)}</p>
+    <p class="pdp__muted">That percentage is an approx. area estimate from the garment geometry, not a measurement of a physical sample, and it is not a legality ruling — inspection at weigh-in is a visual judgment call by tournament officials.</p>` : '';
 
-  const bundle = product.isSet ? `
-    <div class="bundle">
-      <h4>Complete the set</h4>
-      <div class="bundle-item">
-        <div class="bundle-item__media">${renderPiece(product, { view: 'front', colorHex, size: 200, detail: 'lite', uidPrefix: 'bd', asPartner: true })}</div>
-        <div class="bundle-item__meta">
-          <b>${product.partner.style === 'shorts' ? 'Grappling shorts' : 'Spats'} — same artwork</b>
-          <span>Included in this set · $${product.price.amount} sample covers both pieces</span>
-        </div>
-      </div>
-    </div>` : '';
+  const bundleCopy = product.isSet ? `
+    <p><b>In this set —</b> ${product.partner.style === 'shorts' ? 'grappling shorts' : 'spats'} in the same artwork, included; the $${product.price.amount} sample price covers both pieces.</p>` : '';
 
   pdpBody.innerHTML = `
-    <div class="pdp__thumbs">
-      <button class="pdp__thumb ${activeThumb === 'front' ? 'is-active' : ''}" data-thumb="front" aria-label="Front view">${thumbFront}</button>
-      <button class="pdp__thumb ${activeThumb === 'back' ? 'is-active' : ''}" data-thumb="back" aria-label="Back view">${thumbBack}</button>
-      <button class="pdp__thumb ${activeThumb === 'detail' ? 'is-active' : ''}" data-thumb="detail" aria-label="Detail view">${thumbDetail}</button>
+    <div class="pdp__gallery">
+      <div class="pdp__stage">
+        ${main}
+        <button class="pdp__chev pdp__chev--prev" data-view="${view === 'front' ? 'back' : 'front'}" aria-label="Previous view">${CHEV_LEFT}</button>
+        <button class="pdp__chev pdp__chev--next" data-view="${view === 'front' ? 'back' : 'front'}" aria-label="Next view">${CHEV_RIGHT}</button>
+        <span class="pdp__viewlabel">${view === 'front' ? 'Front' : 'Back'}</span>
+      </div>
     </div>
-    <div class="pdp__main">${main}</div>
     <div class="pdp__info">
-      <p class="pdp__eyebrow">${escapeHtml(product.theme)} · ${escapeHtml(product.gender)}${product.isSet ? ' · Set' : ''}</p>
-      <h2 class="pdp__title" id="pdpTitle">${escapeHtml(product.name)}</h2>
+      <h1 class="pdp__title" id="pdpTitle">${escapeHtml(product.name)}</h1>
       <p class="pdp__price">${priceMarkup(product)}</p>
-      ${sleevePills}
-      ${sizePills}
-      ${colorwayPills}
-      <div class="accordion">
-        <div class="acc-item" data-acc>
-          <button class="acc-item__head">Fabric &amp; fit <svg class="acc-item__chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
-          <div class="acc-item__body">Sample text — fabric and fit spec to be confirmed by Prodigy Athletics. (Category default for sublimated ${product.style === "shorts" ? "grappling shorts" : product.style === "spats" ? "spats" : "rashguards"}: 100% polyester, dye-sublimated${product.style === "shorts" ? "" : ", compression fit — size up for a looser fit"}. Sizes XS–4XL.)</div>
-        </div>
-        <div class="acc-item" data-acc>
-          <button class="acc-item__head">Shipping <svg class="acc-item__chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
-          <div class="acc-item__body">Sample text — shipping policy to be confirmed by Prodigy Athletics.</div>
-        </div>
-        <div class="acc-item" data-acc>
-          <button class="acc-item__head">Returns <svg class="acc-item__chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
-          <div class="acc-item__body">Sample text — returns policy to be confirmed by Prodigy Athletics.</div>
-        </div>
-        ${rankAccordion}
+      <div class="pdp__fields">${sleeveField}${sizeField}${colorField}</div>
+      <button class="pdp__add" id="pdpAddBtn">Add to cart (demo)</button>
+      <div class="pdp__copy">
+        <p class="pdp__muted">Demo cart — checkout is not connected. Nothing here can be purchased.</p>
+        <p><b>Fabric &amp; fit —</b> Sample text; fabric and fit spec to be confirmed by Prodigy Athletics. Category default for sublimated ${cutNoun(product.style)}: 100% polyester, dye-sublimated${product.style === 'shorts' ? '' : ', compression fit — size up for a looser fit'}. Sizes XS–4XL.</p>
+        <p><b>Shipping —</b> Sample text; shipping policy to be confirmed by Prodigy Athletics.</p>
+        <p><b>Returns —</b> Sample text; returns policy to be confirmed by Prodigy Athletics.</p>
+        ${bundleCopy}
+        ${rankCopy}
+        <p class="pdp__muted">This image is a live render from our design tool, not a photograph of a finished garment.</p>
+        <a class="pdp__studio-link" href="studio.html">Customise this design in the Studio →</a>
       </div>
-      <div class="pdp__addtocart">
-        <button class="btn btn--primary btn--block" id="pdpAddBtn">Add to cart (demo)</button>
-        <p class="pdp__note">Demo cart — checkout is not connected. Nothing here can be purchased.</p>
-      </div>
-      ${bundle}
-      <a class="pdp__studio-link" href="studio.html">Customise this design in the Studio →</a>
     </div>`;
 
-  pdpBody.querySelectorAll('[data-thumb]').forEach(b => b.addEventListener('click', () => { state.pdp.activeThumb = b.dataset.thumb; renderPDP(); }));
-  pdpBody.querySelectorAll('[data-pick-size]').forEach(b => b.addEventListener('click', () => { state.pdp.size = b.dataset.pickSize; renderPDP(); }));
-  pdpBody.querySelectorAll('[data-pick-color]').forEach(b => b.addEventListener('click', () => { state.selectedColorway.set(product.id, Number(b.dataset.pickColor)); renderPDP(); }));
-  pdpBody.querySelectorAll('[data-open-product]').forEach(b => b.addEventListener('click', () => { const p2 = findProduct(b.dataset.openProduct); if (p2) openPDP(p2); }));
-  pdpBody.querySelectorAll('[data-acc]').forEach(item => item.querySelector('.acc-item__head').addEventListener('click', () => item.classList.toggle('is-open')));
+  pdpBody.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => { state.pdp.view = b.dataset.view; renderPDP(); }));
+  pdpBody.querySelector('#pdpSize')?.addEventListener('change', (e) => { state.pdp.size = e.target.value; });
+  pdpBody.querySelector('#pdpColor')?.addEventListener('change', (e) => {
+    state.selectedColorway.set(product.id, Number(e.target.value));
+    renderPDP();
+    renderGrid();
+  });
+  pdpBody.querySelector('#pdpSleeve')?.addEventListener('change', (e) => {
+    const p2 = findProduct(e.target.value);
+    if (p2 && p2.id !== product.id) { state.pdp = { product: p2, view: state.pdp.view, size: state.pdp.size }; renderPDP(); }
+  });
   pdpBody.querySelector('#pdpAddBtn')?.addEventListener('click', (e) => {
     addToCart(product, state.pdp.size, colorHex);
-    const btn = e.currentTarget; const orig = btn.textContent;
-    btn.textContent = 'Added ✓'; setTimeout(() => { btn.textContent = orig; }, 1000);
+    const btn = e.currentTarget, orig = btn.textContent;
+    btn.textContent = 'Added ✓';
+    setTimeout(() => { btn.textContent = orig; }, 1000);
   });
 }
 
 function estimateCoverage(product) {
-  // Delegates to garment.js's own estimator (same construction renderRanked uses for this
-  // style) rather than re-deriving the panel-area numbers here.
+  // Delegates to garment.js's own estimator (the same construction renderRanked uses).
   const slotsPainted = product.style === 'shorts' || product.style === 'spats' ? ['waistband'] : ['sleeveL', 'sleeveR', 'collar'];
   return estimateRankCoverage({ style: product.style, slotsPainted });
 }
 
 // ───────────────────────────── init ─────────────────────────────
 
-renderFilters();
+renderPanels();
 renderGrid();
 updateCartCount();

@@ -523,3 +523,6 @@ html, body { max-width: 100%; }
 .empty-slot-overlay.is-whole > span { background: rgba(11,18,32,.75); padding: 3px 6px; border-radius: 4px; }
 
 .coverage-caveat { font-size: 11px; line-height: 1.45; color: var(--muted, #A9AFB8); margin-top: 6px; }
+
+.topbar-proto-note { font-size: 11px; color: var(--muted, #A9AFB8); margin-left: 12px; letter-spacing: .02em; }
+@media (max-width: 720px) { .topbar-proto-note { display: none; } }

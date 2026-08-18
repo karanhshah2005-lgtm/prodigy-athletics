@@ -17,7 +17,7 @@ body.store {
   -webkit-font-smoothing: antialiased;
 }
 .store img, .store svg { max-width: 100%; display: block; }
-.store a { color: inherit; }
+.store a:where(:not(.btn):not(.tile):not(.skip-link)) { color: inherit; }
 .store button { font-family: inherit; }
 .wrap { max-width: 1320px; margin: 0 auto; padding: 0 20px; }
 
@@ -186,7 +186,9 @@ body.store {
   background: linear-gradient(to top, rgba(0,0,0,.72), transparent);
   font-family: var(--font-display, 'Barlow Condensed', 'Arial Narrow', Impact, sans-serif); text-transform: uppercase; font-size: 14.5px; letter-spacing: .02em;
 }
+.tile__label { color: var(--bone, #F5F3EE); }
 .tile:hover .tile__label { color: var(--accent, #E8A33D); }
+.store a.btn--primary, .store a.btn--primary:visited { color: var(--navy, #0B1220); }
 
 /* ── layout: filter rail + grid ───────────────────────────────────── */
 .shop { padding: 34px 0 60px; }

@@ -9,7 +9,7 @@
  * "— TO CONFIRM", and nothing certifies anything against the IBJJF rule book.
  */
 
-import { renderGarment, renderRanked, STYLES, GI_PRESETS } from '../render/garment.js';
+import { renderGarment, renderRanked, STYLES, GI_PRESETS, BELT_HEX } from '../render/garment.js';
 import { renderCutSheet } from '../render/panel.js';
 import { artPatternDef, artPatternRef } from '../render/art.js';
 import { makePattern } from '../data/patterns.js';
@@ -442,7 +442,7 @@ function openPdp(id) {
   if (!p) return;
   if (pdpSpin) { pdpSpin.dispose(); pdpSpin = null; }
   const isTop = p.style === 'ls' || p.style === 'ss';
-  const canSpin = isTop && !p.ranked;
+  const canSpin = isTop;   // ranked tops spin too — spin3d takes sleeveColor
   let view = readView() || 'front';
   if (view === 'spin' && !canSpin) view = 'front';
   const mates = setMates(p);
@@ -588,6 +588,7 @@ async function mountPdpSpin(p) {
     pdpSpin = mod.mountSpin($('#pdpSpinHost'), {
       style: p.style,
       baseColor: p.baseColor,
+      sleeveColor: p.ranked && p.ranked.belt && BELT_HEX[p.ranked.belt] ? BELT_HEX[p.ranked.belt] : null,
       art: p.artSpec ? makePattern(p.artSpec, 320) : null,
       artTile: 3,
       sleeveText: 'PRODIGY',

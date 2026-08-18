@@ -688,6 +688,11 @@ async function loadSpinModule() {
   try { spinMod = await import('../render/spin3d.js'); } catch (e) { console.warn('spin3d unavailable', e); spinMod = null; }
   return spinMod;
 }
+function toneLight(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return false;
+  const n = parseInt(m[1], 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.55;
+}
 /** Marks + colours for the 3D viewer, derived from the current studio state. */
 function spinOptsFromState() {
   const allArt = state.art.all && state.art.all.art ? state.art.all.art : null;
@@ -696,8 +701,11 @@ function spinOptsFromState() {
     style: (state.style === 'ls' || state.style === 'ss') ? state.style : 'ls',
     baseColor: state.ranked.on ? (effectiveBody(state.ranked.belt, state.ranked.body) === 'white' ? BASE_PRESETS.white : BASE_PRESETS.black) : state.baseColor,
     sleeveColor: rank || null,
+    // sleeve text must contrast the SLEEVE, which in ranked mode is the belt colour
+    sleeveTextColor: rank ? (['white'].includes(state.ranked.belt) ? '#0B1220' : '#F5F3EE') : (toneLight(state.baseColor) ? '#0B1220' : '#F5F3EE'),
+    chestMarkColor: state.ranked.on ? '#E8A33D' : (toneLight(state.baseColor) ? '#0B1220' : '#F5F3EE'),
     art: allArt, artTile: 3,
-    sleeveText: 'PRODIGY', chestMark: 'wordmark', backText: 'PRODIGY',
+    sleeveText: 'PRODIGY', chestMark: state.ranked.on ? 'mono' : 'wordmark', backText: 'PRODIGY',
     autoRotate: true, speed: 0.6, background: 'transparent', quality: 'auto',
   };
 }

@@ -41,6 +41,7 @@ export const SPIN_DEFAULTS = Object.freeze({
   artTile: 3,              // repeat count around the torso
   sleeveText: 'PRODIGY',
   sleeveTextColor: '#F5F3EE',
+  sleeveColor: null,        // optional sleeve base (ranked construction) — falls back to baseColor
   sleeveTextCap: 0.32,     // cap height as a fraction of sleeve circumference
   sleeveTextSvg: null,     // data-URL SVG override for the sleeve run
   chestMark: 'wordmark',   // 'wordmark' | 'lockup' | 'mono' | null
@@ -566,7 +567,8 @@ function buildSleeveCanvas(o, m, q) {
   c.width = S; c.height = S;
   const x = c.getContext('2d');
 
-  x.fillStyle = o.baseColor;
+  const sleeveBase = o.sleeveColor || o.baseColor;
+  x.fillStyle = sleeveBase;
   x.fillRect(0, 0, S, S);
 
   const upw = m.sleeveCirc / S;
@@ -585,7 +587,7 @@ function buildSleeveCanvas(o, m, q) {
   // cuff band
   const bandH = S * 0.045;
   x.save();
-  x.globalAlpha = luminance(o.baseColor) > 0.6 ? 0.14 : 0.22; x.fillStyle = '#000';
+  x.globalAlpha = luminance(sleeveBase) > 0.6 ? 0.14 : 0.22; x.fillStyle = '#000';
   x.fillRect(0, S - bandH, S, bandH);
   x.globalAlpha = 0.18; x.fillStyle = '#fff';
   x.fillRect(0, S - bandH - Math.max(1, S * 0.004), S, Math.max(1, S * 0.004));
@@ -1081,7 +1083,7 @@ export function mountSpin(el, opts = {}) {
     const qPrev = q;
     q = qualityFor();
     const geoDirty = next.style !== undefined && next.style !== prev.style || q !== qPrev;
-    const texDirty = geoDirty || ['baseColor', 'art', 'artTile', 'sleeveText', 'sleeveTextColor',
+    const texDirty = geoDirty || ['baseColor', 'sleeveColor', 'art', 'artTile', 'sleeveText', 'sleeveTextColor',
       'sleeveTextCap', 'sleeveTextSvg', 'chestMark', 'chestMarkColor', 'chestMarkBg',
       'chestMarkSvg', 'chestMarkWidth', 'backText', 'backTextSvg',
     ].some(k => next[k] !== undefined && next[k] !== prev[k]);

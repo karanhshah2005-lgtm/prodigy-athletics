@@ -370,7 +370,7 @@ function buildFilterHTML() {
     <button class="fgroup__head" data-toggle>Size ${chevron}</button>
     <div class="fgroup__body">
       <div class="fsizes">${SIZE_LIST.map(s => `<span class="fsize">${s}</span>`).join('')}</div>
-      <p class="search-hint" style="margin-top:8px">Display only — every size is in stock for every design.</p>
+      <p class="search-hint" style="margin-top:8px">Display only — size filtering is not wired in this sample, and no stock data exists yet.</p>
     </div>
   </div>
   <div class="fgroup ${open('price')}" data-fg="price">
@@ -681,7 +681,7 @@ function renderPDP() {
       <div class="accordion">
         <div class="acc-item" data-acc>
           <button class="acc-item__head">Fabric &amp; fit <svg class="acc-item__chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
-          <div class="acc-item__body">100% polyester, dye-sublimated, compression fit. Runs true to a snug rashguard fit — size up for a looser fit. Sizes XS–4XL.</div>
+          <div class="acc-item__body">Sample text — fabric and fit spec to be confirmed by Prodigy Athletics. (Category default for sublimated ${product.style === "shorts" ? "grappling shorts" : product.style === "spats" ? "spats" : "rashguards"}: 100% polyester, dye-sublimated${product.style === "shorts" ? "" : ", compression fit — size up for a looser fit"}. Sizes XS–4XL.)</div>
         </div>
         <div class="acc-item" data-acc>
           <button class="acc-item__head">Shipping <svg class="acc-item__chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>

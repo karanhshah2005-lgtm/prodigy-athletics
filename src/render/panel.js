@@ -479,8 +479,8 @@ export function renderCutSheet({ style, slots = {}, baseColor = '#14161b', uid, 
     ${piecesMarkup}
 
     <g transform="translate(40 ${rowsBottom + 40})" font-size="12" fill="#444">
-      <text y="0">BLEED     8 mm past every cut line</text>
-      <text y="20">FABRIC    100% polyester, sublimation-ready, white base — dark blanks cannot be sublimated</text>
+      <text y="0">BLEED     drawn at approx. 8 mm equivalent — this sheet has no established real-world scale; confirm bleed with your printer</text>
+      <text y="20">FABRIC    category default, not a confirmed spec: 100% polyester, sublimation-ready, white base — dark blanks cannot be sublimated</text>
       <text y="40">NOTE      Cross-seam alignment is confirmed at sampling, not on this sheet.</text>
     </g>
   </svg>`;

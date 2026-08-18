@@ -523,12 +523,13 @@ function buildRankedPanel() {
     ? `<div class="coverage-box">
         <div class="coverage-pct" id="coveragePct">approx. &hellip;%</div>
         <div class="coverage-label">rank colour — IBJJF Art. 8.1.14 requires at least 10%.</div>
+        <div class="coverage-caveat">Area estimate from the garment geometry, not a measurement of a physical sample, and not a legality ruling — inspection at weigh-in is a visual call by tournament officials.</div>
       </div>`
     : `<div class="coverage-box"><div class="panel-note" style="margin:0">Turn on Ranked mode to see the coverage estimate.</div></div>`;
   return `
     <div class="panel-section">
       <label class="toggle-row"><input type="checkbox" data-action="toggle-ranked" ${state.ranked.on ? 'checked' : ''}> Ranked mode</label>
-      <div class="panel-note">The client's one confirmed product: a belt-ranked short-sleeve line in five colours.</div>
+      <div class="panel-note">Your confirmed line: belt-ranked short-sleeve in five colours (white, blue, purple, brown, black).</div>
     </div>
     <div class="panel-section">
       <div class="panel-title">Belt colour</div>
@@ -577,7 +578,7 @@ function renderExportActionHTML() {
     <div class="panel-title">Export</div>
     <button type="button" class="btn btn--primary btn-block" data-action="export-selected">Export selected</button>
     <div class="export-status"></div>
-    <div class="panel-note">PNGs are web previews at 2000&ndash;3000 px; the cut sheet is what goes to the factory.</div>
+    <div class="panel-note">PNGs are web previews at 2000&ndash;3000 px. The cut sheet is a flat pattern starting point in the format factories send back &mdash; confirm scale and bleed with your printer.</div>
   </div>`;
 }
 

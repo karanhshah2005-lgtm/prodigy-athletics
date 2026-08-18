@@ -521,3 +521,5 @@ html, body { max-width: 100%; }
 /* whole-garment ('all') overlay: label pinned top-left, panels keep centred labels */
 .empty-slot-overlay.is-whole { align-items: flex-start; justify-content: flex-start; text-align: left; }
 .empty-slot-overlay.is-whole > span { background: rgba(11,18,32,.75); padding: 3px 6px; border-radius: 4px; }
+
+.coverage-caveat { font-size: 11px; line-height: 1.45; color: var(--muted, #A9AFB8); margin-top: 6px; }

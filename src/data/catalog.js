@@ -12,7 +12,7 @@
  *   pairId: string | null,                      // links an LS/SS sleeve-length sibling pair
  *   isSet: boolean, partner: { style, slots } | null,   // "Set:" two-garment merchandising
  *   price: { sample:true, amount, currency:'CAD', compareAt? },
- *   badges: [ 'New' | 'Flagship' | 'Sale' ],   // never 'Best seller' — no sales history exists
+ *   badges: [ 'New' | 'Flagship' ],   // never 'Best seller' or 'Sale' — no sales/promo history exists
  *   colorways: [hex,...],                       // dots; belts for ranked, recolors otherwise
  * }
  *
@@ -140,7 +140,7 @@ export const PRODUCTS = Object.freeze([
     id: 'prism-grid-shorts', name: 'Prism Grid Shorts', style: 'shorts', theme: 'Geometric', gender: 'Women',
     baseColor: NAVY, artSpec: { kind: 'grid', colors: gridColors, seed: 6, cell: 36 }, slots: { all: true },
     ranked: null, pairId: null, isSet: false, partner: null,
-    price: price(56, { compareAt: 64 }), badges: ['Sale'], colorways: [NAVY, '#141414', '#1B4DB1'],
+    price: price(56), badges: [], colorways: [NAVY, '#141414', '#1B4DB1'],
   },
   {
     id: 'signal-stripes-ss', name: 'Signal Stripes Short-Sleeve', style: 'ss', theme: 'Geometric', gender: 'Unisex',
@@ -180,7 +180,7 @@ export const PRODUCTS = Object.freeze([
     id: 'current-waves-ss', name: 'Current Waves Short-Sleeve', style: 'ss', theme: 'Waves', gender: 'Unisex',
     baseColor: '#141414', artSpec: { kind: 'waves', colors: wavesColorsWarm, seed: 10, bands: 7 }, slots: { all: true },
     ranked: null, pairId: null, isSet: false, partner: null,
-    price: price(75, { compareAt: 89 }), badges: ['Sale'], colorways: ['#141414', NAVY, '#5A3A22'],
+    price: price(75), badges: [], colorways: ['#141414', NAVY, '#5A3A22'],
   },
   {
     id: 'tide-waves-spats', name: 'Tide Waves Spats', style: 'spats', theme: 'Waves', gender: 'Women',

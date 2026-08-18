@@ -5,8 +5,8 @@
        Fill is currentColor; the color="#F5F3EE" presentation attribute above is the
        DEFAULT only (Bone White, the primary lockup colour per docs/DESIGN.md, meant
        to sit on Ink Navy). Presentation attributes lose to a real CSS rule/inline
-       style, so a page can recolour this mark -- but the override must target the
-       <svg> element itself (e.g. `.wordmark svg{color:...}` or `svg.style.color=`),
+       style, so a page can recolour this mark — but the override must target the
+       the svg element element itself (e.g. `.wordmark svg{color:...}` or `svg.style.color=`),
        not an ancestor: this element already has a specified `color`, so plain
        inheritance from a parent never overrides it. -->
   <g fill="currentColor">

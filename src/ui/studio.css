@@ -538,3 +538,26 @@ html, body { max-width: 100%; }
 }
 #rotateRange { width: 100%; margin: 6px 0; accent-color: var(--accent, #E8A33D); }
 .export-summary { font-size: 12px; color: var(--muted, #A9AFB8); margin-bottom: 8px; }
+
+/* ── A&P-style header (matches the storefront): white, 50px, 11px caps links left, logo right ── */
+.topbar.ap-header {
+  background: #ffffff; border-bottom: 0; min-height: 50px; height: 50px; padding: 0 40px 0 40px;
+  color: #000; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+.ap-nav { display: flex; align-items: center; gap: 43px; min-width: 0; }
+.ap-link { font: 400 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif; text-transform: uppercase; color: #000; text-decoration: none; letter-spacing: 0; padding: 0; background: none; border: 0; cursor: pointer; white-space: nowrap; }
+.ap-link:hover, .ap-link:focus-visible { text-decoration: underline; outline: none; }
+.ap-link.is-current { text-decoration: underline; text-underline-offset: 3px; }
+.ap-link--btn { color: #000; }
+.ap-header .topbar-proto-note { color: #6b6b6b; margin-left: 0; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.ap-logo { display: inline-flex; align-items: center; color: #000; margin-right: 68px; }
+.ap-logo img { height: 24px; width: auto; display: block; filter: brightness(0); }
+@media (max-width: 1023px) {
+  .topbar.ap-header { padding: 0 16px; }
+  .ap-nav { gap: 22px; }
+  .ap-logo { margin-right: 0; }
+  .ap-logo img { height: 20px; }
+}
+@media (max-width: 720px) {
+  .ap-header .ap-link--btn { display: none; }
+}

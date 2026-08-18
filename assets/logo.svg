@@ -9,8 +9,8 @@
          counter/hole) — a handful of straight edges, no curves, no thin strokes.
     fill="currentColor" on the mark path; color="#E8A33D" above is the DEFAULT
     (Prodigy Gold on Ink Navy) and is a low-specificity presentation attribute, so
-    a page that inlines this SVG can override it with real CSS -- but the rule (or
-    inline style) must target the <svg> element itself, e.g. `.mark svg{color:...}`
+    a page that inlines this SVG can override it with real CSS — but the rule (or
+    inline style) must target the the svg element element itself, e.g. `.mark svg{color:...}`
     or set `.style.color` on the svg node directly. A `color` set on an ANCESTOR
     does NOT reach it: this element already has a specified value (this attribute),
     so plain CSS inheritance never kicks in. The navy backing circle stays fixed —

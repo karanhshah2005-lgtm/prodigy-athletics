@@ -11,15 +11,17 @@
 </head>
 <body class="surface-dark studio-body">
 
-<header class="topbar">
-  <div class="topbar-left">
-    <span class="wordmark">PRODIGY ATHLETICS <span>&mdash; STUDIO</span></span>
+<header class="topbar ap-header">
+  <nav class="ap-nav" aria-label="Site">
+    <a class="ap-link" href="index.html">Shop</a>
+    <a class="ap-link" href="index.html#shop">Ranked</a>
+    <span class="ap-link is-current" aria-current="page">Studio</span>
+    <button type="button" id="sampleDataBtn" class="ap-link ap-link--btn" data-action="load-sample-data" title="Fill the current garment with sample artwork">Sample data</button>
     <span class="topbar-proto-note">Prototype &mdash; sample data, not a live tool</span>
-  </div>
-  <div class="topbar-right">
-    <button type="button" id="sampleDataBtn" class="btn btn--ghost topbar-sample-pill" data-action="load-sample-data" title="Fill the current garment with sample artwork">Sample data</button>
-    <a class="topbar-store-link" href="index.html">&larr; Store</a>
-  </div>
+  </nav>
+  <a class="ap-logo" href="index.html" aria-label="Prodigy Athletics — home">
+    <img src="assets/wordmark.svg" alt="Prodigy Athletics" width="200" height="38">
+  </a>
 </header>
 
 <nav class="tab-strip" id="tabStrip" aria-label="Studio sections"></nav>

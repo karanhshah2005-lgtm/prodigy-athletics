@@ -17,6 +17,8 @@ resized to ≤1600 px, quality 82.
 | core-ls-white-athlete.webp | female athlete, bone-white LS, seated on mats | 3:4 |
 | ranked-trio-wide.webp | three athletes in ranked SS white / blue / purple | 16:9 |
 | recon-set-athlete.webp | male athlete in the Recon Camo LS + shorts + spats set | 3:4 |
+| shi-gi-front-athlete.webp | female athlete tying the belt of the Prodigy × 死 gi (front: skulls, lapel wordmark, monograms, 死 skirt patch) | 3:4 |
+| gym-dawn-wide.webp | empty gym at dawn, one athlete drilling in black LS + spats, wide | 16:9 |
 
 Prompts asked for: no logos other than the word PRODIGY, no other text, premium restrained
 editorial light. Small print artefacts (mirrored letters on a far sleeve, a stray patch) exist

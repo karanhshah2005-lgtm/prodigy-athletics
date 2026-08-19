@@ -744,7 +744,7 @@ function marksLayer(h, { view, style, marks, tone, url }) {
   return out;
 }
 
-function renderRashguard(h, { style, view, baseColor, slots, size, detail, defs, marks }) {
+function renderRashguard(h, { style, view, baseColor, slots, size, detail, defs, marks, part }) {
   const { u, url } = h;
   const front = view === 'front';
   const S = k => paint(slots[k]);
@@ -756,10 +756,18 @@ function renderRashguard(h, { style, view, baseColor, slots, size, detail, defs,
   const collar = S('collar');
   const all = S('all');
   const outline = style === 'ls' ? (front ? GAR_LS_F : GAR_LS_B) : (front ? GAR_SS_F : GAR_SS_B);
-  const flat = detail === 'flat';
+  // 'flat' = unshaded fills only (estimator masks). 'tex' = unshaded fills + art + marks,
+  // used to BAKE the 2D design onto the 3D garment (lighting comes from the 3D scene).
+  // `part` restricts output to one physical piece for texture baking:
+  //   'torso' | 'sleeveL' | 'sleeveR' (wearer's) — everything else transparent.
+  const tex = detail === 'tex';
+  const flat = detail === 'flat' || tex;
   const tone = toneOf(baseColor);
   const kit = seamKit(size, RASH_K);
   const cons = rashguardConstruction({ view, style });
+  const partClip = !part ? null : part === 'torso' ? 'cTor'
+    : part === 'sleeveL' ? (front ? 'cVR' : 'cVL')
+    : part === 'sleeveR' ? (front ? 'cVL' : 'cVR') : null;
   // Paint layers step back into frame space so a userSpaceOnUse <pattern> lands exactly
   // where slotBBox says it will, even though the garment itself is drawn scaled up.
   const P = inner => `<g transform="${RASH_XF_INV}">${inner}</g>`;
@@ -769,7 +777,7 @@ function renderRashguard(h, { style, view, baseColor, slots, size, detail, defs,
   <defs>${rashguardDefs(h, { style, view, detail })}${defs}</defs>
   <g transform="${RASH_XF}">
   ${flat ? '' : `<ellipse cx="500" cy="838" rx="205" ry="17" fill="#000" opacity=".14" filter="${url('s2')}"/>`}
-  <g clip-path="${url('cGar')}">
+  <g clip-path="${url(partClip || 'cGar')}">
     ${P(`<rect width="1000" height="1000" fill="${baseColor}"/>`)}
     ${all ? P(`<rect width="1000" height="1000" fill="${all}"/>`) : ''}
     ${fill('cTor', body)}
@@ -777,7 +785,7 @@ function renderRashguard(h, { style, view, baseColor, slots, size, detail, defs,
     ${fill('cVR', vr)}
     ${fill('cCol', collar)}
     ${zone ? `<g clip-path="${url('cTor')}">${fill('cZone', zone)}</g>` : ''}
-    ${flat ? '' : marksLayer(h, { view, style, marks, tone, url })}
+    ${(flat && !tex) ? '' : marksLayer(h, { view, style, marks, tone, url })}
     ${flat ? '' : bandLayer(h, tone, cons.bands, 'cGar')}
     ${flat ? '' : rashguardShading(h, { view, style, tone })}
     ${flat ? '' : textureLayer(h, detail)}
@@ -1573,12 +1581,12 @@ function renderGiPants(h, { view, baseColor, slots, size, detail, defs, marks, d
 export function renderGarment({
   style = 'ls', view = 'front', baseColor = BASE_PRESETS.black,
   slots = {}, size = 1000, detail = 'full', uid, defs = '', marks = null, belt = null,
-  design = null,
+  design = null, part = null,
 } = {}) {
   if (!STYLES[style]) throw new Error(`Unknown style "${style}"`);
   if (view !== 'front' && view !== 'back') throw new Error(`Unknown view "${view}"`);
   const h = ns(uid);
-  const args = { style, view, baseColor, slots: slots || {}, size, detail, defs, marks, belt, design };
+  const args = { style, view, baseColor, slots: slots || {}, size, detail, defs, marks, belt, design, part };
   switch (STYLES[style].family) {
     case 'rashguard': return renderRashguard(h, args);
     case 'shorts': return renderShorts(h, args);
@@ -1597,6 +1605,7 @@ export function renderGarment({
 export function renderRanked({
   style = 'ss', view = 'front', belt = 'white', body = 'black',
   uid, size = 1000, detail = 'full', defs = '', slots = {}, marks = null, design = null,
+  part = null,
 } = {}) {
   const hex = BELT_HEX[belt];
   if (!hex) throw new Error(`Unknown belt "${belt}"`);
@@ -1610,12 +1619,12 @@ export function renderRanked({
   // render "white gi, blue belt" without a second function.
   if (fam === 'gi' || fam === 'gipants') {
     const giBase = bodyKey === 'white' ? GI_PRESETS.white : GI_PRESETS.black;
-    return renderGarment({ style, view, baseColor: giBase, size, detail, uid, defs, marks, belt, slots, design });
+    return renderGarment({ style, view, baseColor: giBase, size, detail, uid, defs, marks, belt, slots, design, part });
   }
   const rankSlots = fam === 'rashguard'
     ? { sleeveL: hex, sleeveR: hex, collar: hex }
     : fam === 'shorts' ? { waistband: hex } : { waistband: hex };
-  return renderGarment({ style, view, baseColor, size, detail, uid, defs, marks, design, slots: { ...rankSlots, ...slots } });
+  return renderGarment({ style, view, baseColor, size, detail, uid, defs, marks, design, part, slots: { ...rankSlots, ...slots } });
 }
 
 /**

@@ -684,18 +684,105 @@ async function renderCutSheetView() {
 }
 
 function updateCanvas(opts) {
-  if (state.canvasTab !== 'spin' && spin) { try { spin.dispose(); } catch { /* noop */ } spin = null; }
+  if (state.canvasTab !== 'spin' && spin) disposeSpin();
   if (state.canvasTab === 'cutsheet') renderCutSheetView();
   else if (state.canvasTab === 'spin') renderSpinView();
   else renderGarmentCanvas(opts);
 }
 
 // ───────────────────────────── 360° view (WebGL, lazy) ─────────────────────────────
-let spin = null, spinMod = null;
+//
+// The 360 shows the SAME render as the flat view. It does not re-derive the design:
+// garment.js renders each physical piece unshaded (detail:'tex', part:'torso' |
+// 'sleeveL' | 'sleeveR') for the front and the back, those six PNGs are handed to
+// spin3d as `bake`, and the viewer wraps them onto the mesh. Anything the user places —
+// all-over art, a body panel, the chest logo zone, their own scale / rotation / offset,
+// ranked sleeve colours — therefore appears in the 360 exactly where it appears flat.
+let spin = null, spinMod = null, spinHostEl = null;
+let spinBakeTimer = null, spinBakeSeq = 0, spinBakeKey = null;
+const BAKE_PX = 1024;
+
 async function loadSpinModule() {
   if (spinMod) return spinMod;
   try { spinMod = await import('../render/spin3d.js'); } catch (e) { console.warn('spin3d unavailable', e); spinMod = null; }
   return spinMod;
+}
+
+function disposeSpin() {
+  if (spinBakeTimer) { clearTimeout(spinBakeTimer); spinBakeTimer = null; }
+  spinBakeSeq++;
+  if (spin) { try { spin.dispose(); } catch { /* noop */ } }
+  spin = null; spinHostEl = null; spinBakeKey = null;
+}
+
+/** Blobs taint nothing, but the viewer draws these into a canvas it reads back. */
+function blobToDataUrl(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result));
+    r.onerror = () => rej(r.error || new Error('bake read failed'));
+    r.readAsDataURL(blob);
+  });
+}
+
+/** Everything that changes what is PRINTED. Cheap enough to run on every keystroke. */
+function spinDesignKey() {
+  const art = Object.keys(state.art).sort().map((k) => {
+    const e = state.art[k];
+    if (!e || !e.art) return null;
+    const t = e.transform || DEFAULT_TRANSFORM;
+    const d = e.art.dataUrl || '';
+    return [k, d.length, d.slice(-32), e.tile !== false, t.scale, t.rotate, t.x, t.y];
+  }).filter(Boolean);
+  return JSON.stringify([state.style, state.baseColor, state.ranked.on, state.ranked.belt,
+    state.ranked.body, art]);
+}
+
+/** The six unshaded piece renders the viewer wraps onto the mesh. */
+async function buildSpinBake() {
+  const style = state.style;
+  const jobs = [];
+  for (const view of ['front', 'back']) {
+    const uid = `bk-${view}`;
+    const { defs, slots } = buildDefsAndSlots(style, view, uid);
+    for (const part of ['torso', 'sleeveL', 'sleeveR']) {
+      const common = { style, view, uid, size: BAKE_PX, detail: 'tex', defs, slots, part };
+      const svg = state.ranked.on
+        ? renderRanked({ ...common, belt: state.ranked.belt, body: state.ranked.body })
+        : renderGarment({ ...common, baseColor: state.baseColor });
+      const name = part === 'torso' ? view : `${part}${view === 'front' ? 'Front' : 'Back'}`;
+      jobs.push(svgToPng(svg, { width: BAKE_PX }).then(blobToDataUrl).then((url) => [name, url]));
+    }
+  }
+  return Object.fromEntries(await Promise.all(jobs));
+}
+
+function setSpinNote(on) {
+  const n = svgHostEl.querySelector('.spin-baking');
+  if (n) n.hidden = !on;
+}
+
+/** Re-bake when the design changes. Debounced, and a no-op when nothing moved. */
+function scheduleSpinBake(immediate = false) {
+  if (spinBakeTimer) { clearTimeout(spinBakeTimer); spinBakeTimer = null; }
+  if (spinDesignKey() === spinBakeKey) return;
+  setSpinNote(true);
+  const run = async () => {
+    spinBakeTimer = null;
+    const seq = ++spinBakeSeq;
+    const key = spinDesignKey();
+    try {
+      const bake = await buildSpinBake();
+      if (seq !== spinBakeSeq || !spin || state.canvasTab !== 'spin') return;
+      spin.update({ ...spinOptsFromState(), bake });
+      spinBakeKey = key;
+    } catch (e) {
+      console.warn('360 bake failed — showing the plain garment', e);
+    } finally {
+      if (seq === spinBakeSeq) setSpinNote(false);
+    }
+  };
+  if (immediate) run(); else spinBakeTimer = setTimeout(run, 250);
 }
 function toneLight(hex) {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return false;
@@ -704,7 +791,6 @@ function toneLight(hex) {
 }
 /** Marks + colours for the 3D viewer, derived from the current studio state. */
 function spinOptsFromState() {
-  const allArt = state.art.all && state.art.all.art ? state.art.all.art : null;
   const rank = state.ranked.on ? BELT_HEX[state.ranked.belt] : null;
   return {
     style: (state.style === 'ls' || state.style === 'ss') ? state.style : 'ls',
@@ -713,11 +799,18 @@ function spinOptsFromState() {
     // sleeve text must contrast the SLEEVE, which in ranked mode is the belt colour
     sleeveTextColor: rank ? (['white'].includes(state.ranked.belt) ? '#0B1220' : '#F5F3EE') : (toneLight(state.baseColor) ? '#0B1220' : '#F5F3EE'),
     chestMarkColor: state.ranked.on ? '#E8A33D' : (toneLight(state.baseColor) ? '#0B1220' : '#F5F3EE'),
-    art: allArt, artTile: 3,
-    sleeveText: 'PRODIGY', chestMark: state.ranked.on ? 'mono' : 'wordmark', backText: 'PRODIGY',
+    // Art and marks come from the BAKE — the flat render is the source of truth for what
+    // is printed, and the studio's flat view carries no brand marks, so neither does this.
+    art: null, artTile: 3,
+    sleeveText: null, chestMark: null, backText: null,
     autoRotate: true, speed: 0.6, background: 'transparent', quality: 'auto',
   };
 }
+const SPIN_NOTE_CSS = 'position:absolute;left:50%;top:14px;transform:translateX(-50%);'
+  + 'padding:5px 11px;border-radius:99px;background:rgba(11,18,32,.78);color:#E8A33D;'
+  + 'font:500 11px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.12em;'
+  + 'pointer-events:none;z-index:3';
+
 async function renderSpinView() {
   overlayHostEl.innerHTML = '';
   dragLayerEl.classList.remove('draggable');
@@ -725,16 +818,30 @@ async function renderSpinView() {
   const mod = await loadSpinModule();
   if (state.canvasTab !== 'spin') return;
   if (!mod || (state.style !== 'ls' && state.style !== 'ss')) {
+    disposeSpin();
     svgHostEl.innerHTML = `<div class="slot-empty-note" style="padding:24px;text-align:center;">${mod ? '360° view is available for rashguards (long or short sleeve).' : '360° view needs WebGL — showing the flat render instead.'}</div>`;
     if (!mod) renderGarmentCanvas({ overlays: false });
     return;
   }
-  svgHostEl.innerHTML = '<div id="spinHost" style="position:absolute;inset:0"></div><div class="spin-hint">DRAG TO SPIN</div>';
-  const host = document.getElementById('spinHost');
-  const opts = spinOptsFromState();
-  spin = mod.mountSpin(host, opts);
-  if (host.dataset.spinFallback === '1') { svgHostEl.innerHTML = ''; renderGarmentCanvas({ overlays: false }); spin = null; return; }
-  if (spin && spin.onInteract) spin.onInteract(() => { const h = svgHostEl.querySelector('.spin-hint'); if (h) h.style.opacity = '0'; });
+  // Re-mount only when there is nothing to keep: swapping textures on a live viewer is
+  // what lets a scale drag re-bake without rebuilding the geometry or losing the pose.
+  const mounted = spin && spinHostEl && svgHostEl.contains(spinHostEl);
+  if (!mounted) {
+    disposeSpin();
+    svgHostEl.innerHTML = '<div id="spinHost" style="position:absolute;inset:0"></div>'
+      + `<div class="spin-baking" style="${SPIN_NOTE_CSS}" hidden>BUILDING 360…</div>`
+      + '<div class="spin-hint">DRAG TO SPIN</div>';
+    const host = document.getElementById('spinHost');
+    spin = mod.mountSpin(host, spinOptsFromState());
+    if (host.dataset.spinFallback === '1') {
+      svgHostEl.innerHTML = ''; renderGarmentCanvas({ overlays: false }); spin = null; return;
+    }
+    spinHostEl = host;
+    if (spin.onInteract) spin.onInteract(() => { const h = svgHostEl.querySelector('.spin-hint'); if (h) h.style.opacity = '0'; });
+  } else {
+    spin.update(spinOptsFromState());
+  }
+  scheduleSpinBake(!mounted);
 }
 
 let canvasRaf = null;

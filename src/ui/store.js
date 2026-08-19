@@ -13,6 +13,7 @@ import { renderGarment, renderRanked, STYLES, GI_PRESETS, BELT_HEX } from '../re
 import { renderCutSheet } from '../render/panel.js';
 import { artPatternDef, artPatternRef } from '../render/art.js';
 import { makePattern } from '../data/patterns.js';
+import { svgToPng } from '../render/export.js';
 import {
   PRODUCTS, findProduct, BELTS, BELT_LABEL, SIZES,
   RANKED_SS, IBJJF_814, IBJJF_URL,
@@ -37,7 +38,7 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
  * One garment render. Handles the artwork pattern defs and the ranked construction.
  * Every svg gets its own uid so ids never cross-wire between instances.
  */
-function svgFor({ style, view = 'front', baseColor, artSpec = null, artScale = 1, ranked = null, marks = null, size = 1000, detail = 'full', design = null }) {
+function svgFor({ style, view = 'front', baseColor, artSpec = null, artScale = 1, ranked = null, marks = null, size = 1000, detail = 'full', design = null, part = null }) {
   const uid = nextUid();
   let defs = '', slots = {};
   if (artSpec) {
@@ -46,9 +47,9 @@ function svgFor({ style, view = 'front', baseColor, artSpec = null, artScale = 1
     slots = { all: artPatternRef({ uid }) };
   }
   if (ranked) {
-    return renderRanked({ style, view, belt: ranked.belt, body: ranked.body, uid, size, detail, marks, defs, slots });
+    return renderRanked({ style, view, belt: ranked.belt, body: ranked.body, uid, size, detail, marks, defs, slots, part });
   }
-  return renderGarment({ style, view, baseColor, slots, size, detail, uid, defs, marks, design });
+  return renderGarment({ style, view, baseColor, slots, size, detail, uid, defs, marks, design, part });
 }
 
 const productSvg = (p, opts = {}) => svgFor({
@@ -588,20 +589,54 @@ function openPdp(id) {
   $('#pdp').focus({ preventScroll: true });
 }
 
+/**
+ * The product's own flat render, baked onto the 3D garment: front/back × torso and the
+ * two sleeves, unshaded (detail:'tex'), so the 360 carries the same artwork, the same
+ * ranked colours and the same marks as the flat views next to it. Data URLs, because the
+ * viewer reads these back off a canvas.
+ */
+const BAKE_PX = 1024;
+function blobToDataUrl(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result));
+    r.onerror = () => rej(r.error || new Error('bake read failed'));
+    r.readAsDataURL(blob);
+  });
+}
+async function bakeProduct(p) {
+  const jobs = [];
+  for (const view of ['front', 'back']) {
+    for (const part of ['torso', 'sleeveL', 'sleeveR']) {
+      const svg = productSvg(p, { view, part, detail: 'tex', size: BAKE_PX });
+      const name = part === 'torso' ? view : `${part}${view === 'front' ? 'Front' : 'Back'}`;
+      jobs.push(svgToPng(svg, { width: BAKE_PX }).then(blobToDataUrl).then((url) => [name, url]));
+    }
+  }
+  return Object.fromEntries(await Promise.all(jobs));
+}
+
 async function mountPdpSpin(p) {
+  const host = $('#pdpSpinHost');
   try {
     const mod = await import('../render/spin3d.js');
-    pdpSpin = mod.mountSpin($('#pdpSpinHost'), {
+    let bake = null;
+    try { bake = await bakeProduct(p); } catch (e) { console.warn('360 bake failed — showing the plain garment', e); }
+    if (!host.isConnected) return;
+    pdpSpin = mod.mountSpin(host, {
       style: p.style,
       baseColor: p.baseColor,
       sleeveColor: p.ranked && p.ranked.belt && BELT_HEX[p.ranked.belt] ? BELT_HEX[p.ranked.belt] : null,
-      art: p.artSpec ? makePattern(p.artSpec, 320) : null,
+      // With a bake every print — artwork, chest lockup, sleeve run, back word — is
+      // already in the texture. Without one, fall back to the procedural marks.
+      bake,
+      art: bake ? null : (p.artSpec ? makePattern(p.artSpec, 320) : null),
       artTile: 3,
-      sleeveText: 'PRODIGY',
+      sleeveText: bake ? null : 'PRODIGY',
       sleeveTextColor: p.marks?.sleeves?.color || '#F5F3EE',
-      chestMark: 'wordmark',
+      chestMark: bake ? null : 'wordmark',
       chestMarkColor: p.marks?.chest?.color || '#F5F3EE',
-      backText: 'PRODIGY',
+      backText: bake ? null : 'PRODIGY',
       autoRotate: !REDUCED,
       speed: 0.6,
     });

@@ -37,6 +37,12 @@
   button:hover { background:#25324a; }
   button.on { background:#E8A33D; color:#0B1220; border-color:#E8A33D; }
   .stat { font:11px/1.4 ui-monospace,Consolas,monospace; color:#7f8b9e; margin-top:6px; white-space:pre; }
+  .card.wide { width:auto; max-width:760px; }
+  .side { display:flex; gap:12px; align-items:flex-start; }
+  .flats { display:flex; flex-direction:column; gap:8px; }
+  .flats > div { width:214px; height:214px; background:#0d131d; border:1px solid #1e2838; border-radius:6px; }
+  .flats > div svg { display:block; width:100%; height:100%; }
+  .flats span { display:block; font:11px/1.6 ui-monospace,Consolas,monospace; color:#7f8b9e; }
   #shots { display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }
   #shots img { width:200px; border:1px solid #23303f; border-radius:6px; background:#0d131d; }
   .bar { margin:12px 0 8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;
@@ -77,9 +83,10 @@ Sample data only — no real SKUs or prices.</p>
 
 <script type="module">
 import { mountSpin } from '../src/render/spin3d.js';
-import { demoArt } from '../src/render/art.js';
+import { demoArt, artPatternDef, artPatternRef, DEFAULT_TRANSFORM } from '../src/render/art.js';
 import { lockupSVG } from '../src/render/marks.js';
-import { BELT_HEX } from './../src/render/garment.js';
+import { BELT_HEX, renderGarment, renderRanked, slotsFor } from './../src/render/garment.js';
+import { svgToPng } from '../src/render/export.js';
 
 const art = demoArt('geo', 300);
 
@@ -144,6 +151,136 @@ for (const cfg of CONFIGS) {
     api.update({ art: v.hasArt ? art : null });
   };
 }
+
+/* ── BAKED card: the client scenario ────────────────────────────────────────────
+   The user placed art in the studio (all-over at their own scale + rotation, plus a
+   single logo dropped in the chest zone) and asked why the 360 does not show it.
+   The 2D piece renders (detail:'tex', part:…) ARE the 3D texture, so the flat views
+   beside the viewer and the wrapped garment are the same render. ─────────────── */
+
+const BAKE_BASE = '#14161b';
+const BAKE_ART = {
+  all:   { art: demoArt('geo', 300),  transform: { scale: 0.6, rotate: 20, x: 0, y: 0 }, tile: true },
+  chest: { art: demoArt('mark', 300), transform: { scale: 0.55, rotate: 0, x: 0, y: -46 }, tile: false },
+};
+const BAKE_MARKS = {
+  chest:   { kind: 'lockup', color: '#F5F3EE', width: 150 },
+  sleeves: { text: 'PRODIGY', color: '#F5F3EE' },
+  back:    { kind: 'word', color: '#F5F3EE', width: 250 },
+};
+const bakeState = { style: 'ls', ranked: false, belt: 'blue' };
+
+function defsAndSlots(style, view, uid) {
+  let defs = '', slots = {};
+  for (const s of slotsFor(style, view)) {
+    const e = BAKE_ART[s.key];
+    if (!e || !e.art) continue;
+    defs += artPatternDef({ uid, key: s.key, art: e.art, transform: { ...DEFAULT_TRANSFORM, ...e.transform }, tile: e.tile !== false, bbox: s.bbox });
+    slots[s.key] = artPatternRef({ uid, key: s.key });
+  }
+  return { defs, slots };
+}
+function bakeSvg(view, { size = 1000, detail = 'full', part = null } = {}) {
+  const uid = `bk-${view}-${part || 'all'}-${detail}-${bakeState.ranked ? 'r' : 'p'}-${bakeState.style}`;
+  const { defs, slots } = defsAndSlots(bakeState.style, view, uid);
+  const common = { style: bakeState.style, view, uid, size, detail, defs, slots, part, marks: BAKE_MARKS };
+  return bakeState.ranked
+    ? renderRanked({ ...common, belt: bakeState.belt, body: 'black' })
+    : renderGarment({ ...common, baseColor: BAKE_BASE });
+}
+const blobToDataUrl = (blob) => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => res(String(r.result));
+  r.onerror = () => rej(r.error);
+  r.readAsDataURL(blob);
+});
+async function buildBake() {
+  const jobs = [];
+  for (const view of ['front', 'back']) {
+    for (const part of ['torso', 'sleeveL', 'sleeveR']) {
+      const name = part === 'torso' ? view : `${part}${view === 'front' ? 'Front' : 'Back'}`;
+      jobs.push(svgToPng(bakeSvg(view, { size: 1024, detail: 'tex', part }), { width: 1024 })
+        .then(blobToDataUrl).then(url => [name, url]));
+    }
+  }
+  return Object.fromEntries(await Promise.all(jobs));
+}
+
+const bakeCard = document.createElement('div');
+bakeCard.className = 'card wide';
+bakeCard.innerHTML = `<h2>BAKED — the flat 2D render wrapped onto the 3D</h2>
+  <div class="side">
+    <div class="stagewrap"><div class="stage" id="stage-bake"></div>
+      <div class="hint" id="hint-bake">DRAG TO SPIN</div></div>
+    <div class="flats">
+      <span>flat FRONT (2D)</span><div id="flatF"></div>
+      <span>flat BACK (2D)</span><div id="flatB"></div>
+    </div>
+  </div>
+  <div class="ctl">
+    <button data-act="toggle">auto-rotate: off</button>
+    <button data-act="shot">snapshot</button>
+    <button data-act="style">toggle LS/SS</button>
+    <button data-act="ranked">ranked: off</button>
+    <button data-act="scale">art scale 0.6</button>
+    <button data-act="rot">art rotate 20°</button>
+  </div>
+  <div class="stat" id="stat-bake">building…</div>`;
+row.appendChild(bakeCard);
+
+function drawFlats() {
+  document.getElementById('flatF').innerHTML = bakeSvg('front', { size: 214 });
+  document.getElementById('flatB').innerHTML = bakeSvg('back', { size: 214 });
+}
+let bakeView = null;
+async function rebake() {
+  drawFlats();
+  const bake = await buildBake();
+  if (!bakeView) return bake;
+  bakeView.api.update({ style: bakeState.style, sleeveColor: bakeState.ranked ? BELT_HEX[bakeState.belt] : null, bake });
+  return bake;
+}
+(async () => {
+  drawFlats();
+  const bake = await buildBake();
+  const el = document.getElementById('stage-bake');
+  const api = mountSpin(el, {
+    style: bakeState.style, baseColor: BAKE_BASE, bake,
+    sleeveText: null, chestMark: null, backText: null,
+    mannequin: 'grey', speed: 0.6, autoRotate: false, dragHint: true,
+  });
+  const hint = bakeCard.querySelector('.hint');
+  api.onInteract(() => hint.classList.add('gone'));
+  bakeView = { id: 'bake', api, el, opts: {}, rotating: false, hasArt: true };
+  views.push(bakeView);
+  bakeCard.querySelector('[data-act="toggle"]').onclick = (e) => {
+    bakeView.rotating = !bakeView.rotating; api.setAutoRotate(bakeView.rotating);
+    e.target.textContent = `auto-rotate: ${bakeView.rotating ? 'on' : 'off'}`;
+  };
+  bakeCard.querySelector('[data-act="shot"]').onclick = () => shot(bakeView, 900);
+  bakeCard.querySelector('[data-act="style"]').onclick = () => {
+    bakeState.style = bakeState.style === 'ls' ? 'ss' : 'ls';
+    rebake();
+  };
+  bakeCard.querySelector('[data-act="ranked"]').onclick = (e) => {
+    bakeState.ranked = !bakeState.ranked;
+    e.target.textContent = `ranked: ${bakeState.ranked ? 'blue' : 'off'}`;
+    e.target.classList.toggle('on', bakeState.ranked);
+    rebake();
+  };
+  bakeCard.querySelector('[data-act="scale"]').onclick = (e) => {
+    BAKE_ART.all.transform.scale = BAKE_ART.all.transform.scale === 0.6 ? 1.2 : 0.6;
+    e.target.textContent = `art scale ${BAKE_ART.all.transform.scale}`;
+    rebake();
+  };
+  bakeCard.querySelector('[data-act="rot"]').onclick = (e) => {
+    BAKE_ART.all.transform.rotate = BAKE_ART.all.transform.rotate === 20 ? -35 : 20;
+    e.target.textContent = `art rotate ${BAKE_ART.all.transform.rotate}°`;
+    rebake();
+  };
+  window.__bake = { rebake, state: bakeState, art: BAKE_ART, svg: bakeSvg, build: buildBake };
+  window.__bakeReady = true;
+})();
 
 async function shot(v, width = 900) {
   const blob = await v.api.snapshot(width);

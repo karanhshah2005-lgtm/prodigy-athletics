@@ -39,6 +39,13 @@ export const SPIN_DEFAULTS = Object.freeze({
   baseColor: '#14161b',
   art: null,               // { dataUrl, w, h }
   artTile: 3,              // repeat count around the torso
+  // BAKE. Six PNG data URLs from the 2D renderer — renderGarment({detail:'tex', part})
+  // for view front/back × part torso/sleeveL/sleeveR — wrapped onto the mesh instead of
+  // drawing the base colour, the art and the marks here. This is what makes the 360 show
+  // exactly what the flat view shows, including per-slot art with the user's own scale,
+  // rotation and offset. Absent → everything below behaves as before.
+  //   { front, back, sleeveLFront, sleeveLBack, sleeveRFront, sleeveRBack }
+  bake: null,
   sleeveText: 'PRODIGY',
   sleeveTextColor: '#F5F3EE',
   sleeveColor: null,        // optional sleeve base (ranked construction) — falls back to baseColor
@@ -572,7 +579,9 @@ function buildGarment(style, q, opts) {
     }, (u, t) => [u + SLEEVE_PRINT_SHIFT * sd.side, vOfT(t)]);
     return geo;
   });
-  sleeveGeos.forEach(g => parts.push({ geo: g, kind: 'sleeve' }));
+  // side +1 is the wearer's LEFT arm (+X), side -1 the wearer's right. The baked
+  // textures are per-arm, so the part has to say which arm it is.
+  sleeveGeos.forEach((g, i) => parts.push({ geo: g, kind: 'sleeve', side: sleeveData[i].side }));
 
   // — sleeve metrics for the texture —
   const rMid = sleeveRadius(sEnd * 0.5);
@@ -846,22 +855,357 @@ function armscyePath(x, pts, branch, W, H, du) {
   }
 }
 
+// ─────────────────────── baked 2D render → 3D texture (`bake`) ───────────────────────
+//
+// The 2D SVG renderer is the source of truth for WHAT is printed. The studio lets the
+// user drop art into any slot — all-over, a body panel, the chest logo zone — with their
+// own scale / rotation / offset, and the flat view is what they judge the design by.
+// Re-deriving that procedurally in 3D can only ever approximate it, which is exactly the
+// bug this closes: the viewer used to tile `art.all` 3× and ignore everything else.
+//
+// So garment.js renders each PHYSICAL PIECE unshaded (detail:'tex', part:'torso' |
+// 'sleeveL' | 'sleeveR'), front and back, and those six PNGs are wrapped onto the mesh
+// here. Lighting still comes from the 3D scene — that is why the bake is deliberately
+// unshaded, and why the bands / seam AO below are still drawn over it.
+//
+// TORSO — texture column u ↔ angle θ = (u − 0.25)·2π about the body (front centre
+// u = 0.25, back centre u = 0.75). The flat drawing is an orthographic projection of the
+// same tube, so the point at angle θ sits at flat x = xc + seLateral(sin θ)·halfWidth —
+// see TORSO_SE: the cross-section is a superellipse, and using plain sin(θ) magnifies the
+// chest print by ~20%. xc and halfWidth are read per texture ROW from the piece's own
+// alpha, so the sampling follows the real silhouette (chest wide, waist narrow) rather
+// than a constant rectangle.
+// |θ| > 90° switches to the back image; both images meet where each is sampling its own
+// outermost opaque pixel, i.e. on the side seam, so the wrap has no seam of base colour.
+//
+// SLEEVE — the flat sleeve is a diagonal strip. Its axis is fitted from the alpha, the
+// strip is rotated upright (shoulder at top) and mirrored so the OUTER edge of the arm is
+// always on the right, then column-warped exactly like the torso with lateral = cos(A),
+// A being the mesh's own angle about the arm (A = 0 is the outer face). sin(A) ≥ 0 takes
+// the front image, the rest the back image; they meet on the outer and inner edges.
+// The u→x direction falls out of cos(A), so neither sleeve is ever mirrored — the mirror
+// term in the geometry and the flip here cancel.
+
+const BAKE_A = 110;                       // alpha ≥ this counts as printed cloth
+const BAKE_KEYS = ['front', 'back', 'sleeveLFront', 'sleeveLBack', 'sleeveRFront', 'sleeveRBack'];
+
+/** The bake's data URLs, for preloading. */
+function bakeUrls(o) {
+  const b = o && o.bake;
+  if (!b) return [];
+  return BAKE_KEYS.map(k => b[k]).filter(Boolean);
+}
+/**
+ * Drop a superseded bake from the module image cache. Six 1024² PNGs is ~25 MB of decoded
+ * pixels per bake; the studio re-bakes on every art change, so without this a few minutes
+ * of dragging the scale slider is hundreds of megabytes that never come back. Dropping the
+ * Image also drops its prepped row tables, which hang off it in a WeakMap.
+ */
+function dropBake(bake) {
+  if (!bake) return;
+  for (const k of BAKE_KEYS) if (bake[k]) _imgCache.delete(bake[k]);
+}
+
+/** All six images decoded, or null — in which case the procedural path runs unchanged. */
+function bakeImages(o) {
+  const b = o && o.bake;
+  if (!b) return null;
+  const out = {};
+  for (const k of BAKE_KEYS) {
+    const img = getArtImage(b[k]);
+    if (!img || !img.width) return null;
+    out[k] = img;
+  }
+  return out;
+}
+
+function readPixels(src, w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(src, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h);
+  c.width = c.height = 0;
+  return d;
+}
+
+/**
+ * Per-row sampling table for one flat piece: the opaque span of every row, with narrow
+ * rows (the neckline notch, the hem bulge, the tip of a sleeve wedge) filled in from the
+ * nearest usable row so a projection never divides by a 3 px width.
+ * `centreSpan` takes the vertical extent from the piece's CENTRE column — on the torso
+ * v = 1 must be the neckline, not the shoulder points either side of it.
+ */
+function pieceRows(px, { centreSpan = false, minWidth = 0.30 } = {}) {
+  const w = px.width, h = px.height, d = px.data;
+  const L = new Int32Array(h), R = new Int32Array(h);
+  let maxW = 0, firstAny = -1, lastAny = -1;
+  for (let y = 0; y < h; y++) {
+    let l = -1, r = -1;
+    const b = y * w * 4 + 3;
+    for (let x = 0; x < w; x++) if (d[b + x * 4] >= BAKE_A) { if (l < 0) l = x; r = x; }
+    L[y] = l; R[y] = r;
+    if (l >= 0) { if (firstAny < 0) firstAny = y; lastAny = y; if (r - l > maxW) maxW = r - l; }
+  }
+  if (firstAny < 0) return null;
+
+  let yTop = firstAny, yBot = lastAny;
+  if (centreSpan) {
+    const cxi = Math.round(w / 2);
+    let a = -1, b2 = -1;
+    for (let y = 0; y < h; y++) if (d[(y * w + cxi) * 4 + 3] >= BAKE_A) { if (a < 0) a = y; b2 = y; }
+    if (a >= 0 && b2 > a) { yTop = a; yBot = b2; }
+  }
+
+  const okW = Math.max(2, maxW * minWidth);
+  const good = y => L[y] >= 0 && R[y] - L[y] >= okW;
+  const prev = new Int32Array(h), next = new Int32Array(h);
+  let last = -1;
+  for (let y = 0; y < h; y++) { if (good(y)) last = y; prev[y] = last; }
+  let nxt = -1;
+  for (let y = h - 1; y >= 0; y--) { if (good(y)) nxt = y; next[y] = nxt; }
+
+  const xc = new Float32Array(h), hw = new Float32Array(h);
+  const lo = new Int32Array(h), hi = new Int32Array(h);
+  for (let y = 0; y < h; y++) {
+    let s = y;
+    if (!good(y)) {
+      const a = prev[y], b2 = next[y];
+      s = a < 0 ? b2 : b2 < 0 ? a : (y - a <= b2 - y ? a : b2);
+      if (s < 0) s = firstAny;
+    }
+    const l = L[s], r = R[s];
+    if (l < 0) { xc[y] = w / 2; hw[y] = 1; lo[y] = 0; hi[y] = w - 1; }
+    else {
+      xc[y] = (l + r) / 2;
+      hw[y] = Math.max(1, (r - l) / 2 - 1.2);   // 1.2 px inset: never sample the AA fringe
+      lo[y] = Math.min(l + 1, r); hi[y] = Math.max(r - 1, l);
+    }
+  }
+  return { w, h, data: d, xc, hw, lo, hi, yTop, yBot };
+}
+
+/**
+ * Fit the sleeve strip's axis from its alpha, straighten it (shoulder at top) and mirror
+ * it so the arm's OUTER edge is on the right. Returns the same row table as pieceRows.
+ */
+function straightenSleeve(img) {
+  const w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height;
+  const px = readPixels(img, w0, h0);
+  const d = px.data;
+  let n = 0;
+  for (let i = 3; i < d.length; i += 4) if (d[i] >= BAKE_A) n++;
+  if (n < 64) return null;
+
+  const PX = new Float32Array(n), PY = new Float32Array(n);
+  const cx0 = w0 / 2, cy0 = h0 / 2;
+  let k = 0, sx = 0, sy = 0, minD = Infinity, maxD = -Infinity;
+  for (let y = 0; y < h0; y++) {
+    const b = y * w0 * 4 + 3;
+    for (let x = 0; x < w0; x++) {
+      if (d[b + x * 4] < BAKE_A) continue;
+      PX[k] = x; PY[k] = y; k++; sx += x; sy += y;
+      const dd = Math.abs(x - cx0);
+      if (dd < minD) minD = dd;
+      if (dd > maxD) maxD = dd;
+    }
+  }
+  const Cx = sx / n, Cy = sy / n;
+
+  // 1 — first estimate. The shoulder end is the fabric nearest the body, i.e. the inner
+  //     15% of the piece's horizontal reach (that band IS the armscye, at any sleeve
+  //     length). Centroid − armscye centroid points down the arm. PCA does not work here:
+  //     a short sleeve is WIDER across the armscye than it is long.
+  const lim = minD + 0.15 * Math.max(1, maxD - minD);
+  let m2 = 0, ax2 = 0, ay2 = 0;
+  for (let i = 0; i < n; i++) if (Math.abs(PX[i] - cx0) <= lim) { ax2 += PX[i]; ay2 += PY[i]; m2++; }
+  const Sx = m2 ? ax2 / m2 : Cx, Sy = m2 ? ay2 / m2 : Cy - 1;
+  let ax = Cx - Sx, ay = Cy - Sy;
+  let len = Math.hypot(ax, ay);
+  if (len < 1e-3) { ax = 0; ay = 1; len = 1; }
+  ax /= len; ay /= len;
+
+  const Xs = new Float32Array(n), Ys = new Float32Array(n);
+  const project = () => {
+    let y0 = Infinity, y1 = -Infinity;
+    for (let i = 0; i < n; i++) {
+      const dx = PX[i] - Cx, dy = PY[i] - Cy;
+      Xs[i] = ay * dx - ax * dy;
+      Ys[i] = ax * dx + ay * dy;
+      if (Ys[i] < y0) y0 = Ys[i];
+      if (Ys[i] > y1) y1 = Ys[i];
+    }
+    return [y0, y1];
+  };
+
+  // 2 — refine twice: in the frame where the axis is vertical, the medial line of a band
+  //     IS its axis. Least squares over row centroids, ends trimmed, slope clamped to
+  //     ±25° per pass so a poor start can never spin the strip.
+  for (let pass = 0; pass < 2; pass++) {
+    const [y0, y1] = project();
+    const a0 = y0 + (y1 - y0) * 0.20, a1 = y0 + (y1 - y0) * 0.80;
+    if (!(a1 > a0)) break;
+    const NB = 32, sX = new Float64Array(NB), cnt = new Float64Array(NB);
+    for (let i = 0; i < n; i++) {
+      if (Ys[i] < a0 || Ys[i] > a1) continue;
+      const b = Math.min(NB - 1, Math.floor((Ys[i] - a0) / (a1 - a0) * NB));
+      sX[b] += Xs[i]; cnt[b]++;
+    }
+    let nb = 0, SY = 0, SX = 0, SYY = 0, SXY = 0;
+    for (let b = 0; b < NB; b++) {
+      if (!cnt[b]) continue;
+      const Y = a0 + (b + 0.5) / NB * (a1 - a0), X = sX[b] / cnt[b];
+      nb++; SY += Y; SX += X; SYY += Y * Y; SXY += X * Y;
+    }
+    if (nb < 4) break;
+    const den = nb * SYY - SY * SY;
+    if (Math.abs(den) < 1e-6) break;
+    let mm = (nb * SXY - SX * SY) / den;
+    mm = Math.max(-0.466, Math.min(0.466, mm));
+    const nx = (ax + ay * mm), ny = (ay - ax * mm);
+    const nl = Math.hypot(nx, ny);
+    if (nl > 1e-6) { ax = nx / nl; ay = ny / nl; }
+  }
+
+  // 3 — orient: the cuff end is the one FARTHER from the garment's centre line.
+  {
+    const [y0, y1] = project();
+    const a0 = y0 + (y1 - y0) * 0.22, a1 = y1 - (y1 - y0) * 0.22;
+    let lowS = 0, lowN = 0, hiS = 0, hiN = 0;
+    for (let i = 0; i < n; i++) {
+      const dd = Math.abs(PX[i] - cx0);
+      if (Ys[i] <= a0) { lowS += dd; lowN++; } else if (Ys[i] >= a1) { hiS += dd; hiN++; }
+    }
+    if (lowN && hiN && lowS / lowN > hiS / hiN) { ax = -ax; ay = -ay; }
+  }
+
+  // 4 — straighten. One drawImage; the flip puts the arm's OUTER edge on the right for
+  //     every sleeve and every view, which is what makes the front/back halves join.
+  let X0 = Infinity, X1 = -Infinity, Y0 = Infinity, Y1 = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const dx = PX[i] - Cx, dy = PY[i] - Cy;
+    const X = ay * dx - ax * dy, Y = ax * dx + ay * dy;
+    if (X < X0) X0 = X; if (X > X1) X1 = X;
+    if (Y < Y0) Y0 = Y; if (Y > Y1) Y1 = Y;
+  }
+  const SW = Math.max(8, Math.ceil(X1 - X0) + 4), SH = Math.max(8, Math.ceil(Y1 - Y0) + 4);
+  const outerRight = ay * (Cx - cx0) - ax * (Cy - cy0) >= 0;
+  const theta = Math.PI / 2 - Math.atan2(ay, ax);
+
+  const c = document.createElement('canvas');
+  c.width = SW; c.height = SH;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.imageSmoothingQuality = 'high';
+  if (!outerRight) { g.translate(SW, 0); g.scale(-1, 1); }
+  g.translate(-X0 + 2, -Y0 + 2);
+  g.rotate(theta);
+  g.translate(-Cx, -Cy);
+  g.drawImage(img, 0, 0, w0, h0);
+  const spx = g.getImageData(0, 0, SW, SH);
+  c.width = c.height = 0;
+  return pieceRows(spx, { centreSpan: false, minWidth: 0.10 });
+}
+
+const _bakePrep = new WeakMap();
+function prepCached(img, mode, build) {
+  let m = _bakePrep.get(img);
+  if (!m) { m = new Map(); _bakePrep.set(img, m); }
+  if (!m.has(mode)) m.set(mode, build());
+  return m.get(mode);
+}
+const prepTorso = img => prepCached(img, 'torso', () => {
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  return pieceRows(readPixels(img, w, h), { centreSpan: true });
+});
+const prepSleeve = img => prepCached(img, 'sleeve', () => straightenSleeve(img));
+
+/** Column warp shared by both pieces. `sel(i)` → [piece, lateral] for texture column i. */
+function warpInto(x, W, H, baseHex, sel) {
+  const out = x.createImageData(W, H);
+  const od = out.data;
+  const [br, bg, bb] = hexToRgb(baseHex);
+  const pieces = new Array(W), lat = new Float32Array(W), pick = new Int32Array(W);
+  const uniq = [];
+  for (let i = 0; i < W; i++) {
+    const [p, k] = sel((i + 0.5) / W);
+    let n = uniq.indexOf(p);
+    if (n < 0) { n = uniq.length; uniq.push(p); }
+    pieces[i] = p; pick[i] = n; lat[i] = k;
+  }
+  // one row of source metrics per distinct piece, recomputed per texture row
+  const sy = new Int32Array(uniq.length);
+  for (let j = 0; j < H; j++) {
+    const t = (j + 0.5) / H;
+    for (let u = 0; u < uniq.length; u++) {
+      const P = uniq[u];
+      sy[u] = Math.max(0, Math.min(P.h - 1, Math.round(P.yTop + t * (P.yBot - P.yTop))));
+    }
+    const ro = j * W * 4;
+    for (let i = 0; i < W; i++) {
+      const P = pieces[i];
+      const y = sy[pick[i]];
+      let sx = Math.round(P.xc[y] + lat[i] * P.hw[y]);
+      if (sx < P.lo[y]) sx = P.lo[y]; else if (sx > P.hi[y]) sx = P.hi[y];
+      const si = (y * P.w + sx) * 4, oi = ro + i * 4;
+      if (P.data[si + 3] >= BAKE_A) { od[oi] = P.data[si]; od[oi + 1] = P.data[si + 1]; od[oi + 2] = P.data[si + 2]; }
+      else { od[oi] = br; od[oi + 1] = bg; od[oi + 2] = bb; }
+      od[oi + 3] = 255;
+    }
+  }
+  x.putImageData(out, 0, 0);
+}
+
+// The torso cross-section is a SUPERELLIPSE (n ≈ 2.55), not a circle: ringPos() puts the
+// column at angle θ at world x = rx·sgnPow(sin θ, 2/n). A flat drawing is an orthographic
+// projection, so the flat x of that column is xc + sgnPow(sin θ, 2/n)·halfWidth — sampling
+// at plain sin(θ) instead lands every front-facing column too far out and blows the chest
+// print up by ~20%. Same exponent as the geometry, so the two agree by construction.
+const TORSO_SE = 2 / 2.58;   // the chest/upper-back rings, where prints actually live
+const seLateral = t => sgnPow(t, TORSO_SE);
+
+/** Front + back flat torso → the cylindrical torso texture. */
+function drawBakedTorso(x, W, H, o, imgs) {
+  const F = prepTorso(imgs.front), B = prepTorso(imgs.back);
+  if (!F || !B) return false;
+  warpInto(x, W, H, o.baseColor, u => (u < 0.5
+    ? [F, seLateral(Math.sin((u - 0.25) * TAU))]
+    : [B, seLateral(Math.sin((u - 0.75) * TAU))]));
+  return true;
+}
+
+/** Front + back flat sleeve → one arm's texture. `side` is +1 for the wearer's LEFT. */
+function drawBakedSleeve(x, S, o, side, imgs) {
+  const wear = side === 1 ? 'sleeveL' : 'sleeveR';
+  const F = prepSleeve(imgs[`${wear}Front`]), B = prepSleeve(imgs[`${wear}Back`]);
+  if (!F || !B) return false;
+  const mirror = side === -1 ? 1 : -1;
+  const shift = SLEEVE_PRINT_SHIFT * side;
+  warpInto(x, S, S, o.sleeveColor || o.baseColor, u => {
+    const A = mirror * (u - shift - 0.5) * TAU;
+    return [Math.sin(A) >= 0 ? F : B, Math.cos(A)];
+  });
+  return true;
+}
+
 // ───────────────────────────── textures ─────────────────────────────
 
-function buildTorsoCanvas(o, m, q) {
+function buildTorsoCanvas(o, m, q, bakedImgs) {
   const [W, H] = q.torsoTex;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
   const x = c.getContext('2d');
 
-  x.fillStyle = o.baseColor;
-  x.fillRect(0, 0, W, H);
+  const baked = bakedImgs ? drawBakedTorso(x, W, H, o, bakedImgs) : false;
+  if (!baked) {
+    x.fillStyle = o.baseColor;
+    x.fillRect(0, 0, W, H);
+  }
 
   const upw = m.chestCirc / W;         // world units per px across U
   const vpw = m.arcWorld / H;          // world units per px down V
   const squash = upw / vpw;            // apply as ctx.scale(1, squash) for world-isotropy
 
-  const img = getArtImage(o.art && o.art.dataUrl);
+  const img = baked ? null : getArtImage(o.art && o.art.dataUrl);
   let tileWorld = 0;
   if (img && o.art) {
     const tiles = Math.max(1, Math.round(o.artTile || 3));
@@ -932,7 +1276,8 @@ function buildTorsoCanvas(o, m, q) {
   const urls = markUrls(o);
 
   // ── chest mark, centred on the front (u = 0.25) ──
-  if (o.chestMark || o.chestMarkSvg) {
+  // When the design is BAKED, every mark already lives in the flat render.
+  if (!baked && (o.chestMark || o.chestMarkSvg)) {
     const cx = W * 0.25;
     const cy = (1 - m.vAtY(-0.205)) * H;
     const mark = getArtImage(urls.chest);
@@ -970,7 +1315,7 @@ function buildTorsoCanvas(o, m, q) {
   }
 
   // ── back text, centred on the back (u = 0.75), between the shoulder blades ──
-  if (o.backText || o.backTextSvg) {
+  if (!baked && (o.backText || o.backTextSvg)) {
     const cx = W * 0.75;
     const cy = (1 - m.vAtY(-0.215)) * H;
     const mark = getArtImage(urls.back);
@@ -1025,21 +1370,24 @@ function buildTorsoCanvas(o, m, q) {
   return c;
 }
 
-function buildSleeveCanvas(o, m, q) {
+function buildSleeveCanvas(o, m, q, side = 1, bakedImgs = null) {
   const S = q.sleeveTex;
   const c = document.createElement('canvas');
   c.width = S; c.height = S;
   const x = c.getContext('2d');
 
   const sleeveBase = o.sleeveColor || o.baseColor;
-  x.fillStyle = sleeveBase;
-  x.fillRect(0, 0, S, S);
+  const baked = bakedImgs ? drawBakedSleeve(x, S, o, side, bakedImgs) : false;
+  if (!baked) {
+    x.fillStyle = sleeveBase;
+    x.fillRect(0, 0, S, S);
+  }
 
   const upw = m.sleeveCirc / S;
   const vpw = m.sleeveLen / S;
   const squash = upw / vpw;
 
-  const img = getArtImage(o.art && o.art.dataUrl);
+  const img = baked ? null : getArtImage(o.art && o.art.dataUrl);
   if (img && o.art) {
     const tiles = Math.max(1, Math.round(o.artTile || 3));
     const tileWorld = m.chestCirc / tiles;              // same print scale as the torso
@@ -1066,8 +1414,8 @@ function buildSleeveCanvas(o, m, q) {
   // And it TAPERS: each slice is scaled by sleeveRadius(s)/sleeveRadius(shoulder), so the
   // 'Y' at the wrist is not the same cap height as the 'P' at the shoulder and the print
   // keeps a constant angular width all the way down the arm.
-  const text = (o.sleeveText || '').trim();
-  if (text || o.sleeveTextSvg) {
+  const text = baked ? '' : (o.sleeveText || '').trim();
+  if (text || (!baked && o.sleeveTextSvg)) {
     const vTop = (m.sleeveCapV ?? 0.98) - 0.02, vBot = 0.055;   // below the head → above the cuff
     const runPx = (vTop - vBot) * S;                   // available run in canvas px (after squash)
     const vMid = (vTop + vBot) / 2;
@@ -1316,13 +1664,14 @@ export function mountSpin(el, opts = {}) {
     // rig runs 1.18 EV / key 2.10 and a mid grey blows out to near-white, so pull it down
     formMat.color.set(shade(FORM_GREY, -0.34 + 0.34 * t));
     formMat.needsUpdate = true;
-    fabric.sheen = fabricSleeve.sheen = 0.60 + 0.35 * (1 - t);
+    fabric.sheen = 0.60 + 0.35 * (1 - t);
+    for (const sm of sleeveMats) sm.mat.sheen = fabric.sheen;
     bounce.intensity = 0.42 - 0.12 * t;
     const env = 0.98 - 0.22 * t;
     fabric.envMapIntensity = env;
-    fabricSleeve.envMapIntensity = env;
+    for (const sm of sleeveMats) { sm.mat.envMapIntensity = env; sm.mat.needsUpdate = true; }
     collarMat.envMapIntensity = env * 0.94;
-    fabric.needsUpdate = fabricSleeve.needsUpdate = collarMat.needsUpdate = true;
+    fabric.needsUpdate = collarMat.needsUpdate = true;
     needsRender = true;
   }
 
@@ -1386,7 +1735,7 @@ export function mountSpin(el, opts = {}) {
   const root = new THREE.Group();
   scene.add(root);
 
-  let build = null, torsoTex = null, sleeveTex = null;
+  let build = null, torsoTex = null, sleeveTexes = [];
   let visible = true, raf = 0, disposed = false, needsRender = true;
   const owned = { geos: [], meshes: [] };
 
@@ -1396,7 +1745,10 @@ export function mountSpin(el, opts = {}) {
     owned.geos.length = 0; owned.meshes.length = 0;
   }
 
-  const MAT = () => ({ torso: fabric, sleeve: fabricSleeve, collar: collarMat, inner: innerMat });
+  const MAT = () => ({ torso: fabric, collar: collarMat, inner: innerMat });
+  const matFor = part => (part.kind === 'sleeve'
+    ? (sleeveMats.find(sm => sm.side === part.side) || sleeveMats[0]).mat
+    : MAT()[part.kind] || fabric);
 
   function add(geo, mat) {
     const mesh = new THREE.Mesh(geo, mat);
@@ -1407,9 +1759,8 @@ export function mountSpin(el, opts = {}) {
   function buildAll() {
     clearBuild();
     build = buildGarment(o.style, q, { mannequin: o.mannequin, wrinkles: o.wrinkles });
-    const mats = MAT();
 
-    for (const part of build.parts) add(part.geo, mats[part.kind] || fabric);
+    for (const part of build.parts) add(part.geo, matFor(part));
 
     // inner planes / caps
     for (const cap of build.caps) {
@@ -1470,34 +1821,47 @@ export function mountSpin(el, opts = {}) {
 
   function rebuildTextures() {
     if (!build) return;
-    const tt = makeTexture(buildTorsoCanvas(o, build.metrics, q), renderer);
-    const st = makeTexture(buildSleeveCanvas(o, build.metrics, q), renderer);
+    // A bake that has not finished decoding falls straight through to the procedural
+    // path; loadAssets() re-enters here the moment the last image lands.
+    const imgs = bakeImages(o);
+    const tt = makeTexture(buildTorsoCanvas(o, build.metrics, q, imgs), renderer);
+    // The two arms only share a texture when nothing is baked — a baked sleeve carries
+    // the wearer's own left/right art, which is not the same cloth.
+    const sts = imgs
+      ? sleeveMats.map(sm => makeTexture(buildSleeveCanvas(o, build.metrics, q, sm.side, imgs), renderer))
+      : [makeTexture(buildSleeveCanvas(o, build.metrics, q, 1, null), renderer)];
     if (torsoTex) torsoTex.dispose();
-    if (sleeveTex) sleeveTex.dispose();
-    torsoTex = tt; sleeveTex = st;
-    // one material carries both maps via per-mesh material clones? keep it simple:
-    // torso uses `fabric`, sleeves use `fabricSleeve`
+    for (const t of sleeveTexes) t.dispose();
+    torsoTex = tt; sleeveTexes = sts;
     knitRepeat(fabric, build.metrics.chestCirc, build.metrics.arcWorld);
-    knitRepeat(fabricSleeve, build.metrics.sleeveCirc, build.metrics.sleeveLen);
     fabric.map = torsoTex; fabric.needsUpdate = true;
-    fabricSleeve.map = sleeveTex; fabricSleeve.needsUpdate = true;
+    sleeveMats.forEach((sm, i) => {
+      knitRepeat(sm.mat, build.metrics.sleeveCirc, build.metrics.sleeveLen);
+      sm.mat.map = sts[Math.min(i, sts.length - 1)];
+      sm.mat.needsUpdate = true;
+    });
     collarMat.map = torsoTex; collarMat.needsUpdate = true;
     applyColors();
-    fabricSleeve.sheenColor.copy(fabric.sheenColor);
+    for (const sm of sleeveMats) sm.mat.sheenColor.copy(fabric.sheenColor);
     needsRender = true;
   }
 
-  // sleeves need their own map, so clone the fabric material once
-  const fabricSleeve = fabric.clone();
-  fabricSleeve.side = THREE.DoubleSide;
-  // The sleeve tube and the deltoid cap are EMBEDDED in the torso — that union is what
-  // makes the shoulder round. Give them a constant depth bias so the near-tangent band
-  // where the cap emerges from the trapezius resolves as one clean seam curve instead of
-  // a speckled z-fight.
-  fabricSleeve.polygonOffset = true;
-  fabricSleeve.polygonOffsetFactor = -2;
-  fabricSleeve.polygonOffsetUnits = -2;
-  knitFor(fabricSleeve, 4, 10);   // replaced by knitRepeat() once the metrics are known
+  // sleeves need their own map, so clone the fabric material — one per ARM, because a
+  // baked design is not symmetrical (the wearer's left sleeve can carry different art)
+  function makeSleeveMat() {
+    const mat = fabric.clone();
+    mat.side = THREE.DoubleSide;
+    // The sleeve tube and the deltoid cap are EMBEDDED in the torso — that union is what
+    // makes the shoulder round. Give them a constant depth bias so the near-tangent band
+    // where the cap emerges from the trapezius resolves as one clean seam curve instead of
+    // a speckled z-fight.
+    mat.polygonOffset = true;
+    mat.polygonOffsetFactor = -2;
+    mat.polygonOffsetUnits = -2;
+    knitFor(mat, 4, 10);   // replaced by knitRepeat() once the metrics are known
+    return mat;
+  }
+  const sleeveMats = [{ side: 1, mat: makeSleeveMat() }, { side: -1, mat: makeSleeveMat() }];
 
   /**
    * Framing. A bounding-SPHERE fit is rotation-proof but it frames the sphere, not the
@@ -1690,10 +2054,12 @@ export function mountSpin(el, opts = {}) {
   function loadAssets() {
     const urls = markUrls(o).all;
     if (o.art && o.art.dataUrl) urls.push(o.art.dataUrl);
+    urls.push(...bakeUrls(o));
     const pending = urls.filter(u => !_imgCache.has(u));
     if (pending.length) {
       Promise.all(pending.map(loadArtImage)).then(() => { if (!disposed) rebuildTextures(); });
     }
+    return pending.length > 0;
   }
   loadAssets();
   try {
@@ -1778,7 +2144,7 @@ export function mountSpin(el, opts = {}) {
       || (next.wrinkles !== undefined && next.wrinkles !== prev.wrinkles);
     const texDirty = geoDirty || ['baseColor', 'sleeveColor', 'art', 'artTile', 'sleeveText', 'sleeveTextColor',
       'sleeveTextCap', 'sleeveTextSvg', 'chestMark', 'chestMarkColor', 'chestMarkBg',
-      'chestMarkSvg', 'chestMarkWidth', 'backText', 'backTextSvg',
+      'chestMarkSvg', 'chestMarkWidth', 'backText', 'backTextSvg', 'bake',
     ].some(k => next[k] !== undefined && next[k] !== prev[k]);
 
     if (next.background !== undefined) applyBackground();
@@ -1786,9 +2152,16 @@ export function mountSpin(el, opts = {}) {
     if (next.zoom !== undefined) controls.enableZoom = !!o.zoom;
     if (next.pan !== undefined) controls.enablePan = !!o.pan;
     if (next.autoRotate !== undefined) setAutoRotate(!!o.autoRotate);
+    if (next.bake !== undefined && prev.bake && prev.bake !== o.bake) dropBake(prev.bake);
 
     if (geoDirty) buildAll();
-    if (texDirty) { rebuildTextures(); loadAssets(); }
+    if (texDirty) {
+      const pending = loadAssets();
+      // A bake that is still decoding keeps the CURRENT texture on screen instead of
+      // flashing the un-baked garment; loadAssets() re-enters rebuildTextures() when the
+      // last image lands.
+      if (!(pending && o.bake && !bakeImages(o))) rebuildTextures();
+    }
     needsRender = true;
   }
 
@@ -1875,11 +2248,13 @@ export function mountSpin(el, opts = {}) {
     canvas.removeEventListener('wheel', onWheel);
     canvas.removeEventListener('keydown', onKey);
     controls.dispose();
+    dropBake(o.bake);
     clearBuild();
     if (torsoTex) torsoTex.dispose();
-    if (sleeveTex) sleeveTex.dispose();
+    for (const t of sleeveTexes) t.dispose();
     for (const t of knitClones) t.dispose();
-    fabric.dispose(); fabricSleeve.dispose(); collarMat.dispose(); innerMat.dispose(); formMat.dispose();
+    fabric.dispose(); collarMat.dispose(); innerMat.dispose(); formMat.dispose();
+    for (const sm of sleeveMats) sm.mat.dispose();
     facingMat.dispose(); facingSleeveMat.dispose(); shadowMat.dispose();
     envRT.dispose(); pmrem.dispose();
     renderer.dispose();

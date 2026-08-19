@@ -62,11 +62,15 @@ export const SPIN_DEFAULTS = Object.freeze({
   zoom: false,
   pan: false,
   dragHint: false,         // draws nothing; the host hides its own label via onInteract()
+  mannequin: 'grey',       // 'grey' | 'none' — matte bust form: neck stub + wrist stubs
+  wrinkles: true,          // 2-4 mm compression creases at the underarm / elbow / waist
+  azimuth: 25,             // first-mount view: 3/4 …
+  polar: 82,               // … and slightly high, looking a little down onto the shoulders
 });
 
 const QUALITY = {
-  high: { radial: 32, len: 44, sRadial: 22, sLen: 26, torsoTex: [2048, 1024], sleeveTex: 1024, dpr: 2 },
-  low:  { radial: 20, len: 28, sRadial: 14, sLen: 18, torsoTex: [1024, 512],  sleeveTex: 512,  dpr: 1.5 },
+  high: { radial: 40, len: 56, sRadial: 24, sLen: 40, dSeg: [20, 14], torsoTex: [2048, 1024], sleeveTex: 1024, dpr: 2 },
+  low:  { radial: 26, len: 36, sRadial: 16, sLen: 26, dSeg: [14, 10], torsoTex: [1024, 512],  sleeveTex: 512,  dpr: 1.5 },
 };
 
 // ───────────────────────────── colour helpers ─────────────────────────────
@@ -93,55 +97,99 @@ function luminance(hex) {
 
 // ───────────────────────────── curve helpers ─────────────────────────────
 
-/** Catmull–Rom through an array of numeric tuples, sampled at t ∈ [0, n-1]. */
-function crSample(kp, t) {
-  const n = kp.length;
-  const i = Math.max(0, Math.min(n - 2, Math.floor(t)));
-  const f = Math.max(0, Math.min(1, t - i));
-  const p0 = kp[Math.max(0, i - 1)], p1 = kp[i], p2 = kp[i + 1], p3 = kp[Math.min(n - 1, i + 2)];
-  const out = new Array(p1.length);
-  const f2 = f * f, f3 = f2 * f;
-  for (let k = 0; k < p1.length; k++) {
-    out[k] = 0.5 * ((2 * p1[k]) + (-p0[k] + p2[k]) * f +
-      (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * f2 +
-      (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * f3);
-  }
-  return out;
-}
 const smoothstep = x => { const t = Math.max(0, Math.min(1, x)); return t * t * (3 - 2 * t); };
 
-// ───────────────────────────── torso profile ─────────────────────────────
+// ───────────────────────────── the body underneath ─────────────────────────────
+//
+// Everything below is an implicit MALE SIZE M body, in METRES, height 1.75. The garment
+// surface is that body + `EASE` (a compression fit sits ~6 mm off the skin), and the
+// bands (collar / cuff / hem) stand `PROUD` of the garment. Origin: y = 0 is the NECK
+// BASE, +Z is the front, +X is the wearer's LEFT as seen from the camera (screen right).
+//
+// The numbers that make it read as a body rather than a tube:
+//   · the shoulder is a trapezius SLOPE (~20° at the neck, steepening over the acromion)
+//     that hands over to a ROUND deltoid cap — a pipe hanging off a funnel is the tell
+//     that kills every procedural garment;
+//   · the torso is a superellipse (n ≈ 2.6), front fuller than back, with a lat V from
+//     the armpit down to the waist and a flare back out to the hip;
+//   · the arms are ABDUCTED and BENT, so the sleeve is a loft along a polyline, and there
+//     is daylight between the sleeve and the ribs.
+
+const TAU = Math.PI * 2;
+const D2R = Math.PI / 180;
+
+const EASE = 0.006;      // garment surface = body + this
+const PROUD = 0.003;     // collar / cuff / hem bands
+const NECK_R = 0.062;    // neck radius at the base
+const SH_Y = -0.105;     // where the shoulder yoke hands over to the torso tube
+const PY = 0.17;         // fraction of the torso's vertical rows spent on the yoke
+
+// Deltoid cap: a spheroid just outside/below the acromion (0.21, -0.054). This is the
+// single most important shape in the model — a round sleeve HEAD is what makes a
+// rashguard read as clothing on a shoulder.
+const DELTOID = { x: 0.172, y: -0.100, rx: 0.062, ry: 0.070, rz: 0.060 };
+
+const ARM = {
+  pivot: [0.172, -0.100, 0],
+  upper: 0.33, fore: 0.27,
+  abduct: 12 * D2R,      // away from the body
+  forward: 6 * D2R,      // and slightly in front of the coronal plane
+  elbow: 15 * D2R,       // the forearm swings a little further forward again
+};
+// garment radius along the arm: [arc length from the pivot, radius]
+// body radii .051 upper / .045 elbow / .028 wrist, each + EASE
+const ARM_R = [[0, 0.062], [0.055, 0.0585], [0.16, 0.0570], [0.33, 0.0510], [0.46, 0.0450], [0.60, 0.0340]];
+const WRIST_R = 0.028;   // the bare body radius, for the mannequin stub
+const LS_END = 0.580;    // long sleeve stops 20 mm above the wrist (arc from the pivot)
+const SS_END = 0.145;    // short sleeve at ~42% of the upper arm
+const CUFF_W = 0.026;    // cuff band width
 
 // [ y, rx, rz, frontDepthMul, backDepthMul, superEllipseExp ]
+// chest 1.00 (w .34 / d .24) · under-chest .92 · waist .84 (w .30 / d .22) · hip .94
 const TORSO_KP = [
-  [0.562, 0.112, 0.092, 1.00, 1.00, 2.10],  // neck rim
-  [0.553, 0.142, 0.104, 1.02, 0.98, 2.15],
-  [0.539, 0.186, 0.121, 1.03, 0.97, 2.20],
-  [0.521, 0.238, 0.138, 1.04, 0.96, 2.25],
-  [0.500, 0.284, 0.151, 1.05, 0.95, 2.30],
-  [0.474, 0.305, 0.157, 1.05, 0.95, 2.32],  // shoulder line
-  [0.430, 0.308, 0.159, 1.06, 0.94, 2.34],  // armhole, widest
-  [0.350, 0.299, 0.157, 1.07, 0.93, 2.34],  // upper chest
-  [0.260, 0.288, 0.152, 1.07, 0.93, 2.32],  // chest
-  [0.150, 0.272, 0.142, 1.05, 0.95, 2.28],
-  [0.030, 0.257, 0.131, 1.02, 0.98, 2.24],
-  [-0.090, 0.249, 0.124, 1.00, 1.00, 2.20],
-  [-0.190, 0.246, 0.121, 0.99, 1.01, 2.18],  // waist (~15% in from chest)
-  [-0.300, 0.249, 0.124, 0.99, 1.01, 2.20],
-  [-0.400, 0.252, 0.127, 1.00, 1.00, 2.22],
-  [-0.462, 0.255, 0.130, 1.00, 1.00, 2.24],  // hem, slight flare
-  [-0.488, 0.258, 0.132, 1.00, 1.00, 2.24],  // hem band (thicker rim)
-  [-0.500, 0.255, 0.130, 1.00, 1.00, 2.24],  // hem edge
+  [-0.105, 0.196, 0.108, 1.02, 0.98, 2.50],  // armpit / lat — widest point of the tube
+  [-0.140, 0.186, 0.114, 1.04, 0.96, 2.55],
+  [-0.170, 0.174, 0.120, 1.05, 0.95, 2.60],  // chest, deepest
+  [-0.230, 0.166, 0.118, 1.05, 0.95, 2.58],
+  [-0.290, 0.158, 0.114, 1.03, 0.97, 2.55],  // under-chest
+  [-0.350, 0.152, 0.111, 1.01, 0.99, 2.52],
+  [-0.400, 0.150, 0.110, 1.00, 1.00, 2.50],  // waist
+  [-0.470, 0.153, 0.112, 1.00, 1.00, 2.52],
+  [-0.530, 0.157, 0.114, 1.00, 1.00, 2.55],
+  [-0.580, 0.159, 0.114, 0.99, 1.01, 2.58],  // hip
+  [-0.620, 0.161, 0.115, 0.99, 1.01, 2.60],  // hem band starts
+  [-0.660, 0.162, 0.116, 0.99, 1.01, 2.60],  // hem, +2% flare
+  [-0.666, 0.159, 0.113, 0.99, 1.01, 2.60],  // hem edge, rolled under
 ];
+const HEM_BAND_Y = -0.617;
 
-/** Sleeve radius shape, 1 at shoulder → 0 at cuff (before taper mix). */
-const SLEEVE_SHAPE = [[0, 1.0], [0.12, 0.965], [0.30, 0.83], [0.55, 0.61], [0.80, 0.35], [1.0, 0.0]];
-function sleeveShape(t) {
-  for (let i = 0; i < SLEEVE_SHAPE.length - 1; i++) {
-    const [a, va] = SLEEVE_SHAPE[i], [b, vb] = SLEEVE_SHAPE[i + 1];
-    if (t <= b) { const f = (t - a) / (b - a); return va + (vb - va) * smoothstep(f); }
-  }
-  return 0;
+/** The collar dips 30 mm lower at the front than at the back. sa = sin(angle), +1 = front. */
+const necklineY = sa => -0.015 - 0.015 * sa;
+
+// ───────────────────────────── value noise (fabric) ─────────────────────────────
+// Evaluated at the UNDISPLACED world position, so it is automatically continuous across
+// the UV wrap seam: u = 0 and u = 1 are the same point, hence the same displacement.
+
+function h3(x, y, z) {
+  let n = (x * 374761393 + y * 668265263 + z * 1274126177) | 0;
+  n = (n ^ (n >>> 13)) | 0;
+  n = Math.imul(n, 1274126177) | 0;
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967295;
+}
+function noise3(x, y, z) {
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+  const xf = x - xi, yf = y - yi, zf = z - zi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), w = zf * zf * (3 - 2 * zf);
+  const l = (a, b, t) => a + (b - a) * t;
+  const c000 = h3(xi, yi, zi), c100 = h3(xi + 1, yi, zi);
+  const c010 = h3(xi, yi + 1, zi), c110 = h3(xi + 1, yi + 1, zi);
+  const c001 = h3(xi, yi, zi + 1), c101 = h3(xi + 1, yi, zi + 1);
+  const c011 = h3(xi, yi + 1, zi + 1), c111 = h3(xi + 1, yi + 1, zi + 1);
+  return l(l(l(c000, c100, u), l(c010, c110, u), v), l(l(c001, c101, u), l(c011, c111, u), v), w);
+}
+/** signed, roughly [-1, 1] */
+function fbm(x, y, z) {
+  return (noise3(x, y, z) - 0.5) * 1.30 + (noise3(x * 2.17 + 11, y * 2.17 + 3, z * 2.17 - 7) - 0.5) * 0.70;
 }
 
 // ───────────────────────────── geometry ─────────────────────────────
@@ -149,7 +197,9 @@ function sleeveShape(t) {
 /**
  * Build an indexed grid surface from a position function.
  * Normals are computed analytically by central differences with angular WRAP so the
- * duplicated UV seam column gets identical normals (no lighting seam).
+ * duplicated UV seam column gets identical normals (no lighting seam) — and, because the
+ * differences are taken on the FINAL position, they already account for the wrinkle
+ * displacement. There is no separate "recompute normals" pass to get out of step.
  * Winding: (a,b,c) = (i,j),(i,j+1),(i+1,j) → outward, given dj × di points outward.
  */
 function latheGrid(cols, rows, posFn, uvFn) {
@@ -202,46 +252,80 @@ function latheGrid(cols, rows, posFn, uvFn) {
 }
 
 const sgnPow = (x, e) => (x < 0 ? -Math.pow(-x, e) : Math.pow(x, e));
+/** shortest signed distance between two values on a unit circle */
+const wrapU = d => d - Math.round(d);
+const gauss = (x, s) => Math.exp(-(x / s) * (x / s));
+/** piecewise-smooth interpolation of a [[x, y], …] table */
+function tableAt(tbl, x) {
+  if (x <= tbl[0][0]) return tbl[0][1];
+  for (let i = 0; i < tbl.length - 1; i++) {
+    const [a, va] = tbl[i], [b, vb] = tbl[i + 1];
+    if (x <= b) return va + (vb - va) * smoothstep((x - a) / (b - a));
+  }
+  return tbl[tbl.length - 1][1];
+}
+
+/** The arm chain: pivot → (0.33) elbow → (0.27) wrist, with a smooth bend at the elbow. */
+function armChain(side) {
+  const rotX = (v, t) => { const c = Math.cos(t), s = Math.sin(t); return new THREE.Vector3(v.x, v.y * c - v.z * s, v.y * s + v.z * c); };
+  const base = new THREE.Vector3(Math.sin(ARM.abduct) * side, -Math.cos(ARM.abduct), 0);
+  const dU = rotX(base, -ARM.forward).normalize();
+  const dF = rotX(base, -(ARM.forward + ARM.elbow)).normalize();
+  const pivot = new THREE.Vector3(ARM.pivot[0] * side, ARM.pivot[1], ARM.pivot[2]);
+  const elbow = pivot.clone().addScaledVector(dU, ARM.upper);
+  const wrist = elbow.clone().addScaledVector(dF, ARM.fore);
+  const bend = 0.085;                       // half-width of the elbow blend, in arc length
+  const A = elbow.clone().addScaledVector(dU, -bend);
+  const C = elbow.clone().addScaledVector(dF, bend);
+
+  /** point at arc length s from the pivot */
+  const at = (s, out) => {
+    if (s <= ARM.upper - bend) return out.copy(pivot).addScaledVector(dU, s);
+    if (s >= ARM.upper + bend) return out.copy(elbow).addScaledVector(dF, s - ARM.upper);
+    const t = (s - (ARM.upper - bend)) / (2 * bend), it = 1 - t;
+    return out.set(
+      it * it * A.x + 2 * it * t * elbow.x + t * t * C.x,
+      it * it * A.y + 2 * it * t * elbow.y + t * t * C.y,
+      it * it * A.z + 2 * it * t * elbow.z + t * t * C.z);
+  };
+  const dir = (s, out) => {
+    if (s <= ARM.upper - bend) return out.copy(dU);
+    if (s >= ARM.upper + bend) return out.copy(dF);
+    const t = (s - (ARM.upper - bend)) / (2 * bend);
+    return out.set(
+      2 * ((1 - t) * (elbow.x - A.x) + t * (C.x - elbow.x)),
+      2 * ((1 - t) * (elbow.y - A.y) + t * (C.y - elbow.y)),
+      2 * ((1 - t) * (elbow.z - A.z) + t * (C.z - elbow.z))).normalize();
+  };
+  return { side, pivot, elbow, wrist, dU, dF, at, dir };
+}
 
 /**
- * Build the whole garment. Returns { group, meshes, metrics }.
+ * Build the whole garment. Returns { parts, metrics }.
  * Coordinates: Y up, +Z is the FRONT of the garment, camera starts on +Z.
  * Torso UV: front centre at u=0.25, back centre at u=0.75, v=1 at neck → v=0 at hem.
  */
-function buildGarment(style, q) {
-  const group = new THREE.Group();
+function buildGarment(style, q, opts) {
   const RS = q.radial, LSg = q.len;
+  const wrinkles = opts.wrinkles !== false;
+  const parts = [];
 
-  // — sample the torso profile into rings, then derive an arc-length v mapping —
+  // — sample the torso profile into rings —
   const rings = [];
-  for (let j = 0; j <= LSg; j++) {
-    const t = (j / LSg) * (TORSO_KP.length - 1);
-    const [y, rx, rz, fz, bz, n] = crSample(TORSO_KP, t);
-    rings.push({ y, rx, rz, fz, bz, n });
+  for (let j = 0; j < TORSO_KP.length; j++) {
+    const [y, rx, rz, fz, bz, n] = TORSO_KP[j];
+    rings.push({ y, rx: rx + EASE, rz: rz + EASE, fz, bz, n });
   }
-  // arc length (mean of the front and side profiles) → v
-  let S = 0; const cum = [0];
-  for (let j = 1; j < rings.length; j++) {
-    const A = rings[j - 1], B = rings[j];
-    const dFront = Math.hypot(B.rz - A.rz, B.y - A.y);
-    const dSide = Math.hypot(B.rx - A.rx, B.y - A.y);
-    S += (dFront + dSide) / 2;
-    cum.push(S);
-  }
-  const vOf = j => 1 - cum[j] / S;
-  const vAtY = y => {
-    for (let j = 1; j < rings.length; j++) {
-      if (y >= rings[j].y || j === rings.length - 1) {
-        const A = rings[j - 1], B = rings[j];
-        const f = Math.max(0, Math.min(1, (A.y - y) / Math.max(1e-6, A.y - B.y)));
-        return vOf(j - 1) + (vOf(j) - vOf(j - 1)) * f;
-      }
-    }
-    return 0;
+  const ringAtIndex = (f, out) => {
+    const j0 = Math.max(0, Math.min(rings.length - 2, Math.floor(f))), j1 = j0 + 1, k = f - j0;
+    const A = rings[j0], B = rings[j1];
+    out.y = A.y + (B.y - A.y) * k; out.rx = A.rx + (B.rx - A.rx) * k;
+    out.rz = A.rz + (B.rz - A.rz) * k; out.fz = A.fz + (B.fz - A.fz) * k;
+    out.bz = A.bz + (B.bz - A.bz) * k; out.n = A.n + (B.n - A.n) * k;
+    return out;
   };
-
   const ringPos = (ring, u, out) => {
-    const A = u * Math.PI * 2;
+    const A = u * TAU;
     const c = -Math.cos(A), s = Math.sin(A);
     const e = 2 / ring.n;
     const depthMul = (ring.fz + ring.bz) / 2 + (ring.fz - ring.bz) / 2 * s;
@@ -249,25 +333,108 @@ function buildGarment(style, q) {
     return out;
   };
 
-  const torsoGeo = latheGrid(RS, LSg,
-    (u, vj, out) => {
-      const f = vj * LSg;
-      const j0 = Math.min(rings.length - 1, Math.floor(f)), j1 = Math.min(rings.length - 1, j0 + 1);
-      const k = f - j0, A = rings[j0], B = rings[j1];
-      const r = {
-        y: A.y + (B.y - A.y) * k, rx: A.rx + (B.rx - A.rx) * k, rz: A.rz + (B.rz - A.rz) * k,
-        fz: A.fz + (B.fz - A.fz) * k, bz: A.bz + (B.bz - A.bz) * k, n: A.n + (B.n - A.n) * k,
-      };
-      return ringPos(r, u, out);
-    },
-    (u, vj) => {
-      const f = vj * LSg, j0 = Math.min(rings.length - 1, Math.floor(f));
-      const j1 = Math.min(rings.length - 1, j0 + 1), k = f - j0;
-      return [u, vOf(j0) + (vOf(j1) - vOf(j0)) * k];
-    });
+  /** push a point out (or in) along its own XZ radius */
+  const pushRadial = (p, d) => {
+    const l = Math.hypot(p.x, p.z);
+    if (l < 1e-6) return;
+    p.x += p.x / l * d; p.z += p.z / l * d;
+  };
+
+  // — anatomy on top of the cross-sections: pecs in front, spine groove behind —
+  const shapeMods = (u, y) => {
+    const df = wrapU(u - 0.25), db = wrapU(u - 0.75);
+    let d = 0;
+    // pectoral swell, two lobes ~19° either side of centre, peaking at y = -0.17
+    const gPec = gauss(y + 0.170, 0.060);
+    d += 0.0135 * gauss(Math.abs(df) - 0.052, 0.052) * gPec;
+    d -= 0.0045 * gauss(df, 0.026) * gPec;                       // sternum valley
+    // upper abdominal flattening under the pecs
+    d -= 0.0030 * gauss(df, 0.10) * gauss(y + 0.285, 0.055);
+    // spine groove + scapula flats
+    const gBack = gauss(y + 0.270, 0.150);
+    d -= 0.0070 * gauss(db, 0.028) * gBack;
+    d += 0.0050 * gauss(Math.abs(db) - 0.075, 0.050) * gauss(y + 0.215, 0.090);
+    return d;
+  };
+
+  // — fabric behaviour: compression wrinkles where a rashguard actually creases —
+  const uaL = new THREE.Vector3(-0.160, -0.168, 0), uaR = new THREE.Vector3(0.160, -0.168, 0);
+  const torsoWrinkle = (p) => {
+    if (!wrinkles) return 0;
+    const dArm = Math.min(p.distanceTo(uaL), p.distanceTo(uaR));
+    const wArm = gauss(dArm, 0.105);
+    const backness = Math.max(0, -p.z) / 0.13;
+    const wWaist = gauss(p.y + 0.395, 0.095) * (0.45 + 0.55 * Math.min(1, backness));
+    const w = Math.min(1, 0.22 + 0.95 * wArm + 0.85 * wWaist);
+    let d = 0.0034 * w * fbm(p.x * 26, p.y * 19, p.z * 26);
+    // horizontal micro-folds where the fabric stacks at the waist
+    d += 0.0020 * wWaist * Math.sin(p.y * 84 + 2.2 * fbm(p.x * 6, p.y * 3, p.z * 6));
+    return d;
+  };
+
+  const TMP = new THREE.Vector3();
+  const RTOP = { ...rings[0] };
+  const RCUR = { ...rings[0] };
+
+  const torsoPos = (u, pv, out) => {
+    const A = u * TAU, ca = -Math.cos(A), sa = Math.sin(A);
+    if (pv < PY) {
+      // — the shoulder yoke: neckline → shoulder line, trapezius slope —
+      // xz opens fast and y falls slow, so the surface leaves the collar as a shelf at
+      // ~10-20° (the trapezius) and steepens to ~70° over the acromion.
+      const t = pv / PY;
+      const nr = NECK_R + EASE;
+      const nx = nr * ca, nz = nr * sa, ny = necklineY(sa);
+      ringPos(RTOP, u, TMP);
+      const ex = Math.pow(t, 0.60), ey = t * t;
+      out.set(nx + (TMP.x - nx) * ex, ny + (SH_Y - ny) * ey, nz + (TMP.z - nz) * ex);
+    } else {
+      const f = ((pv - PY) / (1 - PY)) * (rings.length - 1);
+      ringAtIndex(f, RCUR);
+      ringPos(RCUR, u, out);
+    }
+    let d = shapeMods(u, out.y);
+    if (out.y < HEM_BAND_Y) d += PROUD * smoothstep((HEM_BAND_Y - out.y) / 0.012);
+    pushRadial(out, d);
+    pushRadial(out, torsoWrinkle(out));
+    return out;
+  };
+
+  // — arc-length v mapping, measured down the FRONT profile (where the marks live) —
+  const vRows = [], yRows = [];
+  {
+    const a = new THREE.Vector3(), b = new THREE.Vector3();
+    let S = 0; const cum = [0];
+    torsoPos(0.25, 0, b); yRows.push(b.y);
+    for (let j = 1; j <= LSg; j++) {
+      torsoPos(0.25, j / LSg, a);
+      S += a.distanceTo(b);
+      cum.push(S); yRows.push(a.y); b.copy(a);
+    }
+    for (let j = 0; j <= LSg; j++) vRows.push(1 - cum[j] / S);
+    var arcWorld = S;
+  }
+  const vOf = pv => {
+    const f = Math.max(0, Math.min(LSg, pv * LSg));
+    const j0 = Math.min(LSg - 1, Math.floor(f)), k = f - j0;
+    return vRows[j0] + (vRows[j0 + 1] - vRows[j0]) * k;
+  };
+  const vAtY = y => {
+    if (y >= yRows[0]) return vRows[0];
+    for (let j = 1; j <= LSg; j++) {
+      if (y >= yRows[j]) {
+        const f = (yRows[j - 1] - y) / Math.max(1e-6, yRows[j - 1] - yRows[j]);
+        return vRows[j - 1] + (vRows[j] - vRows[j - 1]) * f;
+      }
+    }
+    return vRows[LSg];
+  };
+
+  const torsoGeo = latheGrid(RS, LSg, torsoPos, (u, pv) => [u, vOf(pv)]);
+  parts.push({ geo: torsoGeo, kind: 'torso' });
 
   // — chest circumference (for texture anisotropy) —
-  const chestRing = rings.reduce((best, r) => (Math.abs(r.y - 0.26) < Math.abs(best.y - 0.26) ? r : best), rings[0]);
+  const chestRing = rings[2];
   let chestCirc = 0;
   {
     const a = new THREE.Vector3(), b = new THREE.Vector3();
@@ -277,65 +444,121 @@ function buildGarment(style, q) {
     }
   }
 
-  // — sleeves —
-  const isLS = style !== 'ss';
-  const sLen = isLS ? 0.95 : 0.34;      // LS → wrist, SS → mid-bicep
-  const taper = isLS ? 0.55 : 0.82;
-  const r0 = 0.113;
-  const origin0 = new THREE.Vector3(0.152, 0.437, 0.004);
-  // ~24° from vertical, angled down/out with a touch of forward hang
-  const dir0 = new THREE.Vector3(0.407, -0.910, 0.075).normalize();
-
-  const sleeveRadius = t => {
-    const base = r0 * (taper + (1 - taper) * sleeveShape(t));
-    const rim = 1 + 0.10 * smoothstep((t - 0.955) / 0.045);
-    return base * rim;
-  };
-
-  const sleeveData = [];   // { mirror, origin, axis, O, F }
-  for (const s of [-1, 1]) {
-    const axis = new THREE.Vector3(dir0.x * s, dir0.y, dir0.z).normalize();
-    const origin = new THREE.Vector3(origin0.x * s, origin0.y, origin0.z);
-    const O = new THREE.Vector3(s, 0, 0).addScaledVector(axis, -axis.x * s).normalize();
-    const F = new THREE.Vector3().crossVectors(axis, O).normalize();
-    if (F.z < 0) F.negate();
-    sleeveData.push({ mirror: s === -1 ? 1 : -1, origin, axis, O, F, side: s });
+  // — collar: a binding ring swept around the neckline, standing PROUD —
+  {
+    const Rc = NECK_R + EASE + PROUD * 0.5, rt = 0.0105;
+    const collarGeo = latheGrid(Math.max(24, RS), 10, (u, w, out) => {
+      const A = u * TAU, ca = -Math.cos(A), sa = Math.sin(A);
+      const B = -w * TAU;                       // sign chosen so the normals face outward
+      const rr = Rc + rt * Math.cos(B);
+      out.set(rr * ca, necklineY(sa) + rt * Math.sin(B), rr * sa);
+      return out;
+    }, u => [u - 0.5, 0.995]);                  // samples the flat neckline row of the print
+    parts.push({ geo: collarGeo, kind: 'collar' });
   }
 
-  const sleeveGeos = sleeveData.map(sd => latheGrid(q.sRadial, q.sLen,
-    (u, t, out) => {
-      const A = sd.mirror * (u - 0.5) * Math.PI * 2;
-      const rr = sleeveRadius(t);
-      out.copy(sd.origin).addScaledVector(sd.axis, t * sLen)
-        .addScaledVector(sd.O, Math.cos(A) * rr)
-        .addScaledVector(sd.F, Math.sin(A) * rr * 0.94);
+  // — sleeves: a loft along the bent arm, rooted INSIDE the deltoid cap —
+  const isLS = style !== 'ss';
+  const sEnd = isLS ? LS_END : SS_END;
+  const arms = [armChain(1), armChain(-1)];
+  const sleeveRadius = s => tableAt(ARM_R, s) + PROUD * smoothstep((s - (sEnd - CUFF_W)) / 0.018);
+  const elbowInner = new THREE.Vector3();
+
+  const sleeveData = arms.map(arm => {
+    const side = arm.side;
+    const mirror = side === -1 ? 1 : -1;        // keeps the sleeve print un-mirrored
+    const T = new THREE.Vector3(), O = new THREE.Vector3(), F = new THREE.Vector3();
+    const ref = new THREE.Vector3(side, 0, 0);
+    const frame = (s) => {
+      arm.dir(s, T);
+      O.copy(ref).addScaledVector(T, -ref.dot(T)).normalize();
+      F.crossVectors(T, O).normalize();
+      if (F.z * side < 0) F.negate();
+      if (side < 0) F.negate();
+      return { T, O, F };
+    };
+    return { arm, side, mirror, frame };
+  });
+
+  const sleeveGeos = sleeveData.map(sd => {
+    const P = new THREE.Vector3();
+    // inner elbow: on the body-side/front of the elbow, where a sleeve always bunches
+    sd.arm.at(ARM.upper, elbowInner);
+    const inner = elbowInner.clone().addScaledVector(new THREE.Vector3(-sd.side * 0.02, 0, 0.03), 1);
+    const geo = latheGrid(q.sRadial, q.sLen, (u, t, out) => {
+      const s = t * sEnd;
+      const A = sd.mirror * (u - 0.5) * TAU;
+      const rr = sleeveRadius(s);
+      const { O, F } = sd.frame(s);
+      sd.arm.at(s, P);
+      out.copy(P).addScaledVector(O, Math.cos(A) * rr).addScaledVector(F, Math.sin(A) * rr * 0.95);
+      if (wrinkles) {
+        const w = Math.min(1, 0.30 + 1.15 * gauss(out.distanceTo(inner), 0.075)
+          + 0.55 * gauss(s, 0.10));           // and a little bunching at the sleeve head
+        const d = 0.0032 * w * fbm(out.x * 30, out.y * 22, out.z * 30);
+        out.addScaledVector(O, Math.cos(A) * d).addScaledVector(F, Math.sin(A) * d);
+      }
       return out;
-    },
-    (u, t) => [u, 1 - t]));
+    }, (u, t) => [u, 1 - t]);
+    return geo;
+  });
+  sleeveGeos.forEach(g => parts.push({ geo: g, kind: 'sleeve' }));
+
+  // — deltoid caps. Same material as the sleeve (so a ranked sleeve colour carries over
+  //   the shoulder), embedded in both the torso and the sleeve root: the union reads as
+  //   one round shoulder, and every intersection is transverse, so nothing z-fights. —
+  const deltoidSpecs = arms.map(arm => ({
+    pos: [DELTOID.x * arm.side, DELTOID.y, 0],
+    scale: [DELTOID.rx, DELTOID.ry, DELTOID.rz],
+  }));
 
   // — sleeve metrics for the texture —
-  const rMid = sleeveRadius(0.5);
-  const sleeveCirc = Math.PI * (3 * (rMid + rMid * 0.94) -
-    Math.sqrt((3 * rMid + rMid * 0.94) * (rMid + 3 * rMid * 0.94)));
+  const rMid = sleeveRadius(sEnd * 0.5);
+  const b = rMid * 0.95;
+  const sleeveCirc = Math.PI * (3 * (rMid + b) - Math.sqrt((3 * rMid + b) * (rMid + 3 * b)));
 
-  // — inner planes (so you cannot see through) —
+  // — inner planes, so you cannot see through the openings —
   const caps = [];
-  const neckRing = rings[0];
-  caps.push({ r: neckRing.rx * 0.99, rz: neckRing.rz * 0.99, pos: new THREE.Vector3(0, neckRing.y - 0.030, 0), axis: new THREE.Vector3(0, 1, 0) });
-  const hemRing = rings[rings.length - 1];
-  caps.push({ r: hemRing.rx * 0.985, rz: hemRing.rz * 0.985, pos: new THREE.Vector3(0, hemRing.y + 0.016, 0), axis: new THREE.Vector3(0, -1, 0) });
-  for (const sd of sleeveData) {
-    const p = sd.origin.clone().addScaledVector(sd.axis, sLen - 0.008);
-    caps.push({ r: sleeveRadius(1) * 0.97, rz: sleeveRadius(1) * 0.97 * 0.94, pos: p, axis: sd.axis.clone(), basis: sd });
+  {
+    const P = new THREE.Vector3();
+    caps.push({ r: (NECK_R + EASE) * 0.99, rz: (NECK_R + EASE) * 0.99, pos: new THREE.Vector3(0, -0.030, 0), axis: new THREE.Vector3(0, 1, 0) });
+    const hemRing = rings[rings.length - 1];
+    caps.push({ r: hemRing.rx * 0.985, rz: hemRing.rz * 0.985, pos: new THREE.Vector3(0, hemRing.y + 0.014, 0), axis: new THREE.Vector3(0, -1, 0) });
+    for (const sd of sleeveData) {
+      sd.arm.at(sEnd - 0.006, P);
+      const { T } = sd.frame(sEnd - 0.006);
+      const rr = sleeveRadius(sEnd) * 0.97;
+      caps.push({ r: rr, rz: rr * 0.95, pos: P.clone(), axis: T.clone(), flat: true });
+    }
+  }
+
+  // — the visible mannequin: a matte bust form, neck stub + wrist stubs, nothing else —
+  const mannequin = [];
+  if (opts.mannequin !== 'none') {
+    const prof = [
+      [NECK_R, -0.055], [NECK_R, 0.004], [NECK_R * 0.977, 0.017], [NECK_R * 0.900, 0.028],
+      [NECK_R * 0.760, 0.037], [NECK_R * 0.500, 0.0445], [NECK_R * 0.001, 0.046],
+    ].map(([r, y]) => new THREE.Vector2(r, y));
+    mannequin.push({ kind: 'lathe', profile: prof, segments: Math.max(20, RS) });
+    const P = new THREE.Vector3();
+    for (const sd of sleeveData) {
+      sd.arm.at(sEnd, P);
+      const { T } = sd.frame(sEnd);
+      mannequin.push({
+        kind: 'stub', radius: WRIST_R, length: 0.030,
+        pos: P.clone().addScaledVector(T, -0.012), dir: T.clone(),
+      });
+    }
   }
 
   return {
-    group, torsoGeo, sleeveGeos, sleeveData, caps,
+    parts, deltoidSpecs, caps, mannequin,
     metrics: {
-      vAtY, chestCirc, arcWorld: S,
+      vAtY, chestCirc, arcWorld,
       chestWidth: chestRing.rx * 2,
-      sleeveLen: sLen, sleeveCirc,
-      neckY: neckRing.y, hemY: hemRing.y,
+      sleeveLen: sEnd, sleeveCirc,
+      neckY: 0, hemY: rings[rings.length - 1].y,
+      armpitY: -0.175,
     },
   };
 }
@@ -489,7 +712,7 @@ function buildTorsoCanvas(o, m, q) {
   }
 
   // hem band — a slightly darker rib, a garment feature (shading stays in the lights)
-  const bandV = m.vAtY(-0.462);
+  const bandV = m.vAtY(-0.617);
   const bandTop = (1 - bandV) * H;
   x.save();
   x.globalAlpha = luminance(o.baseColor) > 0.6 ? 0.16 : 0.30;
@@ -500,12 +723,36 @@ function buildTorsoCanvas(o, m, q) {
   x.fillRect(0, bandTop - Math.max(1, H * 0.0025), W, Math.max(1, H * 0.0025));
   x.restore();
 
+  // ── raglan seams: collar → underarm, four of them (front L/R, back L/R) ──
+  // The deltoid cap is the sleeve's shoulder panel; this is the stitch line that panel
+  // would be sewn along, so the shoulder reads as construction rather than as a ball.
+  {
+    const vTop = 0.985, vArm = m.vAtY(m.armpitY);
+    const yT = (1 - vTop) * H, yA = (1 - vArm) * H;
+    const light = luminance(o.baseColor) > 0.6;
+    x.save();
+    x.lineCap = 'round';
+    for (const [uA, uB] of [[0.31, 0.5], [0.19, 0.0], [0.69, 0.5], [0.81, 1.0]]) {
+      const xA = uA * W, xB = uB * W;
+      const cx1 = xA + (xB - xA) * 0.62, cy1 = yT + (yA - yT) * 0.18;
+      x.globalAlpha = light ? 0.13 : 0.22;
+      x.strokeStyle = '#000';
+      x.lineWidth = Math.max(1.5, W * 0.0018);
+      x.beginPath(); x.moveTo(xA, yT); x.quadraticCurveTo(cx1, cy1, xB, yA); x.stroke();
+      x.globalAlpha = light ? 0.10 : 0.13;
+      x.strokeStyle = '#fff';
+      x.lineWidth = Math.max(1, W * 0.0009);
+      x.beginPath(); x.moveTo(xA, yT - H * 0.003); x.quadraticCurveTo(cx1, cy1 - H * 0.003, xB, yA - H * 0.003); x.stroke();
+    }
+    x.restore();
+  }
+
   const urls = markUrls(o);
 
   // ── chest mark, centred on the front (u = 0.25) ──
   if (o.chestMark || o.chestMarkSvg) {
     const cx = W * 0.25;
-    const cy = (1 - m.vAtY(0.30)) * H;
+    const cy = (1 - m.vAtY(-0.205)) * H;
     const mark = getArtImage(urls.chest);
     x.save();
     x.translate(cx, cy);
@@ -542,7 +789,7 @@ function buildTorsoCanvas(o, m, q) {
   // ── back text, centred on the back (u = 0.75), between the shoulder blades ──
   if (o.backText || o.backTextSvg) {
     const cx = W * 0.75;
-    const cy = (1 - m.vAtY(0.295)) * H;
+    const cy = (1 - m.vAtY(-0.215)) * H;
     const mark = getArtImage(urls.back);
     x.save();
     x.translate(cx, cy);
@@ -622,6 +869,53 @@ function buildSleeveCanvas(o, m, q) {
   }
 
   return c;
+}
+
+/**
+ * A tiny procedural KNIT normal map. A rashguard is a warp knit: fine vertical wales with
+ * a staggered loop across them. At strength 0.15 it never reads as a pattern — it just
+ * stops the fabric from looking like painted plastic when the key light rakes across it.
+ * Built once, shared by every viewer on the page, and NEVER colour-managed (normals are
+ * data, not colour).
+ */
+let _knitTex = null;
+function knitNormalTexture() {
+  if (_knitTex) return _knitTex;
+  const S = 64;
+  const h = new Float32Array(S * S);
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const wale = Math.cos((x / S) * TAU * 16) * 0.55;
+      const course = Math.cos((y / S) * TAU * 12 + (x / S) * TAU * 8) * 0.30;
+      const loop = Math.cos(((x + (y % 2) * 2) / S) * TAU * 8) * 0.15;
+      h[y * S + x] = wale + course + loop;
+    }
+  }
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(S, S);
+  const at = (x, y) => h[((y + S) % S) * S + ((x + S) % S)];
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const dx = (at(x + 1, y) - at(x - 1, y)) * 0.5;
+      const dy = (at(x, y + 1) - at(x, y - 1)) * 0.5;
+      const nx = -dx, ny = -dy, nz = 1;
+      const l = Math.hypot(nx, ny, nz);
+      const k = (y * S + x) * 4;
+      img.data[k] = Math.round((nx / l * 0.5 + 0.5) * 255);
+      img.data[k + 1] = Math.round((ny / l * 0.5 + 0.5) * 255);
+      img.data[k + 2] = Math.round((nz / l * 0.5 + 0.5) * 255);
+      img.data[k + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.NoColorSpace;
+  t.needsUpdate = true;
+  _knitTex = t;
+  return t;
 }
 
 function makeTexture(canvas, renderer) {
@@ -752,6 +1046,26 @@ export function mountSpin(el, opts = {}) {
   const innerMat = new THREE.MeshStandardMaterial({
     color: 0x111111, roughness: 0.95, metalness: 0, side: THREE.DoubleSide, envMapIntensity: 0.3,
   });
+  // the bust form itself: matte, no sheen, nothing that competes with the garment
+  const formMat = new THREE.MeshStandardMaterial({
+    color: 0xA9A9AC, roughness: 0.85, metalness: 0, envMapIntensity: 0.55,
+  });
+
+  // knit normal, tiled to roughly a 5 mm wale. The source canvas is shared page-wide;
+  // each material gets a cheap clone so it can carry its own repeat.
+  const knitClones = [];
+  function knitFor(mat, rx, ry) {
+    const t = knitNormalTexture().clone();
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(rx, ry);
+    t.needsUpdate = true;
+    knitClones.push(t);
+    mat.normalMap = t;
+    mat.normalScale = new THREE.Vector2(0.15, 0.15);
+    mat.needsUpdate = true;
+  }
+  knitFor(fabric, 20, 26);
+  knitFor(collarMat, 10, 2);
 
   const root = new THREE.Group();
   scene.add(root);

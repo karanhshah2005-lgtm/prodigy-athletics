@@ -51,12 +51,17 @@ async function blobToArt(blob, name) {
   return { dataUrl, w: img.naturalWidth, h: img.naturalHeight, name, type: blob.type || 'image/png', warnings: [] };
 }
 
+// hosts known to send no CORS headers — go straight to the proxy (a direct try would only log a console error)
+const NO_CORS_HOSTS = /(^|\.)pinimg\.com$|(^|\.)pinterest\.[a-z.]+$|(^|\.)instagram\.com$|(^|\.)cdninstagram\.com$|(^|\.)fbcdn\.net$/i;
 async function fetchImageBlob(url, onStatus) {
-  // try direct first (works for CORS-enabled hosts), then the proxy
-  try {
-    const r = await fetch(url, { mode: 'cors' });
-    if (r.ok) { const b = await r.blob(); if (b.type.startsWith('image/')) return b; }
-  } catch { /* fall through */ }
+  let host = ''; try { host = new URL(url).hostname; } catch { /* noop */ }
+  if (!NO_CORS_HOSTS.test(host)) {
+    // try direct first (works for CORS-enabled hosts), then the proxy
+    try {
+      const r = await fetch(url, { mode: 'cors' });
+      if (r.ok) { const b = await r.blob(); if (b.type.startsWith('image/')) return b; }
+    } catch { /* fall through */ }
+  }
   onStatus && onStatus('Fetching the image through a public image proxy…');
   const r2 = await fetch(IMG_PROXY(url), { mode: 'cors' });
   if (!r2.ok) throw new Error(`Image proxy returned ${r2.status}.`);

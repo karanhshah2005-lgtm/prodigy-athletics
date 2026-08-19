@@ -42,7 +42,7 @@ export const SPIN_DEFAULTS = Object.freeze({
   sleeveText: 'PRODIGY',
   sleeveTextColor: '#F5F3EE',
   sleeveColor: null,        // optional sleeve base (ranked construction) — falls back to baseColor
-  sleeveTextCap: 0.32,     // cap height as a fraction of sleeve circumference
+  sleeveTextCap: 0.18,     // cap height as a fraction of sleeve circumference (max 0.289 = ±52°)
   sleeveTextSvg: null,     // data-URL SVG override for the sleeve run
   chestMark: 'wordmark',   // 'wordmark' | 'lockup' | 'mono' | null
   chestMarkColor: '#E8A33D',
@@ -68,9 +68,14 @@ export const SPIN_DEFAULTS = Object.freeze({
   polar: 82,               // … and slightly high, looking a little down onto the shoulders
 });
 
+// Row/column counts are a SAMPLING budget, not a polygon budget: the crease displacement
+// below is only as fine as the grid that carries it, so the two move together. A crease
+// finer than 2× the sample spacing does not become a finer crease, it becomes noise.
+// 84×84 puts a torso column every ~12 mm and a row every ~9 mm, which is what the ~25 mm
+// creases below need. It is ~14k triangles for the torso — nothing, on any GPU.
 const QUALITY = {
-  high: { radial: 40, len: 56, sRadial: 24, sLen: 40, dSeg: [20, 14], torsoTex: [2048, 1024], sleeveTex: 1024, dpr: 2 },
-  low:  { radial: 26, len: 36, sRadial: 16, sLen: 26, dSeg: [14, 10], torsoTex: [1024, 512],  sleeveTex: 512,  dpr: 1.5 },
+  high: { radial: 84, len: 84, sRadial: 28, sLen: 48, stubSeg: 20, torsoTex: [2048, 1024], sleeveTex: 1024, dpr: 2 },
+  low:  { radial: 48, len: 52, sRadial: 18, sLen: 30, stubSeg: 14, torsoTex: [1024, 512],  sleeveTex: 512,  dpr: 1.5 },
 };
 
 // ───────────────────────────── colour helpers ─────────────────────────────
@@ -120,29 +125,49 @@ const D2R = Math.PI / 180;
 
 const EASE = 0.006;      // garment surface = body + this
 const PROUD = 0.003;     // collar / cuff / hem bands
-const NECK_R = 0.062;    // neck radius at the base
+const NECK_R = 0.062;    // neck radius at the base (the garment's collar opening)
+const FORM_NECK_R = 0.056; // the visible bust-form stub: strictly INSIDE the collar
+const FORM_GREY = '#74777C'; // …and its base tone, pulled further down for dark garments
 const SH_Y = -0.105;     // where the shoulder yoke hands over to the torso tube
-const PY = 0.17;         // fraction of the torso's vertical rows spent on the yoke
+const PY = 0.22;         // fraction of the torso's vertical rows spent on the yoke
 
-// Deltoid cap: a spheroid just outside/below the acromion (0.21, -0.054). This is the
-// single most important shape in the model — a round sleeve HEAD is what makes a
-// rashguard read as clothing on a shoulder.
-const DELTOID = { x: 0.172, y: -0.100, rx: 0.062, ry: 0.070, rz: 0.060 };
+// Deltoid cap. This is the single most important shape in the model — a round sleeve
+// HEAD is what makes a rashguard read as clothing on a shoulder rather than a pipe stuck
+// on a funnel. It is NOT a separate ball: the sleeve loft simply starts 40 mm BEFORE the
+// shoulder joint and closes over it as a spheroid, so the cap, the sleeve head and the
+// sleeve are one continuous surface with one seam against the torso.
+// The apex must land AT OR JUST BELOW the trapezius ridge — a cap that peaks above the
+// trap reads as a suit epaulette. With pivot y -0.110 / abduct 17° / CAP_H 0.040 the apex
+// is (0.180, -0.070) and the trapezius surface at x = 0.180 is y = -0.069, i.e. flush.
+const CAP_H = 0.040;     // axial half-height of the sleeve head, back from the joint
 
 const ARM = {
-  pivot: [0.172, -0.100, 0],
+  pivot: [0.180, -0.110, 0],
   upper: 0.33, fore: 0.27,
-  abduct: 12 * D2R,      // away from the body
-  forward: 6 * D2R,      // and slightly in front of the coronal plane
-  elbow: 15 * D2R,       // the forearm swings a little further forward again
+  abduct: 17 * D2R,      // away from the body — opens the armscye so there is DAYLIGHT
+  forward: -3 * D2R,     // the humerus hangs a little BEHIND the coronal plane …
+  elbow: 17 * D2R,       // … and the forearm breaks forward again: the elbow break.
+                         // Net: elbow 17 mm behind the plane, wrist 48 mm in front of it,
+                         // which is a relaxed hanging arm. A straight cone is the tell;
+                         // so is a wrist 90 mm out in front, which is a reach.
+  carry: 5 * D2R,        // …and outward: the frontal-plane carrying angle
 };
 // garment radius along the arm: [arc length from the pivot, radius]
-// body radii .051 upper / .045 elbow / .028 wrist, each + EASE
-const ARM_R = [[0, 0.062], [0.055, 0.0585], [0.16, 0.0570], [0.33, 0.0510], [0.46, 0.0450], [0.60, 0.0340]];
+// body radii .051 upper / .045 elbow / .028 wrist, each + EASE. The forearm SWELLS just
+// below the elbow (max girth at s ≈ 0.38) — a monotonic taper reads as a windsock.
+const ARM_R = [[0, 0.058], [0.055, 0.0578], [0.16, 0.0570], [0.33, 0.0505], [0.39, 0.0512], [0.46, 0.0430], [0.60, 0.0330]];
 const WRIST_R = 0.028;   // the bare body radius, for the mannequin stub
 const LS_END = 0.580;    // long sleeve stops 20 mm above the wrist (arc from the pivot)
-const SS_END = 0.145;    // short sleeve at ~42% of the upper arm
+const SS_END = 0.235;    // short sleeve just above the elbow (~72% of the upper arm)
 const CUFF_W = 0.026;    // cuff band width
+const CUFF_GRIP = 0.030; // the cuff band pulls IN 3% — it grips, it does not flare
+// The sleeve print does NOT sit on the dead-outer face of the arm. A run centred there is
+// exactly on the silhouette at az 0 and az 180, so every glyph loses half its cap height
+// to the edge and the run reads as disconnected blocks. Real sleeve prints sit on the
+// outer-FRONT of the sleeve; 38° forward clears the silhouette at az 0 with the ±32°
+// half-width below, and is still square to the camera in profile. The two sleeves need
+// OPPOSITE uv shifts (their frames mirror), hence × side.
+const SLEEVE_PRINT_SHIFT = 38 / 360;
 
 // [ y, rx, rz, frontDepthMul, backDepthMul, superEllipseExp ]
 // chest 1.00 (w .34 / d .24) · under-chest .92 · waist .84 (w .30 / d .22) · hip .94
@@ -154,14 +179,19 @@ const TORSO_KP = [
   [-0.290, 0.158, 0.114, 1.03, 0.97, 2.55],  // under-chest
   [-0.350, 0.152, 0.111, 1.01, 0.99, 2.52],
   [-0.400, 0.150, 0.110, 1.00, 1.00, 2.50],  // waist
-  [-0.470, 0.153, 0.112, 1.00, 1.00, 2.52],
-  [-0.530, 0.157, 0.114, 1.00, 1.00, 2.55],
-  [-0.580, 0.159, 0.114, 0.99, 1.01, 2.58],  // hip
-  [-0.620, 0.161, 0.115, 0.99, 1.01, 2.60],  // hem band starts
-  [-0.660, 0.162, 0.116, 0.99, 1.01, 2.60],  // hem, +2% flare
-  [-0.666, 0.159, 0.113, 0.99, 1.01, 2.60],  // hem edge, rolled under
+  // Below the waist a COMPRESSION top does not flare. The hip is held to +0.5% of the
+  // waist and the gripper band pulls back in 2%, and the body runs 40 mm longer so it
+  // covers the torso to the waistband of the shorts (IBJJF 8.1.14) instead of stopping
+  // at the natural waist and silhouetting as an A-line tee.
+  [-0.470, 0.1505, 0.1105, 1.00, 1.00, 2.52],
+  [-0.530, 0.1512, 0.1110, 1.00, 1.00, 2.55],
+  [-0.580, 0.1505, 0.1108, 0.99, 1.01, 2.56],  // hip
+  [-0.620, 0.1490, 0.1100, 0.99, 1.01, 2.58],
+  [-0.660, 0.1484, 0.1096, 0.99, 1.01, 2.60],  // hem band
+  [-0.700, 0.1480, 0.1092, 0.99, 1.01, 2.60],
+  [-0.706, 0.1455, 0.1074, 0.99, 1.01, 2.60],  // hem edge, rolled under
 ];
-const HEM_BAND_Y = -0.617;
+const HEM_BAND_Y = -0.657;
 
 /** The collar dips 30 mm lower at the front than at the back. sa = sin(angle), +1 = front. */
 const necklineY = sa => -0.015 - 0.015 * sa;
@@ -269,8 +299,13 @@ function tableAt(tbl, x) {
 function armChain(side) {
   const rotX = (v, t) => { const c = Math.cos(t), s = Math.sin(t); return new THREE.Vector3(v.x, v.y * c - v.z * s, v.y * s + v.z * c); };
   const base = new THREE.Vector3(Math.sin(ARM.abduct) * side, -Math.cos(ARM.abduct), 0);
+  // The forearm breaks FORWARD at the elbow (sagittal, a rotation about X) and also
+  // carries a little further OUT (frontal — the carrying angle, which is an extra
+  // abduction, not an X rotation). Both together are what stops the arm reading as a rod.
+  const carry = ARM.abduct + (ARM.carry || 0);
+  const baseF = new THREE.Vector3(Math.sin(carry) * side, -Math.cos(carry), 0);
   const dU = rotX(base, -ARM.forward).normalize();
-  const dF = rotX(base, -(ARM.forward + ARM.elbow)).normalize();
+  const dF = rotX(baseF, -(ARM.forward + ARM.elbow)).normalize();
   const pivot = new THREE.Vector3(ARM.pivot[0] * side, ARM.pivot[1], ARM.pivot[2]);
   const elbow = pivot.clone().addScaledVector(dU, ARM.upper);
   const wrist = elbow.clone().addScaledVector(dF, ARM.fore);
@@ -346,10 +381,10 @@ function buildGarment(style, q, opts) {
     let d = 0;
     // pectoral swell, two lobes ~19° either side of centre, peaking at y = -0.17
     const gPec = gauss(y + 0.170, 0.060);
-    d += 0.0135 * gauss(Math.abs(df) - 0.052, 0.052) * gPec;
-    d -= 0.0045 * gauss(df, 0.026) * gPec;                       // sternum valley
-    // upper abdominal flattening under the pecs
-    d -= 0.0030 * gauss(df, 0.10) * gauss(y + 0.285, 0.055);
+    d += 0.0165 * gauss(Math.abs(df) - 0.095, 0.060) * gPec;
+    d -= 0.0050 * gauss(df, 0.034) * gPec;                       // sternum valley
+    // the fabric drops back in under the pecs — the shadow line that reads as a chest
+    d -= 0.0022 * gauss(df, 0.11) * gauss(y + 0.272, 0.038);
     // spine groove + scapula flats
     const gBack = gauss(y + 0.270, 0.150);
     d -= 0.0070 * gauss(db, 0.028) * gBack;
@@ -358,18 +393,35 @@ function buildGarment(style, q, opts) {
   };
 
   // — fabric behaviour: compression wrinkles where a rashguard actually creases —
-  const uaL = new THREE.Vector3(-0.160, -0.168, 0), uaR = new THREE.Vector3(0.160, -0.168, 0);
+  const uaL = new THREE.Vector3(-0.160, -0.172, 0), uaR = new THREE.Vector3(0.160, -0.172, 0);
+  /** 0 inside the sleeve head, 1 well clear of it: creases must never punch through it */
+  const deltoidClear = (p) => {
+    const qx = (Math.abs(p.x) - ARM.pivot[0]) / 0.105;
+    const qy = (p.y - ARM.pivot[1]) / 0.105;
+    const qz = p.z / 0.125;
+    return smoothstep(Math.sqrt(qx * qx + qy * qy + qz * qz) - 0.55);
+  };
+  // Creases have a DIRECTION. An isotropic noise field at fist scale is not a crease, it
+  // is a bleach stain — which is exactly what a low-frequency, undirected displacement
+  // reads as on a matte black knit. So: a small fine-grain crumple for tooth, plus the
+  // two families that a compression top actually forms — diagonals radiating off the
+  // underarm at ~38°, and horizontal stacks 30-60 mm above the hem.
+  const HEM_STACK_Y = -0.690;
   const torsoWrinkle = (p) => {
     if (!wrinkles) return 0;
     const dArm = Math.min(p.distanceTo(uaL), p.distanceTo(uaR));
-    const wArm = gauss(dArm, 0.105);
+    const wArm = gauss(dArm, 0.115);
     const backness = Math.max(0, -p.z) / 0.13;
-    const wWaist = gauss(p.y + 0.395, 0.095) * (0.45 + 0.55 * Math.min(1, backness));
-    const w = Math.min(1, 0.22 + 0.95 * wArm + 0.85 * wWaist);
-    let d = 0.0034 * w * fbm(p.x * 26, p.y * 19, p.z * 26);
-    // horizontal micro-folds where the fabric stacks at the waist
-    d += 0.0020 * wWaist * Math.sin(p.y * 84 + 2.2 * fbm(p.x * 6, p.y * 3, p.z * 6));
-    return d;
+    const wLow = gauss(p.y + 0.430, 0.110) * (0.45 + 0.55 * Math.min(1, backness));
+    const w = Math.min(1, 0.10 + 0.95 * wArm + 0.80 * wLow);
+    // 1 — fine crumple: ~25 mm features at 1.2 mm, the finest the 12 mm grid can carry
+    let d = 0.0012 * w * fbm(p.x * 40, p.y * 52, p.z * 40);
+    // 2 — underarm creases, ~38° off vertical, ~33 mm apart
+    d += 0.0022 * wArm * Math.sin((0.79 * (p.y + 0.168) + 0.61 * (Math.abs(p.x) - 0.160)) * 190);
+    // 3 — horizontal stacks where the body length gathers just above the hem gripper
+    const wHem = gauss(p.y - HEM_STACK_Y, 0.045);
+    d += 0.0022 * wHem * Math.sin(p.y * 135 + 1.6 * fbm(p.x * 7, p.y * 3, p.z * 7));
+    return d * deltoidClear(p);
   };
 
   const TMP = new THREE.Vector3();
@@ -386,7 +438,11 @@ function buildGarment(style, q, opts) {
       const nr = NECK_R + EASE;
       const nx = nr * ca, nz = nr * sa, ny = necklineY(sa);
       ringPos(RTOP, u, TMP);
-      const ex = Math.pow(t, 0.60), ey = t * t;
+      // The trapezius leaves the neck at ~20° and steepens over the acromion, where the
+      // deltoid cap takes over the silhouette. That handover only reads if the ramp is
+      // still ABOVE the cap near the neck and BELOW it out at the shoulder point — hence
+      // a per-angle exponent: slow at the sides (trap), quicker at front and back (chest).
+      const ex = Math.pow(t, 0.60), ey = Math.pow(t, 1.45 + 0.25 * ca * ca);
       out.set(nx + (TMP.x - nx) * ex, ny + (SH_Y - ny) * ey, nz + (TMP.z - nz) * ex);
     } else {
       const f = ((pv - PY) / (1 - PY)) * (rings.length - 1);
@@ -447,7 +503,7 @@ function buildGarment(style, q, opts) {
   // — collar: a binding ring swept around the neckline, standing PROUD —
   {
     const Rc = NECK_R + EASE + PROUD * 0.5, rt = 0.0105;
-    const collarGeo = latheGrid(Math.max(24, RS), 10, (u, w, out) => {
+    const collarGeo = latheGrid(Math.max(24, Math.min(48, RS)), 10, (u, w, out) => {
       const A = u * TAU, ca = -Math.cos(A), sa = Math.sin(A);
       const B = -w * TAU;                       // sign chosen so the normals face outward
       const rr = Rc + rt * Math.cos(B);
@@ -461,7 +517,21 @@ function buildGarment(style, q, opts) {
   const isLS = style !== 'ss';
   const sEnd = isLS ? LS_END : SS_END;
   const arms = [armChain(1), armChain(-1)];
-  const sleeveRadius = s => tableAt(ARM_R, s) + PROUD * smoothstep((s - (sEnd - CUFF_W)) / 0.018);
+  const sTotal = CAP_H + sEnd;
+  // s < 0 is the shoulder head: a spheroid closing over the joint, tangent to the tube at
+  // s = 0 so the head flows into the sleeve with no crease and no second object.
+  // The cuff band GRIPS: it pulls in 3%, it does not stand proud and flare. A flared
+  // opening with the arm stub coming out of a ring gap is the cap-sleeve-tee tell.
+  const sleeveRadius = s => {
+    if (s < 0) return ARM_R[0][1] * Math.sqrt(Math.max(0, 1 - (s / CAP_H) * (s / CAP_H)));
+    const grip = smoothstep((s - (sEnd - CUFF_W)) / 0.018);
+    return tableAt(ARM_R, s) * (1 - CUFF_GRIP * grip);
+  };
+  // rows are spent 22% on the head (it is a hemisphere and needs them) but v stays
+  // proportional to ARC LENGTH, so the print is not stretched over the shoulder
+  const sOf = t => (t < 0.22 ? -CAP_H + CAP_H * (t / 0.22) : (t - 0.22) / 0.78 * sEnd);
+  const vOfT = t => 1 - (sOf(t) + CAP_H) / sTotal;
+  const capV = 1 - CAP_H / sTotal;              // where the head ends and the arm begins
   const elbowInner = new THREE.Vector3();
 
   const sleeveData = arms.map(arm => {
@@ -486,31 +556,23 @@ function buildGarment(style, q, opts) {
     sd.arm.at(ARM.upper, elbowInner);
     const inner = elbowInner.clone().addScaledVector(new THREE.Vector3(-sd.side * 0.02, 0, 0.03), 1);
     const geo = latheGrid(q.sRadial, q.sLen, (u, t, out) => {
-      const s = t * sEnd;
+      const s = sOf(t);
       const A = sd.mirror * (u - 0.5) * TAU;
       const rr = sleeveRadius(s);
-      const { O, F } = sd.frame(s);
+      const { O, F } = sd.frame(Math.max(0, s));
       sd.arm.at(s, P);
       out.copy(P).addScaledVector(O, Math.cos(A) * rr).addScaledVector(F, Math.sin(A) * rr * 0.95);
       if (wrinkles) {
-        const w = Math.min(1, 0.30 + 1.15 * gauss(out.distanceTo(inner), 0.075)
-          + 0.55 * gauss(s, 0.10));           // and a little bunching at the sleeve head
+        const w = Math.min(1, 0.30 + 1.15 * gauss(out.distanceTo(inner), 0.075))
+          * smoothstep((s - 0.020) / 0.060);  // never over the shoulder head
         const d = 0.0032 * w * fbm(out.x * 30, out.y * 22, out.z * 30);
         out.addScaledVector(O, Math.cos(A) * d).addScaledVector(F, Math.sin(A) * d);
       }
       return out;
-    }, (u, t) => [u, 1 - t]);
+    }, (u, t) => [u + SLEEVE_PRINT_SHIFT * sd.side, vOfT(t)]);
     return geo;
   });
   sleeveGeos.forEach(g => parts.push({ geo: g, kind: 'sleeve' }));
-
-  // — deltoid caps. Same material as the sleeve (so a ranked sleeve colour carries over
-  //   the shoulder), embedded in both the torso and the sleeve root: the union reads as
-  //   one round shoulder, and every intersection is transverse, so nothing z-fights. —
-  const deltoidSpecs = arms.map(arm => ({
-    pos: [DELTOID.x * arm.side, DELTOID.y, 0],
-    scale: [DELTOID.rx, DELTOID.ry, DELTOID.rz],
-  }));
 
   // — sleeve metrics for the texture —
   const rMid = sleeveRadius(sEnd * 0.5);
@@ -518,47 +580,76 @@ function buildGarment(style, q, opts) {
   const sleeveCirc = Math.PI * (3 * (rMid + b) - Math.sqrt((3 * rMid + b) * (rMid + 3 * b)));
 
   // — inner planes, so you cannot see through the openings —
+  const hemRing = rings[rings.length - 1];
+  const cuffR = sleeveRadius(sEnd);
   const caps = [];
   {
     const P = new THREE.Vector3();
     caps.push({ r: (NECK_R + EASE) * 0.99, rz: (NECK_R + EASE) * 0.99, pos: new THREE.Vector3(0, -0.030, 0), axis: new THREE.Vector3(0, 1, 0) });
-    const hemRing = rings[rings.length - 1];
     caps.push({ r: hemRing.rx * 0.985, rz: hemRing.rz * 0.985, pos: new THREE.Vector3(0, hemRing.y + 0.014, 0), axis: new THREE.Vector3(0, -1, 0) });
     for (const sd of sleeveData) {
       sd.arm.at(sEnd - 0.006, P);
       const { T } = sd.frame(sEnd - 0.006);
-      const rr = sleeveRadius(sEnd) * 0.97;
+      const rr = cuffR * 0.97;
       caps.push({ r: rr, rz: rr * 0.95, pos: P.clone(), axis: T.clone(), flat: true });
     }
   }
 
-  // — the visible mannequin: a matte bust form, neck stub + wrist stubs, nothing else —
+  // — inner facings: a 12 mm turn-under of GARMENT cloth at every opening, so the hem,
+  //   the cuffs and the neckline read as a rolled edge rather than a punched hole —
+  const facings = [];
+  {
+    const P = new THREE.Vector3();
+    facings.push({ kind: 'body', r: (NECK_R + EASE) * 0.985, rz: (NECK_R + EASE) * 0.985, len: 0.012,
+      pos: new THREE.Vector3(0, -0.039, 0), axis: new THREE.Vector3(0, 1, 0) });
+    facings.push({ kind: 'body', r: hemRing.rx * 0.985, rz: hemRing.rz * 0.985, len: 0.012,
+      pos: new THREE.Vector3(0, hemRing.y + 0.008, 0), axis: new THREE.Vector3(0, 1, 0) });
+    for (const sd of sleeveData) {
+      sd.arm.at(sEnd - 0.007, P);
+      const { T } = sd.frame(sEnd - 0.007);
+      const rr = cuffR * 0.975;
+      facings.push({ kind: 'sleeve', r: rr, rz: rr * 0.95, len: 0.012, pos: P.clone(), axis: T.clone() });
+    }
+  }
+
+  // — the visible mannequin: a matte bust form, neck stub + arm stubs, nothing else.
+  //   Everything here is strictly NARROWER than the opening it comes out of, and flat-
+  //   capped: a capsule leaves a hemisphere standing proud of the cuff, which photographs
+  //   as a ping-pong ball and out-values the product. The neck is a CUT bust form, not a
+  //   porcelain dome. —
   const mannequin = [];
   if (opts.mannequin !== 'none') {
+    const NR = FORM_NECK_R;
     const prof = [
-      [NECK_R, -0.055], [NECK_R, 0.004], [NECK_R * 0.977, 0.017], [NECK_R * 0.900, 0.028],
-      [NECK_R * 0.760, 0.037], [NECK_R * 0.500, 0.0445], [NECK_R * 0.001, 0.046],
+      [NR, -0.055], [NR, 0.004], [NR * 0.985, 0.008], [NR * 0.93, 0.013],
+      [NR * 0.78, 0.017], [NR * 0.44, 0.020], [NR * 0.001, 0.021],
     ].map(([r, y]) => new THREE.Vector2(r, y));
-    mannequin.push({ kind: 'lathe', profile: prof, segments: Math.max(20, RS) });
+    mannequin.push({ kind: 'lathe', profile: prof, segments: Math.max(20, Math.min(48, RS)) });
     const P = new THREE.Vector3();
+    // the bare limb continuing out of the cuff: body radius, i.e. the cuff minus the ease
+    const rStub = Math.max(WRIST_R * 0.6, cuffR - EASE - 0.002);
     for (const sd of sleeveData) {
       sd.arm.at(sEnd, P);
       const { T } = sd.frame(sEnd);
       mannequin.push({
-        kind: 'stub', radius: WRIST_R, length: 0.030,
-        pos: P.clone().addScaledVector(T, -0.012), dir: T.clone(),
+        kind: 'stub', radius: rStub, radius2: rStub * 0.94, length: 0.065,
+        pos: P.clone().addScaledVector(T, -0.020), dir: T.clone(),
       });
     }
   }
 
   return {
-    parts, deltoidSpecs, caps, mannequin,
+    parts, caps, facings, mannequin,
     metrics: {
       vAtY, chestCirc, arcWorld,
       chestWidth: chestRing.rx * 2,
-      sleeveLen: sEnd, sleeveCirc,
-      neckY: 0, hemY: rings[rings.length - 1].y,
+      sleeveLen: sTotal, sleeveCirc, sleeveCapV: capV,
+      sleeveRadius, sleeveSOfV: v => (1 - v) * sTotal - CAP_H,
+      neckY: 0, hemY: hemRing.y, hemBandY: HEM_BAND_Y,
       armpitY: -0.175,
+      // the set-in armscye, as a curve rather than a plane cut: it leaves the acromion,
+      // arcs 24 mm FORWARD of the coronal plane at its widest, and closes at the underarm
+      armscye: { yTop: -0.066, yArm: -0.186, halfMax: 0.058, shift: 0.024 },
     },
   };
 }
@@ -664,15 +755,29 @@ function markUrls(o) {
  * running along +x, fitted to a run budget and a cap-height budget.
  * Returns the drawn box, or null if the image is not ready.
  */
-function drawMark(ctx, img, { maxRun, cap, align = 'cap' }) {
-  if (!img || !img.width) return null;
+function markBox(img, { maxRun, cap, align = 'cap' }) {
   const aspect = img.width / img.height;
   let h = cap, w = cap * aspect;
   if (align === 'run') { w = maxRun; h = w / aspect; }
   if (w > maxRun) { w = maxRun; h = w / aspect; }
-  ctx.drawImage(img, -w / 2, -h / 2, w, h);
   return { w, h };
 }
+function drawMark(ctx, img, opts, shape = null) {
+  if (!img || !img.width) return null;
+  const { w, h } = markBox(img, opts);
+  if (shape) shapedBlit(ctx, w, h, s => s.drawImage(img, -w / 2, -h / 2, w, h), shape);
+  else ctx.drawImage(img, -w / 2, -h / 2, w, h);
+  return { w, h };
+}
+/** the canvas-text fallback, through the same per-slice transform */
+function drawRunShaped(ctx, text, fontPx, tracking, weight, color, shape) {
+  const { w, cap } = runMetrics(ctx, text, fontPx, tracking, weight);
+  const h = cap * 1.08;
+  shapedBlit(ctx, w, h, s => { s.fillStyle = color; drawRun(s, text, fontPx, tracking, weight); }, shape);
+  return { w, cap };
+}
+/** a parabolic sag: the centre sits `frac` of the run's own width below the ends */
+const bowSag = (w, frac) => (t => frac * w * 4 * t * (1 - t));
 
 function tileArt(ctx, img, W, H, tileW, tileH) {
   const cols = Math.max(1, Math.round(W / tileW));
@@ -683,6 +788,61 @@ function tileArt(ctx, img, W, H, tileW, tileH) {
     for (let c = 0; c < cols; c++) {
       ctx.drawImage(img, c * tw, r * th, tw + 0.5, th + 0.5);
     }
+  }
+}
+
+/**
+ * Draw a run (image or text) through a per-slice transform, so a print can TAPER with the
+ * tube it is printed on and SAG with the curve of the body. A flat blit is the decal tell:
+ * a sleeve run whose 'Y' at the wrist is the same cap height as its 'P' at the shoulder is
+ * not a print, and a dead-straight baseline across a curved back is not a print either.
+ * The run is centred on the current origin and runs along +x, cap-centred on y = 0.
+ * `scaleAt(t)` scales the cap height at run fraction t; `sagAt(t)` offsets it in +y.
+ */
+function shapedBlit(ctx, w, h, drawFn, { slices = 48, scaleAt = null, sagAt = null } = {}) {
+  const px = 2;
+  const cw = Math.max(2, Math.round(Math.abs(w) * px)), ch = Math.max(2, Math.round(Math.abs(h) * px));
+  const sc = document.createElement('canvas');
+  sc.width = cw; sc.height = ch;
+  const s = sc.getContext('2d');
+  s.setTransform(px, 0, 0, px, cw / 2, ch / 2);
+  drawFn(s, w, h);
+  const n = Math.max(1, Math.round(slices));
+  for (let i = 0; i < n; i++) {
+    const t0 = i / n, t1 = (i + 1) / n, tm = (t0 + t1) / 2;
+    const k = scaleAt ? scaleAt(tm) : 1;
+    const dy = sagAt ? sagAt(tm) : 0;
+    ctx.drawImage(sc, t0 * cw, 0, (t1 - t0) * cw, ch,
+      -w / 2 + t0 * w, -h * k / 2 + dy, (t1 - t0) * w + 0.5, h * k);
+  }
+}
+
+/**
+ * The set-in armscye, in texture space. A real colour break / seam does NOT run straight
+ * down the side: it leaves the acromion, arcs forward of the coronal plane, and closes at
+ * the underarm. u0 is the side centre (0 or 0.5); `front` is the u direction of the chest.
+ * Returns { pts: [[uFront, uBack, v] …] } sampled top → underarm.
+ */
+function armscyeCurve(m, u0, front, N = 32) {
+  const A = m.armscye;
+  const vTop = m.vAtY(A.yTop), vArm = m.vAtY(A.yArm);
+  const halfU = A.halfMax / m.chestCirc, shiftU = A.shift / m.chestCirc;
+  const pts = [];
+  for (let k = 0; k <= N; k++) {
+    const t = k / N;
+    const lens = Math.pow(Math.sin(Math.PI * t), 0.80);
+    const uc = u0 + front * shiftU * lens;
+    const hw = halfU * lens;
+    pts.push([uc + front * hw, uc - front * hw, vTop + (vArm - vTop) * t]);
+  }
+  return pts;
+}
+/** trace one branch (0 = front, 1 = back) of the armscye as a canvas path */
+function armscyePath(x, pts, branch, W, H, du) {
+  x.beginPath();
+  for (let k = 0; k < pts.length; k++) {
+    const px = (pts[k][branch] + du) * W, py = (1 - pts[k][2]) * H;
+    if (k === 0) x.moveTo(px, py); else x.lineTo(px, py);
   }
 }
 
@@ -712,7 +872,7 @@ function buildTorsoCanvas(o, m, q) {
   }
 
   // hem band — a slightly darker rib, a garment feature (shading stays in the lights)
-  const bandV = m.vAtY(-0.617);
+  const bandV = m.vAtY(m.hemBandY);
   const bandTop = (1 - bandV) * H;
   x.save();
   x.globalAlpha = luminance(o.baseColor) > 0.6 ? 0.16 : 0.30;
@@ -723,26 +883,48 @@ function buildTorsoCanvas(o, m, q) {
   x.fillRect(0, bandTop - Math.max(1, H * 0.0025), W, Math.max(1, H * 0.0025));
   x.restore();
 
-  // ── raglan seams: collar → underarm, four of them (front L/R, back L/R) ──
-  // The deltoid cap is the sleeve's shoulder panel; this is the stitch line that panel
-  // would be sewn along, so the shoulder reads as construction rather than as a ball.
+  // ── set-in armscye: the colour break and the seam, on the SAME curve ──
+  // A colour block that stops at a vertical chord is a construction error — it reads as a
+  // sleeve sewn on at mid-bicep. A set-in sleeve head OWNS the shoulder: the seam leaves
+  // the acromion 25 mm inboard of the shoulder point, arcs forward, and closes at the
+  // underarm. The sleeve colour is painted on the torso out to that curve, so the break
+  // the eye sees is the armscye and not the silhouette where the sleeve mesh emerges.
+  // sides: u = 0 / 1 is the wearer's right, u = 0.5 the left; the chest is at u = 0.25.
+  const SIDES = [{ u0: 0.5, front: -1, du: 0 }, { u0: 0.0, front: 1, du: 0 }, { u0: 0.0, front: 1, du: 1 }];
+  const armscyes = SIDES.map(s => ({ ...s, pts: armscyeCurve(m, s.u0, s.front) }));
+  if (o.sleeveColor && o.sleeveColor !== o.baseColor) {
+    x.save();
+    x.fillStyle = o.sleeveColor;
+    for (const a of armscyes) {
+      x.beginPath();
+      for (let k = 0; k < a.pts.length; k++) {
+        const px = (a.pts[k][0] + a.du) * W, py = (1 - a.pts[k][2]) * H;
+        if (k === 0) x.moveTo(px, py); else x.lineTo(px, py);
+      }
+      for (let k = a.pts.length - 1; k >= 0; k--) {
+        x.lineTo((a.pts[k][1] + a.du) * W, (1 - a.pts[k][2]) * H);
+      }
+      x.closePath(); x.fill();
+    }
+    x.restore();
+  }
   {
-    const vTop = 0.985, vArm = m.vAtY(m.armpitY);
-    const yT = (1 - vTop) * H, yA = (1 - vArm) * H;
     const light = luminance(o.baseColor) > 0.6;
     x.save();
-    x.lineCap = 'round';
-    for (const [uA, uB] of [[0.31, 0.5], [0.19, 0.0], [0.69, 0.5], [0.81, 1.0]]) {
-      const xA = uA * W, xB = uB * W;
-      const cx1 = xA + (xB - xA) * 0.62, cy1 = yT + (yA - yT) * 0.18;
-      x.globalAlpha = light ? 0.13 : 0.22;
-      x.strokeStyle = '#000';
-      x.lineWidth = Math.max(1.5, W * 0.0018);
-      x.beginPath(); x.moveTo(xA, yT); x.quadraticCurveTo(cx1, cy1, xB, yA); x.stroke();
-      x.globalAlpha = light ? 0.10 : 0.13;
-      x.strokeStyle = '#fff';
-      x.lineWidth = Math.max(1, W * 0.0009);
-      x.beginPath(); x.moveTo(xA, yT - H * 0.003); x.quadraticCurveTo(cx1, cy1 - H * 0.003, xB, yA - H * 0.003); x.stroke();
+    x.lineCap = 'round'; x.lineJoin = 'round';
+    for (const a of armscyes) {
+      for (const branch of [0, 1]) {
+        x.globalAlpha = light ? 0.13 : 0.22;
+        x.strokeStyle = '#000';
+        x.lineWidth = Math.max(1.5, W * 0.0018);
+        armscyePath(x, a.pts, branch, W, H, a.du); x.stroke();
+        x.globalAlpha = light ? 0.10 : 0.13;
+        x.strokeStyle = '#fff';
+        x.lineWidth = Math.max(1, W * 0.0009);
+        x.save(); x.translate(0, -H * 0.0025);
+        armscyePath(x, a.pts, branch, W, H, a.du); x.stroke();
+        x.restore();
+      }
     }
     x.restore();
   }
@@ -761,7 +943,8 @@ function buildTorsoCanvas(o, m, q) {
     if (mark) {
       const isMono = !o.chestMarkSvg && o.chestMark === 'mono';
       const wide = (isMono ? 0.30 : (o.chestMarkWidth ?? 0.44)) * m.chestWidth / upw;
-      drawMark(x, mark, { maxRun: wide, cap: wide, align: 'run' });
+      // 2% bow: the chest is a curve, and a print laid straight across it is a sticker
+      drawMark(x, mark, { maxRun: wide, cap: wide, align: 'run' }, { sagAt: bowSag(wide, 0.02) });
     } else if (o.chestMark === 'mono') {
       const r = (0.30 * m.chestWidth * 0.5) / upw;
       x.lineWidth = r * 0.19;
@@ -797,11 +980,45 @@ function buildTorsoCanvas(o, m, q) {
     x.fillStyle = o.chestMarkColor;
     const maxRun = Math.min((0.66 * m.chestWidth) / upw, W * 0.28);
     if (mark) {
-      drawMark(x, mark, { maxRun, cap: 0.16 / upw });
+      const box = markBox(mark, { maxRun, cap: 0.16 / upw });
+      drawMark(x, mark, { maxRun, cap: 0.16 / upw }, { sagAt: bowSag(box.w, 0.03) });
     } else if (o.backText) {
       const fs = fitFont(x, String(o.backText), 0.03, 800, maxRun, 0.14 / upw);
-      drawRun(x, String(o.backText), fs, 0.03, 800);
+      const ref = runMetrics(x, String(o.backText), fs, 0.03, 800);
+      drawRunShaped(x, String(o.backText), fs, 0.03, 800, o.chestMarkColor, { sagAt: bowSag(ref.w, 0.03) });
     }
+    x.restore();
+  }
+
+  // ── baked occlusion, LAST so that EVERY mark above receives the same multiply ──
+  // A print that does not darken where the cloth darkens is a decal. And a garment with
+  // no AO at the armscye has nothing tying the sleeve to the body.
+  {
+    x.save();
+    x.globalCompositeOperation = 'multiply';
+    // 1 — the armscye: 0.72 at the seam, recovering to 1.0 over 45 mm
+    const rampPx = (0.045 / m.chestCirc) * W;
+    x.lineCap = 'round'; x.lineJoin = 'round';
+    x.strokeStyle = '#000';
+    for (const a of armscyes) {
+      for (const branch of [0, 1]) {
+        for (let i = 6; i >= 1; i--) {
+          x.globalAlpha = 0.055;
+          x.lineWidth = Math.max(1.5, rampPx * 2 * (i / 6));
+          armscyePath(x, a.pts, branch, W, H, a.du);
+          x.stroke();
+        }
+      }
+    }
+    x.globalAlpha = 1;
+    // 2 — the shadow the hem band casts on the body: 0.80 recovering over 25 mm
+    const yB = (1 - m.vAtY(m.hemBandY)) * H;
+    const yE = (1 - m.vAtY(m.hemBandY - 0.025)) * H;
+    const g = x.createLinearGradient(0, yB, 0, yE);
+    g.addColorStop(0, 'rgb(204,204,204)');
+    g.addColorStop(1, 'rgb(255,255,255)');
+    x.fillStyle = g;
+    x.fillRect(0, yB, W, Math.max(1, yE - yB));
     x.restore();
   }
 
@@ -831,40 +1048,69 @@ function buildSleeveCanvas(o, m, q) {
     tileArt(x, img, S, S, tw, th);
   }
 
-  // cuff band
+  // cuff band (the geometry pulls it in; this is only the rib's tone)
   const bandH = S * 0.045;
   x.save();
   x.globalAlpha = luminance(sleeveBase) > 0.6 ? 0.14 : 0.22; x.fillStyle = '#000';
   x.fillRect(0, S - bandH, S, bandH);
-  x.globalAlpha = 0.18; x.fillStyle = '#fff';
+  x.globalAlpha = 0.11; x.fillStyle = '#fff';
   x.fillRect(0, S - bandH - Math.max(1, S * 0.004), S, Math.max(1, S * 0.004));
   x.restore();
 
   // ── sleeve text: down the OUTSIDE of the arm (u = 0.5 is the outer face) ──
-  // This is the signature detail and the organiser's first requirement, so it is sized
-  // from the CAP HEIGHT, not from the run: the target is ~32% of the sleeve circumference,
-  // which puts the letters a third of the way around the arm. They wrap a little onto the
-  // front and back of the sleeve, which is what a real sublimated sleeve print does.
-  // The run is then whatever the sleeve can carry, shoulder to cuff, cuff band excluded.
+  // Sized from the CAP HEIGHT, not from the run. The cap is capped at 0.289 of the sleeve
+  // circumference = ±52° about the outer face: at polar 82 the visible half-width of the
+  // tube is ≈ ±70°, so ±52° leaves an 18° margin and no glyph is ever sliced in half by
+  // the silhouette at any azimuth in the spin — which is what made the run read at az 0
+  // as disconnected white blocks.
+  // And it TAPERS: each slice is scaled by sleeveRadius(s)/sleeveRadius(shoulder), so the
+  // 'Y' at the wrist is not the same cap height as the 'P' at the shoulder and the print
+  // keeps a constant angular width all the way down the arm.
   const text = (o.sleeveText || '').trim();
   if (text || o.sleeveTextSvg) {
-    const vTop = 0.975, vBot = 0.055;                  // shoulder seam → just above the cuff band
+    const vTop = (m.sleeveCapV ?? 0.98) - 0.02, vBot = 0.055;   // below the head → above the cuff
     const runPx = (vTop - vBot) * S;                   // available run in canvas px (after squash)
-    const cy = (1 - (vTop + vBot) / 2) * S;
+    const vMid = (vTop + vBot) / 2;
+    const cy = (1 - vMid) * S;
     const maxRun = runPx / Math.max(0.05, squash);     // …in the local (pre-squash) space
-    const cap = Math.max(0.10, Math.min(0.42, o.sleeveTextCap ?? 0.32)) * m.sleeveCirc / upw;
+    const cap = Math.max(0.10, Math.min(0.289, o.sleeveTextCap ?? 0.18)) * m.sleeveCirc / upw;
     const mark = getArtImage(markUrls(o).sleeve);
+    // run fraction t → v → arc s → radius, normalised at the shoulder end of the run
+    const rAt = (v) => m.sleeveRadius(Math.max(0, m.sleeveSOfV(v)));
+    const taperFor = (w) => {
+      const vSpan = (w * squash) / S;
+      const vOfT = t => vMid + (0.5 - t) * vSpan;
+      const r0 = rAt(vOfT(0)) || 1;
+      return { scaleAt: t => rAt(vOfT(t)) / r0 };
+    };
     x.save();
     x.translate(S * 0.5, cy);
     x.scale(1, squash);                                // world-isotropy, applied before rotate
     x.rotate(Math.PI / 2);                             // run along +x (shoulder → cuff)
     x.fillStyle = o.sleeveTextColor;
     if (mark) {
-      drawMark(x, mark, { maxRun, cap });
+      const box = markBox(mark, { maxRun, cap });
+      drawMark(x, mark, { maxRun, cap }, taperFor(box.w));
     } else if (text) {
       const fs = fitFont(x, text, 0.04, 800, maxRun, cap);
-      drawRun(x, text, fs, 0.04, 800);
+      const ref = runMetrics(x, text, fs, 0.04, 800);
+      drawRunShaped(x, text, fs, 0.04, 800, o.sleeveTextColor, taperFor(ref.w));
     }
+    x.restore();
+  }
+
+  // ── baked occlusion at the sleeve HEAD, after the print: the armscye is in shadow on
+  //    every real garment, and it is what ties the sleeve to the body ──
+  {
+    const vHead = m.sleeveCapV ?? 0.94;
+    const y0 = 0, y1 = (1 - vHead + 0.06) * S;
+    const g = x.createLinearGradient(0, y0, 0, y1);
+    g.addColorStop(0, 'rgb(180,180,180)');
+    g.addColorStop(1, 'rgb(255,255,255)');
+    x.save();
+    x.globalCompositeOperation = 'multiply';
+    x.fillStyle = g;
+    x.fillRect(0, y0, S, Math.max(1, y1 - y0));
     x.restore();
   }
 
@@ -915,6 +1161,31 @@ function knitNormalTexture() {
   t.colorSpace = THREE.NoColorSpace;
   t.needsUpdate = true;
   _knitTex = t;
+  return t;
+}
+
+/**
+ * The contact shadow: black with a radial alpha falloff, 0.42 at the centre to 0 at the
+ * edge. Built once and shared page-wide. Squashing happens on the mesh, not here.
+ */
+let _shadowTex = null;
+function contactShadowTexture() {
+  if (_shadowTex) return _shadowTex;
+  const S = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  grd.addColorStop(0.00, 'rgba(0,0,0,0.42)');
+  grd.addColorStop(0.42, 'rgba(0,0,0,0.26)');
+  grd.addColorStop(0.74, 'rgba(0,0,0,0.07)');
+  grd.addColorStop(1.00, 'rgba(0,0,0,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, S, S);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.needsUpdate = true;
+  _shadowTex = t;
   return t;
 }
 
@@ -982,30 +1253,48 @@ export function mountSpin(el, opts = {}) {
   roomScene.traverse(n => { if (n.geometry) n.geometry.dispose(); if (n.material) n.material.dispose(); });
 
   // — lights —
-  // The rig is parented to the CAMERA, so a turning garment keeps the same three-quarter
-  // key and the same rim at every azimuth. A world-fixed rig sends the chest mark into
-  // shadow somewhere in every revolution, which is the one thing the hero cannot do.
-  // Directional targets stay at the world origin (the garment centre) by default.
-  const rig = new THREE.Group();
+  // A rig parented to the CAMERA is fatal in a 360° viewer: the shading never travels
+  // across the form, the highlight sits in the same screen-space place at every azimuth,
+  // and the product reads as a rotating matte sticker rather than as an object. So the
+  // rig lives in the WORLD — a real turntable set, where the lights stay put and the
+  // camera travels — and the shading sweeps across the chest and around onto the back as
+  // the garment turns.
+  // Two constraints pull against each other, and this rig is what satisfies both:
+  //   · the chest mark must never fall into blackness ⇒ the ring counter-rotates by 38%
+  //     of the azimuth, so at az 180 the light has moved 111° relative to the camera but
+  //     only 68° across the garment — a clearly visible sweep, no black mark;
+  //   · a near-black garment reflects ~1% of what hits it, so any azimuth left without a
+  //     light within ~45° reads as a flat cut-out ⇒ FOUR lights, evenly spaced at 90° in
+  //     XZ, at different heights and intensities so the ring is never uniform.
+  // Only a low fill stays on the camera, purely to keep the marks legible.
+  const RIG_FOLLOW = 0.38;
+  const worldRig = new THREE.Group();
+  scene.add(worldRig);
+  const rig = new THREE.Group();      // camera-parented: the fill only
   camera.add(rig);
   scene.add(camera);
 
-  const key = new THREE.DirectionalLight(0xffffff, 1.55);
-  key.position.set(-2.2, 2.6, 2.4);
-  rig.add(key);
+  const key = new THREE.DirectionalLight(0xffffff, 1.55);      // front-left, high
+  key.position.set(-2.4, 2.6, 2.4);
+  worldRig.add(key);
+  const keyB = new THREE.DirectionalLight(0xfff2e8, 0.9);      // back-right, high
+  keyB.position.set(2.4, 2.3, -2.4);
+  worldRig.add(keyB);
   const fillL = new THREE.DirectionalLight(0xffffff, 0.5);
   fillL.position.set(2.6, 0.3, 1.4);
   rig.add(fillL);
-  // rim / back lights: a PAIR, behind the garment and out to either side, so both
-  // silhouette edges catch a highlight at every azimuth. This is what stops a black long
-  // sleeve on a navy hero reading as a flat cut-out, and it is what makes the back view
-  // (where there is no chest mark to carry the eye) still read as a solid object.
-  const rimA = new THREE.DirectionalLight(0xd8e4ff, 1.4);
-  rimA.position.set(-2.9, 1.7, -2.5);
-  rig.add(rimA);
-  const rimB = new THREE.DirectionalLight(0xcdd9f0, 1.0);
-  rimB.position.set(2.9, 1.3, -2.7);
-  rig.add(rimB);
+  // the cool pair, low: they carry the silhouette edge and the back view (where there is
+  // no chest mark to carry the eye) so the garment still reads as a solid object.
+  const rimA = new THREE.DirectionalLight(0xd8e4ff, 1.4);      // back-left, low
+  rimA.position.set(-2.4, 1.7, -2.4);
+  worldRig.add(rimA);
+  const rimB = new THREE.DirectionalLight(0xcdd9f0, 1.0);      // front-right, low
+  rimB.position.set(2.4, 1.3, 2.4);
+  worldRig.add(rimB);
+  /** hold the world rig at its share of the current azimuth */
+  function trackLights() {
+    worldRig.rotation.y = controls.getAzimuthalAngle() * RIG_FOLLOW;
+  }
   const bounce = new THREE.HemisphereLight(0xdfe6f2, 0x0a0c10, 0.30);
   scene.add(bounce);
 
@@ -1019,11 +1308,16 @@ export function mountSpin(el, opts = {}) {
     const t = smoothstep((L - 0.05) / 0.45);          // 0 = black garment · 1 = bone white
     renderer.toneMappingExposure = 1.18 - 0.30 * t;
     key.intensity = 2.10 - 0.62 * t;
-    fillL.intensity = 0.46 + 0.08 * t;
+    keyB.intensity = (2.10 - 0.62 * t) * 0.62;
+    fillL.intensity = 0.40 + 0.10 * t;   // the only camera-parented light: mark legibility
     rimA.intensity = 1.85 - 1.35 * t;
     rimB.intensity = 1.25 - 0.95 * t;
+    // the bust form is exposed AGAINST the garment, not with it: under a dark garment the
+    // rig runs 1.18 EV / key 2.10 and a mid grey blows out to near-white, so pull it down
+    formMat.color.set(shade(FORM_GREY, -0.34 + 0.34 * t));
+    formMat.needsUpdate = true;
     fabric.sheen = fabricSleeve.sheen = 0.60 + 0.35 * (1 - t);
-    bounce.intensity = 0.34 - 0.07 * t;
+    bounce.intensity = 0.42 - 0.12 * t;
     const env = 0.98 - 0.22 * t;
     fabric.envMapIntensity = env;
     fabricSleeve.envMapIntensity = env;
@@ -1043,12 +1337,28 @@ export function mountSpin(el, opts = {}) {
     sheen: 0.45, sheenRoughness: 0.5, sheenColor: new THREE.Color(0xffffff),
     side: THREE.DoubleSide, envMapIntensity: 0.8,
   });
+  // the inside of the garment is the garment, in shadow — not a hard-coded black hole.
+  // A fixed 0x111111 is flatly wrong for a bone-white or a pink style.
   const innerMat = new THREE.MeshStandardMaterial({
-    color: 0x111111, roughness: 0.95, metalness: 0, side: THREE.DoubleSide, envMapIntensity: 0.3,
+    color: 0x111111, roughness: 0.95, metalness: 0, side: THREE.DoubleSide, envMapIntensity: 0.15,
   });
-  // the bust form itself: matte, no sheen, nothing that competes with the garment
+  // the 12 mm turn-under at every opening: garment cloth, so the edge rolls
+  const facingMat = new THREE.MeshStandardMaterial({
+    color: 0x888888, roughness: 0.72, metalness: 0, side: THREE.DoubleSide, envMapIntensity: 0.5,
+  });
+  const facingSleeveMat = facingMat.clone();
+  // the bust form itself: matte, no sheen, nothing that competes with the garment.
+  // A real bust form photographs 2.5-3 stops UNDER a white garment, and this rig runs
+  // exposure 1.18 / key 2.10 for a dark one — 0xA9A9AC came out at ~0xF2F2F4, i.e. the
+  // brightest object in the frame. It is a prop; it must never out-value the product.
   const formMat = new THREE.MeshStandardMaterial({
-    color: 0xA9A9AC, roughness: 0.85, metalness: 0, envMapIntensity: 0.55,
+    color: FORM_GREY, roughness: 0.96, metalness: 0, envMapIntensity: 0.18,
+  });
+  // contact shadow: one unlit quad with a baked radial falloff. No shadow map, one draw
+  // call — but without it the garment hangs in mid-air, which no product shot does.
+  const shadowMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff, map: contactShadowTexture(), transparent: true,
+    depthWrite: false, side: THREE.DoubleSide, toneMapped: false,
   });
 
   // knit normal, tiled to roughly a 5 mm wale. The source canvas is shared page-wide;
@@ -1064,7 +1374,13 @@ export function mountSpin(el, opts = {}) {
     mat.normalScale = new THREE.Vector2(0.15, 0.15);
     mat.needsUpdate = true;
   }
-  knitFor(fabric, 20, 26);
+  // 5 mm wale on EVERY panel: the knit tile carries 16 wales and 12 courses, so the
+  // repeat is (world span) / (0.005 × count). Hard-coded repeats put a different cloth on
+  // the sleeve than on the torso, which is visible the moment the key rakes across both.
+  const WALE = 0.005;
+  const knitRepeat = (mat, circ, len) =>
+    knitFor(mat, Math.max(2, circ / (WALE * 16)), Math.max(2, len / (WALE * 12)));
+  knitFor(fabric, 12, 13);
   knitFor(collarMat, 10, 2);
 
   const root = new THREE.Group();
@@ -1080,41 +1396,63 @@ export function mountSpin(el, opts = {}) {
     owned.geos.length = 0; owned.meshes.length = 0;
   }
 
+  const MAT = () => ({ torso: fabric, sleeve: fabricSleeve, collar: collarMat, inner: innerMat });
+
+  function add(geo, mat) {
+    const mesh = new THREE.Mesh(geo, mat);
+    root.add(mesh); owned.geos.push(geo); owned.meshes.push(mesh);
+    return mesh;
+  }
+
   function buildAll() {
     clearBuild();
-    build = buildGarment(o.style, q);
+    build = buildGarment(o.style, q, { mannequin: o.mannequin, wrinkles: o.wrinkles });
+    const mats = MAT();
 
-    const torso = new THREE.Mesh(build.torsoGeo, fabric);
-    root.add(torso); owned.geos.push(build.torsoGeo); owned.meshes.push(torso);
-
-    build.sleeveGeos.forEach(g => {
-      const mesh = new THREE.Mesh(g, fabricSleeve);
-      root.add(mesh); owned.geos.push(g); owned.meshes.push(mesh);
-    });
-
-    // collar band
-    const nr = 0.112, nz = 0.092;
-    const collarGeo = new THREE.TorusGeometry(nr, 0.017, 10, Math.max(20, q.radial));
-    // sample the neckline row of the torso texture so the collar binding matches the print
-    {
-      const uvA = collarGeo.attributes.uv;
-      for (let i = 0; i < uvA.count; i++) uvA.setXY(i, uvA.getX(i) - 0.5, 0.997);
-      uvA.needsUpdate = true;
-    }
-    const collar = new THREE.Mesh(collarGeo, collarMat);
-    collar.rotation.x = -Math.PI / 2;
-    collar.scale.set(1, nz / nr, 1);
-    collar.position.set(0, build.metrics.neckY - 0.004, 0);
-    root.add(collar); owned.geos.push(collarGeo); owned.meshes.push(collar);
+    for (const part of build.parts) add(part.geo, mats[part.kind] || fabric);
 
     // inner planes / caps
     for (const cap of build.caps) {
       const g = new THREE.CircleGeometry(cap.r, Math.max(16, q.radial));
-      const mesh = new THREE.Mesh(g, innerMat);
+      const mesh = add(g, innerMat);
       mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), cap.axis.clone().normalize());
       mesh.position.copy(cap.pos);
-      if (!cap.basis) mesh.scale.set(1, cap.rz / cap.r, 1);
-      root.add(mesh); owned.geos.push(g); owned.meshes.push(mesh);
+      if (!cap.flat) mesh.scale.set(1, cap.rz / cap.r, 1);
+    }
+
+    // inner facings: a short tube of GARMENT cloth just inside each opening
+    for (const f of build.facings || []) {
+      const g = new THREE.CylinderGeometry(f.r, f.r, f.len, Math.max(16, Math.min(48, q.radial)), 1, true);
+      const mesh = add(g, f.kind === 'sleeve' ? facingSleeveMat : facingMat);
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), f.axis.clone().normalize());
+      mesh.position.copy(f.pos);
+      mesh.scale.set(1, 1, f.rz / f.r);
+    }
+
+    // the visible bust form. Flat-capped CYLINDERS, never capsules: a capsule leaves a
+    // hemisphere standing proud of the cuff, which photographs as a ping-pong ball.
+    for (const m of build.mannequin) {
+      if (m.kind === 'lathe') {
+        add(new THREE.LatheGeometry(m.profile, m.segments), formMat);
+      } else {
+        const g = new THREE.CylinderGeometry(m.radius, m.radius2 ?? m.radius, m.length,
+          Math.max(12, q.stubSeg), 1, false);
+        const mesh = add(g, formMat);
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), m.dir.clone().normalize());
+        mesh.position.copy(m.pos);
+      }
+    }
+
+    // the contact shadow, on the ground under the form
+    {
+      const R = 0.34;
+      const g = new THREE.PlaneGeometry(R * 2, R * 2);
+      const mesh = add(g, shadowMat);
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(0, build.metrics.hemY - 0.015, 0);
+      mesh.scale.set(1, 0.62, 1);          // squashed in Z: a floor contact, not a disc
+      mesh.renderOrder = -1;
+      mesh.userData.noFit = true;          // never let it drive the framing
     }
 
     frameCamera();
@@ -1123,7 +1461,10 @@ export function mountSpin(el, opts = {}) {
   function applyColors() {
     fabric.sheenColor.set(shade(o.baseColor, 0.42));
     collarMat.color.set(0xd2d2d2);   // slight darkening over the sampled print
-    innerMat.color.set(shade(o.baseColor, -0.72));
+    // the interior is the cloth in shadow, not a hole punched in the mesh
+    innerMat.color.set(shade(o.baseColor, -0.42));
+    facingMat.color.set(shade(o.baseColor, -0.10));
+    facingSleeveMat.color.set(shade(o.sleeveColor || o.baseColor, -0.10));
     applyLighting();
   }
 
@@ -1136,6 +1477,8 @@ export function mountSpin(el, opts = {}) {
     torsoTex = tt; sleeveTex = st;
     // one material carries both maps via per-mesh material clones? keep it simple:
     // torso uses `fabric`, sleeves use `fabricSleeve`
+    knitRepeat(fabric, build.metrics.chestCirc, build.metrics.arcWorld);
+    knitRepeat(fabricSleeve, build.metrics.sleeveCirc, build.metrics.sleeveLen);
     fabric.map = torsoTex; fabric.needsUpdate = true;
     fabricSleeve.map = sleeveTex; fabricSleeve.needsUpdate = true;
     collarMat.map = torsoTex; collarMat.needsUpdate = true;
@@ -1147,6 +1490,14 @@ export function mountSpin(el, opts = {}) {
   // sleeves need their own map, so clone the fabric material once
   const fabricSleeve = fabric.clone();
   fabricSleeve.side = THREE.DoubleSide;
+  // The sleeve tube and the deltoid cap are EMBEDDED in the torso — that union is what
+  // makes the shoulder round. Give them a constant depth bias so the near-tangent band
+  // where the cap emerges from the trapezius resolves as one clean seam curve instead of
+  // a speckled z-fight.
+  fabricSleeve.polygonOffset = true;
+  fabricSleeve.polygonOffsetFactor = -2;
+  fabricSleeve.polygonOffsetUnits = -2;
+  knitFor(fabricSleeve, 4, 10);   // replaced by knitRepeat() once the metrics are known
 
   /**
    * Framing. A bounding-SPHERE fit is rotation-proof but it frames the sphere, not the
@@ -1158,7 +1509,12 @@ export function mountSpin(el, opts = {}) {
    */
   const ENV = { center: new THREE.Vector3(), r: 0.5, halfY: 0.7 };
   function measureEnvelope() {
-    const box = new THREE.Box3().setFromObject(root);
+    const box = new THREE.Box3();
+    root.updateMatrixWorld(true);
+    for (const mesh of owned.meshes) {
+      if (mesh.userData.noFit) continue;     // the contact shadow is not the garment
+      box.expandByObject(mesh);
+    }
     if (!Number.isFinite(box.min.x) || box.isEmpty()) return;
     box.getCenter(ENV.center);
     const dx = Math.max(ENV.center.x - box.min.x, box.max.x - ENV.center.x);
@@ -1181,10 +1537,19 @@ export function mountSpin(el, opts = {}) {
   }
   const sphTmp = new THREE.Spherical();
   const offTmp = new THREE.Vector3();
+  let firstFit = true;
   function frameCamera() {
     measureEnvelope();
     controls.target.copy(ENV.center);
     offTmp.subVectors(camera.position, controls.target);
+    if (firstFit) {
+      // The opening pose is stated against the TARGET, not the world origin — the target
+      // sits at the garment's centre, so setting it on camera.position alone lands ~6° off.
+      firstFit = false;
+      offTmp.setFromSpherical(new THREE.Spherical(1,
+        THREE.MathUtils.degToRad(Math.max(52, Math.min(98, o.polar ?? 82))),
+        THREE.MathUtils.degToRad(o.azimuth ?? 25)));
+    }
     if (offTmp.lengthSq() < 1e-6) offTmp.set(0, 0, 1);
     sphTmp.setFromVector3(offTmp);
     const d = fitDistance(sphTmp.phi);
@@ -1210,14 +1575,24 @@ export function mountSpin(el, opts = {}) {
   }
 
   // — controls —
-  camera.position.set(0, 0.05, 3);
+  // First mount looks slightly DOWN onto the shoulders (polar 82°) from three-quarters
+  // (azimuth 25°): straight-on hides the abduction gap and flattens the deltoid, and the
+  // three-quarter is the angle every on-model rashguard photo is shot from.
+  {
+    const sph = new THREE.Spherical(3,
+      THREE.MathUtils.degToRad(Math.max(52, Math.min(98, o.polar ?? 82))),
+      THREE.MathUtils.degToRad(o.azimuth ?? 25));
+    camera.position.setFromSpherical(sph);
+  }
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
   controls.dampingFactor = 0.075;
   controls.enablePan = !!o.pan;
   controls.enableZoom = !!o.zoom;
   controls.minPolarAngle = THREE.MathUtils.degToRad(52);
-  controls.maxPolarAngle = THREE.MathUtils.degToRad(104);
+  // never below 98°: under the horizon the camera looks up into the hem, and no framing
+  // of a product should ever be shot from inside the garment
+  controls.maxPolarAngle = THREE.MathUtils.degToRad(98);
   controls.rotateSpeed = 0.85;
   controls.autoRotate = !!o.autoRotate;
   controls.autoRotateSpeed = (o.speed ?? 0.6) * 6;
@@ -1308,6 +1683,7 @@ export function mountSpin(el, opts = {}) {
   buildAll();
   rebuildTextures();
   applyBackground();
+  trackLights();
 
   // art / marks / fonts are async: never block the first paint, just re-render when they
   // land. Marks are inline-SVG data URLs, so this settles inside one frame in practice.
@@ -1366,6 +1742,7 @@ export function mountSpin(el, opts = {}) {
     const moved = controls.update(dt);
     if (moved) {
       keepFit();
+      trackLights();
       if (controls.autoRotate) {
         // count the idle revolutions and hard-stop at maxTurns
         let d = controls.getAzimuthalAngle() - before;
@@ -1396,7 +1773,9 @@ export function mountSpin(el, opts = {}) {
     o = { ...o, ...next };
     const qPrev = q;
     q = qualityFor();
-    const geoDirty = next.style !== undefined && next.style !== prev.style || q !== qPrev;
+    const geoDirty = (next.style !== undefined && next.style !== prev.style) || q !== qPrev
+      || (next.mannequin !== undefined && next.mannequin !== prev.mannequin)
+      || (next.wrinkles !== undefined && next.wrinkles !== prev.wrinkles);
     const texDirty = geoDirty || ['baseColor', 'sleeveColor', 'art', 'artTile', 'sleeveText', 'sleeveTextColor',
       'sleeveTextCap', 'sleeveTextSvg', 'chestMark', 'chestMarkColor', 'chestMarkBg',
       'chestMarkSvg', 'chestMarkWidth', 'backText', 'backTextSvg',
@@ -1427,6 +1806,7 @@ export function mountSpin(el, opts = {}) {
     camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(sph));
     camera.lookAt(controls.target);
     controls.update();
+    trackLights();
     renderer.render(scene, camera);
   }
   function setPolar(rad) {
@@ -1475,6 +1855,10 @@ export function mountSpin(el, opts = {}) {
       size: [W, H],
       style: o.style,
       quality: q === QUALITY.high ? 'high' : 'low',
+      mannequin: o.mannequin,
+      wrinkles: o.wrinkles !== false,
+      polarDeg: Math.round(new THREE.Spherical().setFromVector3(
+        new THREE.Vector3().subVectors(camera.position, controls.target)).phi * 180 / Math.PI),
       interacted,
       dragHint: !!o.dragHint,
     };
@@ -1494,7 +1878,9 @@ export function mountSpin(el, opts = {}) {
     clearBuild();
     if (torsoTex) torsoTex.dispose();
     if (sleeveTex) sleeveTex.dispose();
-    fabric.dispose(); fabricSleeve.dispose(); collarMat.dispose(); innerMat.dispose();
+    for (const t of knitClones) t.dispose();
+    fabric.dispose(); fabricSleeve.dispose(); collarMat.dispose(); innerMat.dispose(); formMat.dispose();
+    facingMat.dispose(); facingSleeveMat.dispose(); shadowMat.dispose();
     envRT.dispose(); pmrem.dispose();
     renderer.dispose();
     if (canvas.parentNode === el) el.removeChild(canvas);

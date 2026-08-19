@@ -19,12 +19,11 @@
     padding:18px 20px 60px;
   }
   h1 { font-size:18px; letter-spacing:.06em; text-transform:uppercase; margin:0 0 4px; }
-  p.note { color:#9aa4b5; margin:0 0 18px; font-size:12px; }
+  p.note { color:#9aa4b5; margin:0 0 14px; font-size:12px; }
   .row { display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start; }
   .card { background:#11172400; border:1px solid #1e2838; border-radius:10px; padding:10px; width:340px; }
-  body { font-family:Barlow,'Segoe UI',system-ui,sans-serif; }
   .card h2 { font-size:12px; letter-spacing:.12em; text-transform:uppercase; margin:0 0 8px; color:#E8A33D; }
-  .stage { width:320px; height:400px; border-radius:8px; overflow:hidden;
+  .stage { width:320px; height:440px; border-radius:8px; overflow:hidden;
            background:radial-gradient(120% 90% at 50% 20%, #202a3b 0%, #0d131d 70%); }
   .stage.light { background:radial-gradient(120% 90% at 50% 20%, #ffffff 0%, #d9dde4 75%); }
   .stagewrap { position:relative; }
@@ -36,25 +35,39 @@
   button { background:#1b2434; color:#F5F3EE; border:1px solid #2b374b; border-radius:6px;
            padding:5px 9px; font:inherit; font-size:12px; cursor:pointer; }
   button:hover { background:#25324a; }
+  button.on { background:#E8A33D; color:#0B1220; border-color:#E8A33D; }
   .stat { font:11px/1.4 ui-monospace,Consolas,monospace; color:#7f8b9e; margin-top:6px; white-space:pre; }
   #shots { display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }
   #shots img { width:200px; border:1px solid #23303f; border-radius:6px; background:#0d131d; }
-  .bar { margin:14px 0 8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .bar { margin:12px 0 8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+         border-top:1px solid #1e2838; padding-top:10px; }
+  .bar b { font:600 11px/1 Barlow; letter-spacing:.14em; text-transform:uppercase; color:#5f6b7e; margin-right:2px; }
 </style>
 </head>
 <body>
 <h1>spin3d — 360° rashguard viewer</h1>
-<p class="note">Procedural lofted garment, three.js r170, vendored locally. Sample data only — no real SKUs or prices.</p>
+<p class="note">Garment lofted over an implicit male size-M body (1.75 m), grey bust form.
+Sample data only — no real SKUs or prices.</p>
 
 <div class="bar">
+  <b>azimuth</b>
+  <button data-az="0">0°</button>
+  <button data-az="45">45°</button>
+  <button data-az="90">90°</button>
+  <button data-az="135">135°</button>
+  <button data-az="180">180°</button>
+  <b style="margin-left:12px">polar</b>
+  <button data-po="70">70°</button>
+  <button data-po="82">82°</button>
+  <button data-po="96">96°</button>
+</div>
+<div class="bar">
+  <b>toggles</b>
+  <button id="mann" class="on">mannequin: grey</button>
+  <button id="wrink" class="on">wrinkles: on</button>
   <button id="allOn">auto-rotate ALL on</button>
-  <button id="allOff">auto-rotate ALL off</button>
-  <button id="shotAll">snapshot all → below</button>
-  <button id="a0">azimuth 0° (front)</button>
-  <button id="a90">90° (right side)</button>
-  <button id="a180">180° (back)</button>
-  <button id="a270">270° (left side)</button>
-  <button id="a45">45°</button>
+  <button id="allOff">off</button>
+  <button id="shotAll">snapshot all</button>
   <button id="fpsBtn">measure fps (3s)</button>
   <span class="stat" id="fpsAll"></span>
 </div>
@@ -66,6 +79,7 @@
 import { mountSpin } from '../src/render/spin3d.js';
 import { demoArt } from '../src/render/art.js';
 import { lockupSVG } from '../src/render/marks.js';
+import { BELT_HEX } from './../src/render/garment.js';
 
 const art = demoArt('geo', 300);
 
@@ -78,18 +92,17 @@ const LOCKUP_SVG_URL = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
 const CONFIGS = [
   { id:'ls-black', title:'Black LS — sleeve run + chest lockup', light:false, opts:{
       style:'ls', baseColor:'#14161b', sleeveText:'PRODIGY', sleeveTextColor:'#F5F3EE',
-      chestMark:'lockup', chestMarkColor:'#E8A33D', backText:null, speed:0.6, dragHint:true } },
+      chestMark:'lockup', chestMarkColor:'#E8A33D', backText:null,
+      mannequin:'grey', speed:0.6, dragHint:true } },
   { id:'ss-white', title:"White SS — 'mono' + tiled demo art", light:true, opts:{
       style:'ss', baseColor:'#ECECEA', art, artTile:3, sleeveText:'PRODIGY',
       sleeveTextColor:'#0B1220', chestMark:'mono', chestMarkColor:'#E8A33D',
-      chestMarkBg:'#0B1220', speed:0.6, dragHint:true } },
-  { id:'ls-navy', title:'Navy LS — chestMarkSvg + back print', light:false, opts:{
-      style:'ls', baseColor:'#0B1220', sleeveText:'PRODIGY', sleeveTextColor:'#E8A33D',
+      chestMarkBg:'#0B1220', mannequin:'grey', speed:0.6, dragHint:true } },
+  { id:'ls-blue', title:'Ranked blue LS — belt sleeves + back print', light:false, opts:{
+      style:'ls', baseColor:'#14161b', sleeveColor: (BELT_HEX && BELT_HEX.blue) || '#004ABE',
+      sleeveText:'PRODIGY', sleeveTextColor:'#F5F3EE',
       chestMark:null, chestMarkSvg: LOCKUP_SVG_URL, backText:'PRODIGY',
-      chestMarkColor:'#F5F3EE', speed:0.6, dragHint:true } },
-  { id:'ls-white', title:'Bone LS — light colourway, no blow-out', light:true, opts:{
-      style:'ls', baseColor:'#F4F2EC', sleeveText:'PRODIGY', sleeveTextColor:'#0B1220',
-      chestMark:'lockup', chestMarkColor:'#0B1220', speed:0.6, dragHint:true } },
+      chestMarkColor:'#F5F3EE', mannequin:'grey', speed:0.6, dragHint:true } },
 ];
 
 const row = document.getElementById('row');
@@ -142,15 +155,27 @@ async function shot(v, width = 900) {
   return blob;
 }
 
+const az = deg => views.forEach(v => { v.api.setAutoRotate(false); v.rotating = false; v.api.setAzimuth(deg * Math.PI / 180); });
+const po = deg => views.forEach(v => { v.api.setAutoRotate(false); v.rotating = false; v.api.setPolar(deg * Math.PI / 180); });
+for (const b of document.querySelectorAll('[data-az]')) b.onclick = () => az(Number(b.dataset.az));
+for (const b of document.querySelectorAll('[data-po]')) b.onclick = () => po(Number(b.dataset.po));
+
+let mann = 'grey', wrink = true;
+document.getElementById('mann').onclick = (e) => {
+  mann = mann === 'grey' ? 'none' : 'grey';
+  e.target.textContent = `mannequin: ${mann}`;
+  e.target.classList.toggle('on', mann === 'grey');
+  views.forEach(v => v.api.update({ mannequin: mann }));
+};
+document.getElementById('wrink').onclick = (e) => {
+  wrink = !wrink;
+  e.target.textContent = `wrinkles: ${wrink ? 'on' : 'off'}`;
+  e.target.classList.toggle('on', wrink);
+  views.forEach(v => v.api.update({ wrinkles: wrink }));
+};
 document.getElementById('allOn').onclick = () => views.forEach(v => { v.rotating = true; v.api.setAutoRotate(true); });
 document.getElementById('allOff').onclick = () => views.forEach(v => { v.rotating = false; v.api.setAutoRotate(false); });
 document.getElementById('shotAll').onclick = () => views.forEach(v => shot(v, 700));
-const az = deg => views.forEach(v => { v.api.setAutoRotate(false); v.rotating = false; v.api.setAzimuth(deg * Math.PI / 180); });
-document.getElementById('a0').onclick = () => az(0);
-document.getElementById('a45').onclick = () => az(45);
-document.getElementById('a90').onclick = () => az(90);
-document.getElementById('a180').onclick = () => az(180);
-document.getElementById('a270').onclick = () => az(270);
 document.getElementById('fpsBtn').onclick = async (e) => {
   e.target.disabled = true;
   views.forEach(v => { v.rotating = true; v.api.setAutoRotate(true); });
@@ -166,7 +191,7 @@ setInterval(() => {
   for (const v of views) {
     const i = v.api.getInfo();
     const s = document.getElementById(`stat-${v.id}`);
-    if (s) s.textContent = `${i.fps} fps(rendered) · ${i.triangles} tris · ${i.drawCalls} calls · ${i.quality} · ${i.size[0]}x${i.size[1]}`;
+    if (s) s.textContent = `${i.fps} fps(rendered) · ${i.triangles} tris · ${i.drawCalls} calls · ${i.quality} · az ${i.azimuthDeg}° po ${i.polarDeg}°`;
   }
 }, 500);
 

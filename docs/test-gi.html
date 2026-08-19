@@ -48,11 +48,23 @@ GSM are — TO CONFIRM until the client supplies them. Belt colours here are the
 <h2>05 — card size (lite @ 300) — the grid test</h2>
 <div class="row six" id="r5"></div>
 
-<h2>06 — slot check: slotsFor / slotBBox</h2>
+<h2>06 — design “shi” (Prodigy × 死) — black gi, the brief</h2>
+<p class="note">Reusable design, not a one-off: <code>renderGarment({ style:'gi', design:'shi' })</code>.
+Sunset-gradient patches with a white outline, contrast zigzag stitching down the lapel, the
+wordmark running vertically down the wearer’s-left lapel. Sample render — no prices, no SKUs.</p>
+<div class="row three" id="r6"></div>
+
+<h2>07 — the same design on a white gi (marks must stay legible)</h2>
+<div class="row three" id="r7"></div>
+
+<h2>08 — design @ lite 300 (card size) + the shiBolt variant</h2>
+<div class="row six" id="r8"></div>
+
+<h2>09 — slot check: slotsFor / slotBBox</h2>
 <pre id="slots"></pre>
 
 <script type="module">
-import { renderGarment, renderRanked, STYLES, GI_PRESETS, slotsFor, slotBBox, estimateRankCoverage } from '../src/render/garment.js';
+import { renderGarment, renderRanked, STYLES, GI_PRESETS, GI_DESIGNS, slotsFor, slotBBox, estimateRankCoverage } from '../src/render/garment.js';
 
 const tile = (label, svg, dark) => `<div class="t${dark ? ' dark' : ''}"><b>${label}</b>${svg}</div>`;
 const MARKS = {
@@ -89,7 +101,28 @@ document.getElementById('r5').innerHTML =
   tile('pants white', renderGarment({ style: 'gipants', baseColor: GI_PRESETS.white, uid: 'l5', size: 300, detail: 'lite' })) +
   tile('pants blue', renderGarment({ style: 'gipants', baseColor: GI_PRESETS.blue, uid: 'l6', size: 300, detail: 'lite' }));
 
+// ── 06/07/08 — the "shi" design ──
+const D = 'shi';
+document.getElementById('r6').innerHTML =
+  tile('black — front', renderGarment({ style: 'gi', baseColor: GI_PRESETS.black, uid: 'd1', design: D }), true) +
+  tile('black — back', renderGarment({ style: 'gi', view: 'back', baseColor: GI_PRESETS.black, uid: 'd2', design: D }), true) +
+  tile('black — pants front', renderGarment({ style: 'gipants', baseColor: GI_PRESETS.black, uid: 'd3', design: D }), true);
+
+document.getElementById('r7').innerHTML =
+  tile('white — front', renderGarment({ style: 'gi', baseColor: GI_PRESETS.white, uid: 'd4', design: D })) +
+  tile('white — back', renderGarment({ style: 'gi', view: 'back', baseColor: GI_PRESETS.white, uid: 'd5', design: D })) +
+  tile('white — pants front', renderGarment({ style: 'gipants', baseColor: GI_PRESETS.white, uid: 'd6', design: D }));
+
+document.getElementById('r8').innerHTML =
+  tile('lite black', renderGarment({ style: 'gi', baseColor: GI_PRESETS.black, uid: 'd7', size: 300, detail: 'lite', design: D }), true) +
+  tile('lite black back', renderGarment({ style: 'gi', view: 'back', baseColor: GI_PRESETS.black, uid: 'd8', size: 300, detail: 'lite', design: D }), true) +
+  tile('lite white', renderGarment({ style: 'gi', baseColor: GI_PRESETS.white, uid: 'd9', size: 300, detail: 'lite', design: D })) +
+  tile('lite pants', renderGarment({ style: 'gipants', baseColor: GI_PRESETS.black, uid: 'da', size: 300, detail: 'lite', design: D }), true) +
+  tile('shiBolt', renderGarment({ style: 'gi', baseColor: GI_PRESETS.black, uid: 'db', size: 300, detail: 'lite', design: 'shiBolt' }), true) +
+  tile('shiBolt pants', renderGarment({ style: 'gipants', baseColor: GI_PRESETS.black, uid: 'dc', size: 300, detail: 'lite', design: 'shiBolt' }), true);
+
 const lines = [];
+lines.push(`GI_DESIGNS -> ${Object.keys(GI_DESIGNS).join(', ')}`);
 for (const style of ['gi', 'gipants']) {
   lines.push(`${style} — ${STYLES[style].name} (family ${STYLES[style].family})`);
   for (const view of ['front', 'back']) {

@@ -17,7 +17,8 @@
  * wearer's left is on the viewer's right; in the back view it is on the viewer's left.
  */
 
-import { WORD_PRODIGY, wordSVG, lockupSVG, monoSVG } from './marks.js';
+import { WORD_PRODIGY, WORD_ATHLETICS, MONO, wordSVG, lockupSVG, monoSVG } from './marks.js';
+import { shiSVG, skullSVG, boltSVG, sunsetGradient, zigzagPath, polylinePath } from './collab-marks.js';
 
 // ───────────────────────────── geometry ─────────────────────────────
 
@@ -1149,7 +1150,253 @@ function giMarks(h, { view, marks, tone }) {
   return out;
 }
 
-function renderGi(h, { view, baseColor, slots, size, detail, defs, marks, belt }) {
+// ───────────────────── gi "design": a whole colourway as one option ─────────────────────
+//
+// A `design` is a REUSABLE LAYOUT, not a one-off drawing: a set of marks pinned to named
+// places on the jacket and the pants (back, sleeves, chest, lapel, skirt, shins, waistband)
+// plus a contrast stitch colour. The layout language is the collab-gi one — big mark across
+// the upper back, a mark on the outer upper sleeve of BOTH arms, a monogram flanking each
+// side of the lapel, the brand name running vertically down the wearer's-left lapel, a small
+// patch on the front skirt, contrast zigzag stitching along the lapel / cuffs / hem.
+//
+//   renderGarment({ style:'gi', design:'shi' })                    // preset by name
+//   renderGarment({ style:'gi', design:{ name:'shi', back:{ fill:'#fff' } } })   // preset + overrides
+//   renderGarment({ style:'gi', design:{ back:{ mark:'skull', size:260 } } })    // bare, no preset
+//   renderGarment({ style:'gi', marks:{ design:'shi' } })           // same thing via `marks`
+//
+// Marks are drawn UNDER the shading layer (exactly where `marks` goes) so the key light and
+// the fold shadows fall across them. "Patch" look = sunset gradient fill + a white outline
+// via `paint-order: stroke fill`, which is how the embroidered-patch reference reads.
+//
+// Placement is in the authored 1000-frame; every mark is clipped to the piece it sits on,
+// so nothing can bleed onto a neighbouring panel.
+
+/** Where each design mark lands on the jacket (authored 1000-frame). */
+const GI_DESIGN_GEO = {
+  back: { x: 500, y: 424 },                                   // between the shoulder blades
+  chest: [{ x: 380, y: 348 }, { x: 620, y: 348 }],            // both sides, flanking the lapel
+  // outer upper sleeve. rot aligns the mark with the sleeve axis, so its top points at the
+  // shoulder the way a print on a real sleeve does; the arm is held out at ~47°.
+  sleeves: [{ x: 269, y: 402, rot: 47, clip: 'cVL' }, { x: 731, y: 402, rot: -47, clip: 'cVR' }],
+  skirt: { x: 615, y: 758 },                                  // wearer's-left front panel, at the hem
+  // The wordmark runs down the wearer's-left (viewer's-right) lapel, top → bottom. The axis
+  // is the OUTBOARD half of the 55-unit band: the inboard half carries the zigzag, exactly
+  // as on the reference jacket, so the two never collide.
+  lapelAxis: [[564, 268], [502, 578]],
+};
+const GIP_DESIGN_GEO = {
+  shins: [{ x: 390, y: 772, clip: 'cL' }, { x: 610, y: 772, clip: 'cR' }],
+  waistLabel: { x: 500, y: 218 },
+};
+
+// Stitch spines (polylines; curves are pre-sampled so zigzagPath can walk them). The two
+// lapel runs sit just inside each lapel's INNER edge — the free edges that form the V — which
+// is where a contrast zigzag lives on a real jacket, and leaves the band clear for the text.
+const GI_STITCH_LAPEL_UNDER = [[455, 235], [517, 538]];
+const GI_STITCH_LAPEL_OVER = [[547, 234], [485, 540], [473, 822]];
+const GI_STITCH_COLLAR_F = [[442, 226], [470, 227], [500, 229], [530, 227], [558, 226]];
+const GI_STITCH_COLLAR_B = [[430, 224], [465, 218], [500, 219], [535, 218], [570, 224]];
+
+const DESIGN_WORDS = { PRODIGY: WORD_PRODIGY, ATHLETICS: WORD_ATHLETICS };
+
+/**
+ * The shipped designs. `shi` is the brief: 死 across the back and on the skirt, a skull on
+ * both sleeves and both shins. `shiBolt` swaps the skulls for the bolt.
+ */
+export const GI_DESIGNS = Object.freeze({
+  shi: Object.freeze({
+    name: 'shi',
+    back: { mark: 'shi', size: 290, fill: 'sunset', outline: '#fff' },
+    sleeves: { mark: 'skull', size: 120, fill: 'sunset', outline: '#fff' },
+    chest: { mark: 'mono', size: 60, fill: 'sunset', outline: '#fff' },
+    lapelText: { text: 'PRODIGY ATHLETICS', color: '#F5F3EE', colorLight: '#0B1220', height: 26 },
+    skirt: { mark: 'shi', size: 70, fill: 'sunset', outline: '#fff' },
+    stitch: { color: '#E0245E', zigzag: true, opacity: 0.55 },
+    pants: { shins: 'skull', size: 110, fill: 'sunset', outline: '#fff', waistLabel: 'shi' },
+  }),
+  shiBolt: Object.freeze({
+    name: 'shiBolt',
+    back: { mark: 'shi', size: 290, fill: 'sunset', outline: '#fff' },
+    sleeves: { mark: 'bolt', size: 170, fill: 'sunset', outline: '#fff' },
+    chest: { mark: 'mono', size: 60, fill: 'sunset', outline: '#fff' },
+    lapelText: { text: 'PRODIGY ATHLETICS', color: '#F5F3EE', colorLight: '#0B1220', height: 26 },
+    skirt: { mark: 'shi', size: 70, fill: 'sunset', outline: '#fff' },
+    stitch: { color: '#E0245E', zigzag: true, opacity: 0.55 },
+    pants: { shins: 'bolt', size: 190, fill: 'sunset', outline: '#fff', waistLabel: 'shi' },
+  }),
+});
+
+const DESIGN_SECTIONS = ['back', 'sleeves', 'chest', 'lapelText', 'skirt', 'stitch', 'pants'];
+
+/**
+ * 'shi' → the preset. { name:'shi', back:{…} } → the preset with that section merged over.
+ * An object with no known `name` is used as-is, so a caller can place one mark and nothing
+ * else. `null` / `false` for a section switches that section OFF.
+ */
+export function resolveDesign(design) {
+  if (!design) return null;
+  if (typeof design === 'string') return GI_DESIGNS[design] || null;
+  if (typeof design !== 'object') return null;
+  const base = (design.name && GI_DESIGNS[design.name]) || null;
+  if (!base) return { ...design };
+  const out = { ...base, ...design };
+  for (const k of DESIGN_SECTIONS) {
+    if (design[k] === null || design[k] === false) out[k] = null;
+    else if (design[k] && base[k]) out[k] = { ...base[k], ...design[k] };
+  }
+  return out;
+}
+
+/** The Prodigy monogram as an embroidered patch: sunset roundel, white rim, ink P. */
+function designMono({ x = 0, y = 0, size = 60, fill = '#E8A33D', stroke = null, strokeWidth = 0, ink = '#0B1220' } = {}) {
+  const k = size / MONO.vb[0];
+  const [ccx, ccy, r] = MONO.circle;
+  const sw = stroke ? ` stroke="${stroke}" stroke-width="${+(strokeWidth / k).toFixed(2)}"` : '';
+  return `<g transform="translate(${+(x - size / 2).toFixed(2)} ${+(y - size / 2).toFixed(2)}) scale(${+k.toFixed(4)})">
+    <circle cx="${ccx}" cy="${ccy}" r="${r}" fill="${fill}"${sw}/>
+    <path fill-rule="evenodd" d="${MONO.d}" fill="${ink}"/></g>`;
+}
+
+/**
+ * One design mark. `sun` / `sunF` are the two sunset paints (flipped for 死, which is drawn
+ * with a negative y scale). Returns '' for an unknown mark name rather than throwing, so a
+ * bad preset degrades to "no patch" instead of a blank render.
+ */
+function designMarkSVG(kind, z, geo, paints) {
+  const size = z.size || 100;
+  const outline = z.outline === false ? null : (z.outline || null);
+  const sw = z.outlineWidth ?? Math.max(2, Math.min(3, size / 45));
+  const rotate = z.rotate ?? geo.rot ?? 0;
+  const hex = z.fill && z.fill !== 'sunset' ? z.fill : null;
+  const o = { x: geo.x, y: geo.y, size, rotate, stroke: outline, strokeWidth: sw };
+  switch (kind) {
+    case 'shi': return shiSVG({ ...o, fill: hex || paints.sunF });
+    case 'skull': return skullSVG({ ...o, fill: hex || paints.sun });
+    case 'bolt': return boltSVG({ ...o, fill: hex || paints.sun });
+    case 'mono': return designMono({ x: geo.x, y: geo.y, size, fill: hex || paints.sun, stroke: outline, strokeWidth: sw, ink: z.ink });
+    default: return '';
+  }
+}
+
+/**
+ * The wordmark running vertically down the wearer's-left lapel, reading top → bottom.
+ * `color` is the colour on a DARK gi; `colorLight` (or `color:'auto'`) keeps it legible when
+ * the same design is put on a bone-white gi, where Bone-on-bone would vanish.
+ */
+function giLapelText(z, tone) {
+  const words = String(z.text ?? 'PRODIGY ATHLETICS').toUpperCase().trim().split(/\s+/)
+    .map(t => DESIGN_WORDS[t]).filter(Boolean);
+  if (!words.length) return '';
+  const auto = tone && tone.light ? '#0B1220' : '#F5F3EE';
+  const color = (!z.color || z.color === 'auto') ? auto
+    : (tone && tone.light && z.colorLight) ? z.colorLight : z.color;
+  const [[x0, y0], [x1, y1]] = z.axis || GI_DESIGN_GEO.lapelAxis;
+  const dx = x1 - x0, dy = y1 - y0;
+  const len = Math.hypot(dx, dy);
+  const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+  const ux = dx / len, uy = dy / len;
+  let h = z.height || 26;
+  const runW = () => words.reduce((a, w) => a + h / w.h * w.w, 0) + h * 0.7 * (words.length - 1);
+  if (runW() > len * 0.96) h *= len * 0.96 / runW();      // never let the run overrun the lapel
+  const gap = h * 0.7;
+  let s = (len - runW()) / 2;
+  let out = '';
+  for (const w of words) {
+    const ww = h / w.h * w.w;
+    out += wordSVG(w, { x: x0 + ux * (s + ww / 2), y: y0 + uy * (s + ww / 2), height: h, color, rotate: ang });
+    s += ww + gap;
+  }
+  return out;
+}
+
+/** Contrast topstitching: zigzag down the lapel + collar, straight rows on cuffs and hem. */
+function giDesignStitch(kit, st, { view, url }) {
+  const zz = st.zigzag !== false;
+  const run = (pts, amp, step) => (zz ? zigzagPath(pts, { amp, step }) : polylinePath(pts));
+  const lapel = view === 'front'
+    ? [run(GI_STITCH_LAPEL_UNDER, 6.5, 26), run(GI_STITCH_LAPEL_OVER, 6.5, 26), run(GI_STITCH_COLLAR_F, 7, 19)]
+    : [run(GI_STITCH_COLLAR_B, 6, 18)];
+  // Cuffs get two rows on the band and the hem two below its seam — the loud ones. The
+  // armhole and side-slit rows are construction, not decoration, so they run dimmer.
+  const loud = [
+    { d: GI_CUFF_SEAM_VL, t: [-15.7, 2.9] }, { d: GI_CUFF_SEAM_VL, t: [-29.5, 5.4] },
+    { d: GI_CUFF_SEAM_VR, t: [15.7, 2.9] }, { d: GI_CUFF_SEAM_VR, t: [29.5, 5.4] },
+    { d: GI_HEM_SEAM, t: [0, 6] }, { d: GI_HEM_SEAM, t: [0, 12] },
+  ];
+  const dim = [
+    { d: GI_ARMHOLE_L, t: [-5.5, 0] }, { d: GI_ARMHOLE_R, t: [5.5, 0] },
+    { d: GI_SIDE_SLIT_L, t: [-4, 0] }, { d: GI_SIDE_SLIT_R, t: [4, 0] },
+  ];
+  const op = st.opacity ?? 0.55;
+  const rows = list => list.map(e => `<path d="${e.d}" transform="translate(${e.t[0]} ${e.t[1]})"/>`).join('');
+  return `<g fill="none" stroke="${st.color || '#E0245E'}" stroke-opacity="${op}"
+      stroke-width="${+(kit.ts * 1.15).toFixed(2)}" stroke-linejoin="round" stroke-linecap="round">
+    <g clip-path="${url('cLap')}">${lapel.filter(Boolean).map(d => `<path d="${d}"/>`).join('')}</g>
+    <g clip-path="${url('cGar')}">${rows(loud)}</g>
+    <g clip-path="${url('cGar')}" stroke-opacity="${+(op * 0.55).toFixed(2)}">${rows(dim)}</g>
+  </g>`;
+}
+
+/** Every design mark on the jacket, for one view. Drawn where `marks` is drawn. */
+function giDesignLayer(h, { view, dsg, paints, tone }) {
+  const { url } = h;
+  const front = view === 'front';
+  let out = '';
+  if (!front && dsg.back && dsg.back.mark) {
+    out += `<g clip-path="${url('cTor')}">${designMarkSVG(dsg.back.mark, dsg.back, GI_DESIGN_GEO.back, paints)}</g>`;
+  }
+  if (dsg.sleeves && dsg.sleeves.mark) {
+    for (const g of GI_DESIGN_GEO.sleeves) {
+      out += `<g clip-path="${url(g.clip)}">${designMarkSVG(dsg.sleeves.mark, dsg.sleeves, g, paints)}</g>`;
+    }
+  }
+  if (front && dsg.chest && dsg.chest.mark) {
+    const m = GI_DESIGN_GEO.chest.map(g => designMarkSVG(dsg.chest.mark, dsg.chest, g, paints)).join('');
+    out += `<g clip-path="${url('cTor')}">${m}</g>`;
+  }
+  if (front && dsg.lapelText) {
+    out += `<g clip-path="${url('cLap')}">${giLapelText(dsg.lapelText, tone)}</g>`;
+  }
+  if (front && dsg.skirt && dsg.skirt.mark) {
+    out += `<g clip-path="${url('cTor')}">${designMarkSVG(dsg.skirt.mark, dsg.skirt, GI_DESIGN_GEO.skirt, paints)}</g>`;
+  }
+  return out;
+}
+
+/** Gi-pants half of a design: the motif on both shins + a woven label on the waistband. */
+function giPantsDesignLayer(h, { view, dsg, paints, tone }) {
+  const { url } = h;
+  const p = dsg.pants;
+  if (!p) return '';
+  let out = '';
+  if (p.shins) {
+    for (const g of GIP_DESIGN_GEO.shins) {
+      out += `<g clip-path="${url(g.clip)}">${designMarkSVG(p.shins, { ...p, mark: p.shins }, g, paints)}</g>`;
+    }
+  }
+  if (p.waistLabel && view === 'front') {
+    const g = GIP_DESIGN_GEO.waistLabel;
+    const lw = p.labelWidth || 54, lh = p.labelHeight || 34;
+    const plate = p.labelColor || '#F5F3EE';
+    out += `<g clip-path="${url('cB')}">
+      <path d="${rrect({ x: g.x - lw / 2, y: g.y - lh / 2, w: lw, h: lh }, 4)}" fill="${plate}"
+        stroke="#0B1220" stroke-opacity="${tone.light ? '.45' : '.25'}" stroke-width="1.6"/>
+      ${designMarkSVG(p.waistLabel, { size: lh * 0.62, fill: p.labelInk || '#0B1220', outline: false }, { x: g.x, y: g.y }, paints)}
+    </g>`;
+  }
+  return out;
+}
+
+/** The two sunset paints + the <defs> they need, for this svg only. */
+function designPaints(h, dsg) {
+  if (!dsg) return { defs: '', sun: '#E8A33D', sunF: '#E8A33D' };
+  const c = dsg.sunset || {};
+  const a = sunsetGradient(h.u, 'dsun', c);
+  const b = sunsetGradient(h.u, 'dsunF', c, { flip: true });
+  return { defs: a.defs + b.defs, sun: a.fill, sunF: b.fill };
+}
+
+function renderGi(h, { view, baseColor, slots, size, detail, defs, marks, belt, design }) {
   const { u, url } = h;
   const flat = detail === 'flat';
   const front = view === 'front';
@@ -1165,9 +1412,11 @@ function renderGi(h, { view, baseColor, slots, size, detail, defs, marks, belt }
   const fill = (clip, p) => p ? `<g clip-path="${url(clip)}"><rect width="1000" height="1000" fill="${p}"/></g>` : '';
   const lapelBands = front ? [GI_COLLAR, GI_LAPEL_UNDER, GI_LAPEL_OVER] : [GI_LAPEL_B];
   const cuffBands = [GI_CUFF_VL, GI_CUFF_VR];
+  const dsg = resolveDesign(design ?? (marks && marks.design));
+  const paints = designPaints(h, dsg);
 
   return `${svgOpen(size, u)}
-  <defs>${giDefs(h, { view, detail })}${defs}</defs>
+  <defs>${giDefs(h, { view, detail })}${paints.defs}${defs}</defs>
   ${flat ? '' : `<ellipse cx="500" cy="846" rx="212" ry="18" fill="#000" opacity=".14" filter="${url('s2')}"/>`}
   <g clip-path="${url('cGar')}">
     <rect width="1000" height="1000" fill="${baseColor}"/>
@@ -1180,6 +1429,7 @@ function renderGi(h, { view, baseColor, slots, size, detail, defs, marks, belt }
     ${fill('cShL', shL)}
     ${fill('cShR', shR)}
     ${flat ? '' : giMarks(h, { view, marks, tone })}
+    ${(!flat && dsg) ? giDesignLayer(h, { view, dsg, paints, tone }) : ''}
     ${(!flat && beltHex && front) ? `<g clip-path="${url('cBelt')}"><rect width="1000" height="1000" fill="${beltHex}"/></g>
       <g clip-path="${url('cBelt')}" style="mix-blend-mode:multiply">
         <rect x="0" y="628" width="1000" height="30" fill="#000" opacity=".28" filter="${url('s3')}"/>
@@ -1190,6 +1440,7 @@ function renderGi(h, { view, baseColor, slots, size, detail, defs, marks, belt }
     ${flat ? '' : giShading(h, { view, tone })}
     ${flat ? '' : pearlLayer(h, detail)}
     ${flat ? '' : giSeams(kit, { view })}
+    ${(!flat && dsg && dsg.stitch) ? giDesignStitch(kit, dsg.stitch, { view, url }) : ''}
     ${(!flat && beltHex && front) ? seamGroup(kit, [
       { d: 'M 312 584 C 400 576 600 576 688 584', o: 0.34, off: [0, -3] },
       { d: 'M 310 652 C 400 644 600 644 690 652', o: 0.30, off: [0, -3] },
@@ -1206,7 +1457,17 @@ function renderGi(h, { view, baseColor, slots, size, detail, defs, marks, belt }
 
 // ───────────────────────────── gi pants ─────────────────────────────
 
-function renderGiPants(h, { view, baseColor, slots, size, detail, defs, marks }) {
+/** Contrast topstitching on the pants: waistband seam + two rows on each hem. */
+function gipDesignStitch(kit, st, { url }) {
+  const off = [[0, -6], [0, 6], [0, 6], [0, 13], [0, 6], [0, 13]];
+  const d = [GIP_BAND_SEAM, GIP_BAND_SEAM, GIP_HEM_SEAM_VL, GIP_HEM_SEAM_VL, GIP_HEM_SEAM_VR, GIP_HEM_SEAM_VR];
+  return `<g clip-path="${url('cG')}" fill="none" stroke="${st.color || '#E0245E'}"
+      stroke-opacity="${st.opacity ?? 0.55}" stroke-width="${+(kit.ts * 1.15).toFixed(2)}" stroke-linecap="round">
+    ${d.map((p, i) => `<path d="${p}" transform="translate(${off[i][0]} ${off[i][1]})"/>`).join('')}
+  </g>`;
+}
+
+function renderGiPants(h, { view, baseColor, slots, size, detail, defs, marks, design }) {
   const { u, id, url } = h;
   const flat = detail === 'flat';
   const front = view === 'front';
@@ -1215,6 +1476,8 @@ function renderGiPants(h, { view, baseColor, slots, size, detail, defs, marks })
   const vr = front ? S('legL') : S('legR');
   const tone = toneOf(baseColor);
   const kit = seamKit(size, 1);
+  const dsg = resolveDesign(design ?? (marks && marks.design));
+  const paints = designPaints(h, dsg);
   const fill = (clip, p) => p ? `<g clip-path="${url(clip)}"><rect width="1000" height="1000" fill="${p}"/></g>` : '';
   const knee = z => `<path d="${rrect(z, 16)}"/>`;
 
@@ -1238,7 +1501,7 @@ function renderGiPants(h, { view, baseColor, slots, size, detail, defs, marks })
     <radialGradient id="${id('kl')}" cx="378" cy="250" r="520" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#fff" stop-opacity=".14"/><stop offset=".5" stop-color="#fff" stop-opacity=".04"/>
       <stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
-    ${defs}
+    ${paints.defs}${defs}
   </defs>
   ${flat ? '' : `<ellipse cx="500" cy="898" rx="216" ry="16" fill="#000" opacity=".14" filter="${url('s2')}"/>`}
   <g clip-path="${url('cG')}">
@@ -1247,6 +1510,7 @@ function renderGiPants(h, { view, baseColor, slots, size, detail, defs, marks })
     ${fill('cL', vl)}${fill('cR', vr)}${fill('cB', S('waist'))}
     ${(!flat && marks && marks.waist) ? `<g clip-path="${url('cB')}">${wordSVG(WORD_PRODIGY, { x: 500, y: 220, height: marks.waist.height || 24, color: (marks.waist.color && marks.waist.color !== 'auto') ? marks.waist.color : (tone.light ? '#0B1220' : '#F5F3EE') })}</g>` : ''}
     ${(!flat && marks && marks.leg) ? `<g clip-path="${url('cR')}">${wordSVG(WORD_PRODIGY, { x: 618, y: 480, height: marks.leg.height || 24, color: (marks.leg.color && marks.leg.color !== 'auto') ? marks.leg.color : (tone.light ? '#0B1220' : '#F5F3EE'), rotate: 86 })}</g>` : ''}
+    ${(!flat && dsg) ? giPantsDesignLayer(h, { view, dsg, paints, tone }) : ''}
     ${flat ? '' : `
     <g style="mix-blend-mode:multiply" opacity="${(tone.shade * 0.5).toFixed(3)}">
       <g clip-path="${url('cG')}">${knee(GIP_KNEE_VL).replace('<path', '<path fill="#000" opacity=".24"')}${knee(GIP_KNEE_VR).replace('<path', '<path fill="#000" opacity=".24"')}</g>
@@ -1284,6 +1548,7 @@ function renderGiPants(h, { view, baseColor, slots, size, detail, defs, marks })
       { d: GIP_HEM_SEAM_VL, o: 0.3, off: [0, -3] },
       { d: GIP_HEM_SEAM_VR, o: 0.3, off: [0, -3] },
     ], [{ d: GIP_BAND_EDGE, o: 0.24 }])}
+    ${(dsg && dsg.stitch) ? gipDesignStitch(kit, dsg.stitch, { url }) : ''}
     ${front ? `<g fill="none" stroke="#000" stroke-opacity=".34" stroke-width="${(kit.w * 1.05).toFixed(2)}" stroke-linecap="round">
       <path d="M 468 224 C 476 246 480 266 478 286"/><path d="M 532 224 C 524 246 520 266 522 286"/>
       <path d="M 478 286 C 462 296 452 310 457 322 C 464 332 484 327 489 310"/>
@@ -1298,16 +1563,22 @@ function renderGiPants(h, { view, baseColor, slots, size, detail, defs, marks })
 
 /**
  * Render a garment.
+ * `design` (gi / gipants only) applies a whole reusable colourway — see GI_DESIGNS. It takes
+ * a preset id ('shi'), a preset id plus overrides ({ name:'shi', … }), or a bare spec. It is
+ * also accepted as `marks.design`, which is the route for the callers that only forward
+ * `marks` (renderRanked, the catalogue grid); an explicit `design` wins over `marks.design`.
+ * Ignored by every other family.
  * @returns {string} complete <svg> markup
  */
 export function renderGarment({
   style = 'ls', view = 'front', baseColor = BASE_PRESETS.black,
   slots = {}, size = 1000, detail = 'full', uid, defs = '', marks = null, belt = null,
+  design = null,
 } = {}) {
   if (!STYLES[style]) throw new Error(`Unknown style "${style}"`);
   if (view !== 'front' && view !== 'back') throw new Error(`Unknown view "${view}"`);
   const h = ns(uid);
-  const args = { style, view, baseColor, slots: slots || {}, size, detail, defs, marks, belt };
+  const args = { style, view, baseColor, slots: slots || {}, size, detail, defs, marks, belt, design };
   switch (STYLES[style].family) {
     case 'rashguard': return renderRashguard(h, args);
     case 'shorts': return renderShorts(h, args);
@@ -1325,7 +1596,7 @@ export function renderGarment({
  */
 export function renderRanked({
   style = 'ss', view = 'front', belt = 'white', body = 'black',
-  uid, size = 1000, detail = 'full', defs = '', slots = {}, marks = null,
+  uid, size = 1000, detail = 'full', defs = '', slots = {}, marks = null, design = null,
 } = {}) {
   const hex = BELT_HEX[belt];
   if (!hex) throw new Error(`Unknown belt "${belt}"`);
@@ -1339,12 +1610,12 @@ export function renderRanked({
   // render "white gi, blue belt" without a second function.
   if (fam === 'gi' || fam === 'gipants') {
     const giBase = bodyKey === 'white' ? GI_PRESETS.white : GI_PRESETS.black;
-    return renderGarment({ style, view, baseColor: giBase, size, detail, uid, defs, marks, belt, slots });
+    return renderGarment({ style, view, baseColor: giBase, size, detail, uid, defs, marks, belt, slots, design });
   }
   const rankSlots = fam === 'rashguard'
     ? { sleeveL: hex, sleeveR: hex, collar: hex }
     : fam === 'shorts' ? { waistband: hex } : { waistband: hex };
-  return renderGarment({ style, view, baseColor, size, detail, uid, defs, marks, slots: { ...rankSlots, ...slots } });
+  return renderGarment({ style, view, baseColor, size, detail, uid, defs, marks, design, slots: { ...rankSlots, ...slots } });
 }
 
 /**

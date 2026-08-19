@@ -8,6 +8,7 @@ import {
   renderGarment, renderRanked, slotsFor, STYLES, BELT_HEX, BASE_PRESETS, estimateRankCoverage,
 } from '../render/garment.js';
 import { fileToArt, artPatternDef, artPatternRef, DEFAULT_TRANSFORM, demoArt } from '../render/art.js';
+import { resolveArtInput, classifyInput, PIN_HELP } from '../render/linkart.js';
 import { svgToPng, downloadBlob, composeGrid } from '../render/export.js';
 
 // panel.js (cut sheet) may still be mid-write by another agent — load it lazily
@@ -488,7 +489,15 @@ function buildArtPanel() {
       <div class="slot-list">${rows}</div>
       <div class="upload-zone" id="uploadZone" data-action="browse">
         Drop image here or <b>browse</b>
-        <div class="hint">PNG &middot; JPG &middot; WebP &middot; SVG</div>
+        <div class="hint">PNG &middot; JPG &middot; WebP &middot; SVG &middot; or paste an image with Ctrl+V</div>
+      </div>
+      <div class="link-box" id="linkBox">
+        <label for="linkInput" class="link-label">From a link</label>
+        <div class="link-row">
+          <input type="url" id="linkInput" placeholder="Paste a Pinterest pin or image link" autocomplete="off" spellcheck="false">
+          <button type="button" class="btn btn--primary" data-action="fetch-link">Fetch</button>
+        </div>
+        <div class="link-status" id="linkStatus" aria-live="polite">Pinterest blocks direct reads, so pin links go through a public reader (10–20 s). Faster: right-click the image on Pinterest → Copy image → Ctrl+V here.</div>
       </div>
       <div class="sample-buttons">
         <button type="button" data-action="use-demo" data-kind="geo">Try a sample — Geo</button>
@@ -1031,7 +1040,51 @@ async function handleUploadedFile(file) {
   }
 }
 
+let linkBusy = false;
+function setLinkStatus(msg, kind = '') {
+  const el = document.getElementById('linkStatus');
+  if (el) { el.textContent = msg; el.className = 'link-status' + (kind ? ' is-' + kind : ''); }
+}
+async function ingestFromInput({ file = null, text = '', dataTransfer = null } = {}) {
+  if (linkBusy) return;
+  linkBusy = true;
+  const btn = document.querySelector('[data-action="fetch-link"]');
+  if (btn) btn.disabled = true;
+  try {
+    const art = await resolveArtInput({ file, text, dataTransfer }, (m) => setLinkStatus(m, 'busy'));
+    setLinkStatus(art.warnings && art.warnings.length ? art.warnings[0] : 'Image loaded — crop or use as is.', 'ok');
+    openCropModal(art);
+  } catch (e) {
+    console.warn('link ingest failed:', e);
+    setLinkStatus(e.message || PIN_HELP, 'err');
+  } finally {
+    linkBusy = false;
+    if (btn) btn.disabled = false;
+  }
+}
+function initLinkHandlers() {
+  // Ctrl+V anywhere in the studio: image data wins, then a URL
+  document.addEventListener('paste', (e) => {
+    const inField = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.target.id !== 'linkInput';
+    if (inField) return;
+    const dt = e.clipboardData; if (!dt) return;
+    const img = [...(dt.files || [])].find(f => f.type.startsWith('image/'));
+    const text = dt.getData('text/plain') || dt.getData('text/uri-list') || '';
+    if (!img && !text) return;
+    if (!img && classifyInput(text).kind === 'text') return;   // plain text — leave it alone
+    e.preventDefault();
+    if (state.activePanel !== 'art') { state.activePanel = 'art'; state.sheetOpen = true; render(); }
+    if (!img && text) { const li = document.getElementById('linkInput'); if (li) li.value = text.trim(); }
+    ingestFromInput({ file: img || null, text: img ? '' : text });
+  });
+  // Enter in the link field
+  contextualPanelEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target && e.target.id === 'linkInput') { e.preventDefault(); ingestFromInput({ text: e.target.value }); }
+  });
+}
+
 function initUploadHandlers() {
+  initLinkHandlers();
   fileInputEl.addEventListener('change', () => {
     const file = fileInputEl.files && fileInputEl.files[0];
     if (file) handleUploadedFile(file);
@@ -1053,7 +1106,16 @@ function initUploadHandlers() {
     e.preventDefault();
     zone.classList.remove('dragover');
     const file = e.dataTransfer.files && e.dataTransfer.files[0];
-    if (file) handleUploadedFile(file);
+    if (file && file.type.startsWith('image/')) handleUploadedFile(file);
+    else ingestFromInput({ dataTransfer: e.dataTransfer });
+  });
+  // let the whole panel accept a drop of a dragged image/URL, not only the zone
+  contextualPanelEl.addEventListener('dragover', (e) => { if (state.activePanel === 'art' && !e.target.closest('#uploadZone')) e.preventDefault(); });
+  contextualPanelEl.addEventListener('drop', (e) => {
+    if (e.target.closest('#uploadZone')) return;
+    if (state.activePanel !== 'art') return;
+    e.preventDefault();
+    ingestFromInput({ dataTransfer: e.dataTransfer });
   });
 }
 
@@ -1164,6 +1226,11 @@ function onGlobalClick(e) {
     case 'export-selected':
       exportSelected();
       break;
+    case 'fetch-link': {
+      const li = document.getElementById('linkInput');
+      ingestFromInput({ text: li ? li.value : '' });
+      return;
+    }
     case 'load-sample-data':
       loadSampleData();
       break;

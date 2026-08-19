@@ -37,11 +37,57 @@ export function boltSVG({ x = 0, y = 0, size = 100, fill = '#F5F3EE', stroke = n
  * "Patch" gradient (sunset: gold → red → purple), namespaced by uid.
  * Returns { defs, fill } — put `defs` inside the SVG's own <defs>; use `fill` on the mark.
  */
-export function sunsetGradient(uid, key = 'sunset', colors = {}) {
+export function sunsetGradient(uid, key = 'sunset', colors = {}, opts = {}) {
   const { top = '#E8A33D', mid = '#E0245E', bottom = '#5B2C8F' } = colors;
   const id = `${uid}-${key}`;
+  // `flip` reverses the gradient AXIS (not the stops), for marks drawn inside a group with
+  // a negative y scale — SHI is drawn scale(k,-k) because its outline is font-up, so an
+  // un-flipped objectBoundingBox gradient would render gold at the bottom.
+  const [y1, y2] = opts.flip ? [1, 0] : [0, 1];
   return {
-    defs: `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset=".55" stop-color="${mid}"/><stop offset="1" stop-color="${bottom}"/></linearGradient>`,
+    defs: `<linearGradient id="${id}" x1="0" y1="${y1}" x2="0" y2="${y2}"><stop offset="0" stop-color="${top}"/><stop offset=".55" stop-color="${mid}"/><stop offset="1" stop-color="${bottom}"/></linearGradient>`,
     fill: `url(#${id})`,
   };
+}
+
+/**
+ * Contrast topstitching as a ZIGZAG polyline along a spine.
+ * `pts` = [[x,y], …] the spine (a polyline; sample curves yourself). `amp` is half the
+ * peak-to-peak width, `step` the run between direction changes. Returns a path `d` —
+ * STROKE it, never fill it. `step` is honoured approximately: it is rounded so the
+ * zigzag starts and ends exactly on the spine's endpoints.
+ */
+export function zigzagPath(pts, { amp = 12, step = 30, phase = 0 } = {}) {
+  if (!Array.isArray(pts) || pts.length < 2) return '';
+  const segs = [];
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+    const dx = x1 - x0, dy = y1 - y0;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-6) continue;
+    segs.push({ x0, y0, ux: dx / len, uy: dy / len, len, s0: total });
+    total += len;
+  }
+  if (!segs.length) return '';
+  const at = s => {
+    let g = segs[segs.length - 1];
+    for (const q of segs) { if (s <= q.s0 + q.len) { g = q; break; } }
+    const t = s - g.s0;
+    return { x: g.x0 + g.ux * t, y: g.y0 + g.uy * t, nx: -g.uy, ny: g.ux };
+  };
+  const n = Math.max(2, Math.round(total / Math.max(step, 1)));
+  const out = [];
+  for (let i = 0; i <= n; i++) {
+    const p = at(total * i / n);
+    const a = (i === 0 || i === n) ? 0 : ((i + phase) % 2 ? amp : -amp);
+    out.push(`${i === 0 ? 'M' : 'L'} ${num(p.x + p.nx * a)} ${num(p.y + p.ny * a)}`);
+  }
+  return out.join(' ');
+}
+
+/** The same spine as a plain polyline — the `zigzag:false` version of a stitch run. */
+export function polylinePath(pts) {
+  if (!Array.isArray(pts) || pts.length < 2) return '';
+  return pts.map(([x, y], i) => `${i ? 'L' : 'M'} ${num(x)} ${num(y)}`).join(' ');
 }

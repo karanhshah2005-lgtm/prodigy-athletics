@@ -37,7 +37,7 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
  * One garment render. Handles the artwork pattern defs and the ranked construction.
  * Every svg gets its own uid so ids never cross-wire between instances.
  */
-function svgFor({ style, view = 'front', baseColor, artSpec = null, artScale = 1, ranked = null, marks = null, size = 1000, detail = 'full' }) {
+function svgFor({ style, view = 'front', baseColor, artSpec = null, artScale = 1, ranked = null, marks = null, size = 1000, detail = 'full', design = null }) {
   const uid = nextUid();
   let defs = '', slots = {};
   if (artSpec) {
@@ -48,12 +48,12 @@ function svgFor({ style, view = 'front', baseColor, artSpec = null, artScale = 1
   if (ranked) {
     return renderRanked({ style, view, belt: ranked.belt, body: ranked.body, uid, size, detail, marks, defs, slots });
   }
-  return renderGarment({ style, view, baseColor, slots, size, detail, uid, defs, marks });
+  return renderGarment({ style, view, baseColor, slots, size, detail, uid, defs, marks, design });
 }
 
 const productSvg = (p, opts = {}) => svgFor({
   style: p.style, baseColor: p.baseColor, artSpec: p.artSpec, artScale: p.artScale,
-  ranked: p.ranked, marks: p.marks, ...opts,
+  ranked: p.ranked, marks: p.marks, design: p.design || null, ...opts,
 });
 
 /**
@@ -304,16 +304,17 @@ const GI_MARKS = {
  */
 function buildGis() {
   if (!STYLES.gi || !GI_PRESETS) return;
+  // Featured: the Prodigy × 死 gi (black), then the plain white and blue.
   const colours = [
-    { key: 'white', label: 'White' },
-    { key: 'blue', label: 'Blue' },
-    { key: 'black', label: 'Black' },
+    { key: 'black', label: 'Prodigy × 死 — Black', design: 'shi', marks: null },
+    { key: 'white', label: 'White', design: null, marks: GI_MARKS },
+    { key: 'blue', label: 'Blue', design: null, marks: GI_MARKS },
   ];
   let out;
   try {
     out = colours.map(c => `
-      <div class="gis__item">
-        ${svgFor({ style: 'gi', baseColor: GI_PRESETS[c.key], marks: GI_MARKS, size: 420 })}
+      <div class="gis__item${c.design ? ' gis__item--featured' : ''}">
+        ${svgFor({ style: 'gi', baseColor: GI_PRESETS[c.key], marks: c.marks, design: c.design, size: 420 })}
         <span class="t-label">${esc(c.label)}</span>
       </div>`).join('');
   } catch (err) {
@@ -498,7 +499,7 @@ function openPdp(id) {
 
         <div class="pdp__field">
           <label class="t-label" for="pdpSize">Size</label>
-          <select id="pdpSize">${SIZES.map(s => `<option>${s}</option>`).join('')}</select>
+          <select id="pdpSize">${(p.sizes || SIZES).map(s => `<option>${s}</option>`).join('')}</select>
         </div>
 
         <div class="pdp__add">

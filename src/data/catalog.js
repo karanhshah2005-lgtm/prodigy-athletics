@@ -127,6 +127,28 @@ function ranked(style, belt, amount) {
 }
 
 export const PRODUCTS = Object.freeze([
+  {
+    id: 'shi-gi-black', line: 'Prodigy × 死', name: 'PRODIGY × 死 GI — BLACK',
+    eyebrow: 'GI — COLLAB',
+    style: 'gi', baseColor: '#141416', artSpec: null, artScale: 1, ranked: null,
+    marks: null, design: 'shi', price: price(270), sizes: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6'], pieces: 'jacket + pants',
+    copy: [
+      'Black gi. 死 across the upper back and on the front skirt; a skull on the outer sleeve of each arm and on both shins of the pants; monogram patches either side of the lapel; PRODIGY ATHLETICS down the lapel; contrast stitching on the lapel, cuffs and hem.',
+      'Jacket weave, weight and pant fabric — TO CONFIRM.',
+      'Gi sizes A0–A6 — size chart TO CONFIRM.',
+    ],
+  },
+  {
+    id: 'shi-gi-white', line: 'Prodigy × 死', name: 'PRODIGY × 死 GI — WHITE',
+    eyebrow: 'GI — COLLAB',
+    style: 'gi', baseColor: '#F4F2EC', artSpec: null, artScale: 1, ranked: null,
+    marks: null, design: 'shi', price: price(270), sizes: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6'], pieces: 'jacket + pants',
+    copy: [
+      'White gi with the same 死 layout: back and skirt character, skulls on both sleeves and both shins, monograms, lapel wordmark, contrast stitching.',
+      'Jacket weave, weight and pant fabric — TO CONFIRM.',
+      'Gi sizes A0–A6 — size chart TO CONFIRM.',
+    ],
+  },
   /* ── Ranked — the one confirmed line (§7 OBSERVED) ─────────────────── */
   ...BELTS.map(b => ranked('ss', b, 75)),
   ...BELTS.map(b => ranked('ls', b, 85)),

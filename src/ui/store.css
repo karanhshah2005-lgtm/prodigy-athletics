@@ -489,3 +489,5 @@ body.store {
 .gis__item .t-label { display: block; margin-top: var(--s-12); color: var(--ink-45); text-align: center; }
 .gis__note { margin-top: var(--s-24); color: var(--ink-45); }
 @media (max-width: 1000px) { .gis__grid { grid-template-columns: 1fr; } }
+
+.gis__item--featured svg { transform: scale(1.06); transform-origin: 50% 60%; }

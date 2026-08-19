@@ -55,6 +55,16 @@
     </div>
   </section>
 
+  <!-- 2b. EDITORIAL BAND — model imagery, AI-generated and captioned as such -->
+  <section class="band" aria-label="The line, worn on the mats">
+    <img src="assets/models/roll-pair-wide.webp" width="1376" height="768" loading="lazy" decoding="async"
+         alt="AI-generated model: two grapplers rolling, one in a white long sleeve, one in black.">
+    <div class="band__bar">
+      <p class="band__label t-label">On the mats</p>
+      <p class="band__cap t-micro">AI-generated model &mdash; visualisation, not a photograph</p>
+    </div>
+  </section>
+
   <!-- 3. SECTION 01 — RANKED -->
   <section class="sec sec--major sec--navy" id="ranked" aria-labelledby="rankedHead">
     <div class="wrap">
@@ -63,6 +73,11 @@
         <h2 class="t-display-l" id="rankedHead">Five belts. One cut.</h2>
         <p class="t-lead">Ranked short sleeve, in white, blue, purple, brown and black. Rank colour sits in the sleeve panels and the collar binding, not in a stripe across the chest.</p>
       </div>
+      <figure class="mfig mfig--wide ranked__shot">
+        <span class="mfig__box"><img src="assets/models/ranked-trio-wide.webp" width="1376" height="768" loading="lazy" decoding="async"
+             alt="AI-generated model: three grapplers in ranked short sleeves, white, blue and purple."></span>
+        <figcaption class="mfig__cap t-micro">AI-generated model &mdash; visualisation, not a photograph</figcaption>
+      </figure>
       <div class="ranked__row" id="rankedRow"></div>
       <p class="ranked__note t-caption">
         IBJJF Art. 8.1.14 requires the rashguard to be &ldquo;colored black, white, or black and white, and with at least 10% of the rank color(belt) to which the athlete belongs.&rdquo;
@@ -80,7 +95,24 @@
         <h2 class="t-display-l" id="coreHead">Black. White. Nothing else.</h2>
         <p class="t-lead">Long sleeve, chest lockup, sleeve print, back print. The version you wear when you are not thinking about what you are wearing.</p>
       </div>
-      <div class="core__row" id="coreRow"></div>
+      <div class="core__row" id="coreRow">
+        <div class="core__cell">
+          <figure class="mfig mfig--tall">
+            <span class="mfig__box"><img src="assets/models/core-ls-black-athlete.webp" width="896" height="1200" loading="lazy" decoding="async"
+                 alt="AI-generated model: a grappler on the mats in the black long sleeve, PRODIGY down the sleeve."></span>
+            <figcaption class="mfig__cap t-micro">AI-generated model &mdash; visualisation, not a photograph</figcaption>
+          </figure>
+          <div class="core__mount" data-core="core-ls-black"></div>
+        </div>
+        <div class="core__cell">
+          <figure class="mfig mfig--tall">
+            <span class="mfig__box"><img src="assets/models/core-ls-white-athlete.webp" width="896" height="1200" loading="lazy" decoding="async"
+                 alt="AI-generated model: a grappler seated on the mats in the bone white long sleeve."></span>
+            <figcaption class="mfig__cap t-micro">AI-generated model &mdash; visualisation, not a photograph</figcaption>
+          </figure>
+          <div class="core__mount" data-core="core-ls-white"></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -92,7 +124,14 @@
         <h2 class="t-display-l" id="setsHead">One artwork, three cuts.</h2>
         <p class="t-lead">Dye sublimation prints flat on the roll, then the pieces are cut and sewn. The same file becomes the rashguard, the shorts and the spats.</p>
       </div>
-      <div class="sets__row" id="setsRow"></div>
+      <div class="sets__grid">
+        <figure class="mfig mfig--tall">
+          <span class="mfig__box"><img src="assets/models/recon-set-athlete.webp" width="896" height="1200" loading="lazy" decoding="async"
+               alt="AI-generated model: a grappler in the Recon Camo long sleeve, shorts and spats."></span>
+          <figcaption class="mfig__cap t-micro">AI-generated model &mdash; visualisation, not a photograph</figcaption>
+        </figure>
+        <div class="sets__row" id="setsRow"></div>
+      </div>
       <p class="sets__cta"><a class="btn btn--ghost t-button" href="#shop">Shop sets</a></p>
     </div>
   </section>
@@ -120,22 +159,48 @@
         <p class="t-lead">Prodigy started as a kimono company. The rashguards are the newer line.</p>
       </div>
       <div class="gis__grid">
-        <div id="gisRow">
-          <div class="gis__placeholder">
-            <span class="t-label">Gi render — to confirm</span>
-            <p class="t-caption">The renderer has no gi pattern yet. Nothing is shown in its place, and no photograph is used.</p>
+        <figure class="mfig mfig--tall">
+          <span class="mfig__box"><img src="assets/models/shi-gi-back.webp" width="896" height="1200" loading="lazy" decoding="async"
+               alt="AI-generated model: the back of the Prodigy black gi, 死 patch between the shoulder blades."></span>
+          <figcaption class="mfig__cap t-micro">AI-generated model &mdash; visualisation, not a photograph</figcaption>
+        </figure>
+        <div class="gis__main">
+          <div id="gisRow">
+            <div class="gis__placeholder">
+              <span class="t-label">Gi render — to confirm</span>
+              <p class="t-caption">The renderer has no gi pattern yet. Nothing is shown in its place, and no photograph is used.</p>
+            </div>
           </div>
+          <table class="spec">
+            <caption class="vh">Gi specification</caption>
+            <tbody>
+              <tr><th class="t-label" scope="row">Jacket weave</th><td><span class="todo">— to confirm</span></td></tr>
+              <tr><th class="t-label" scope="row">Jacket gsm</th><td><span class="todo">— to confirm</span></td></tr>
+              <tr><th class="t-label" scope="row">Pant</th><td><span class="todo">— to confirm</span></td></tr>
+              <tr><th class="t-label" scope="row">Sizes</th><td class="t-body-s">A0–A6</td></tr>
+              <tr><th class="t-label" scope="row">Shrinkage</th><td><span class="todo">— to confirm</span></td></tr>
+            </tbody>
+          </table>
         </div>
-        <table class="spec">
-          <caption class="vh">Gi specification</caption>
-          <tbody>
-            <tr><th class="t-label" scope="row">Jacket weave</th><td><span class="todo">— to confirm</span></td></tr>
-            <tr><th class="t-label" scope="row">Jacket gsm</th><td><span class="todo">— to confirm</span></td></tr>
-            <tr><th class="t-label" scope="row">Pant</th><td><span class="todo">— to confirm</span></td></tr>
-            <tr><th class="t-label" scope="row">Sizes</th><td class="t-body-s">A0–A6</td></tr>
-            <tr><th class="t-label" scope="row">Shrinkage</th><td><span class="todo">— to confirm</span></td></tr>
-          </tbody>
-        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7b. LOOKBOOK — two model frames, no product claim attached -->
+  <section class="sec sec--bonedeep look" aria-label="Lookbook">
+    <div class="wrap">
+      <span class="look__label t-label">Lookbook — sample</span>
+      <div class="look__row">
+        <figure class="mfig mfig--tall">
+          <span class="mfig__box"><img src="assets/models/ranked-ss-blue-athlete.webp" width="896" height="1200" loading="lazy" decoding="async"
+               alt="AI-generated model: a grappler in the ranked short sleeve with blue sleeve panels."></span>
+          <figcaption class="mfig__cap t-micro">AI-generated model &mdash; visualisation, not a photograph</figcaption>
+        </figure>
+        <figure class="mfig mfig--square">
+          <span class="mfig__box"><img src="assets/models/sleeve-detail.webp" width="1024" height="1024" loading="lazy" decoding="async"
+               alt="AI-generated model: close-up of PRODIGY running down a black sleeve."></span>
+          <figcaption class="mfig__cap t-micro">AI-generated model &mdash; visualisation, not a photograph</figcaption>
+        </figure>
       </div>
     </div>
   </section>
@@ -219,7 +284,8 @@
       <span class="ftr__mark t-h2">Prodigy Athletics</span>
       <p class="ftr__legal t-micro">
         Sample storefront. Prices, product copy and specifications are placeholders.<br>
-        Checkout is not connected. Every product image is rendered in your browser.
+        Checkout is not connected. Every product image is rendered in your browser.<br>
+        Model imagery is AI-generated; no real athletes are shown.
       </p>
     </div>
   </div>

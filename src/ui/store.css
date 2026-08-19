@@ -126,6 +126,55 @@ body.store {
 .stage--plain { background: transparent; }
 
 /* --------------------------------------------------------------------------
+   Model imagery — AI-generated, and captioned as such wherever it appears.
+
+   Photographs are the ONE exception to the render-only imagery rule, so they are
+   quarantined in a single component instead of being sprinkled through the sections:
+   no border, no radius, no shadow; an aspect-ratio box so a lazy image reserves its
+   space and never shifts the layout; and a mono caption that is part of the component
+   rather than something a future edit can forget to add. Product renders are untouched
+   — a photograph never stands in for a garment image.
+   -------------------------------------------------------------------------- */
+.mfig { margin: 0; min-width: 0; }
+.mfig__box { display: block; position: relative; overflow: hidden; background: var(--bone-deep); }
+.mfig__box img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.mfig__cap { display: block; margin-top: var(--s-12); color: var(--ink-45); }
+.sec--navy .mfig__box { background: var(--ink-raise); }
+.sec--navy .mfig__cap { color: var(--on-dark-45); }
+.mfig--wide .mfig__box { aspect-ratio: 16 / 9; }
+.mfig--tall .mfig__box { aspect-ratio: 3 / 4; }
+.mfig--square .mfig__box { aspect-ratio: 1 / 1; }
+
+/* Full-bleed editorial band, directly under the hero. No headline and no button:
+   it carries the campaign, the sections carry the argument. */
+.band {
+  position: relative; height: 72vh; min-height: 420px;
+  background: var(--ink-navy); overflow: hidden;
+}
+.band img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.band::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, transparent 55%, rgba(11, 18, 32, 0.66) 100%);
+}
+.band__bar {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 1;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  gap: var(--s-16); flex-wrap: wrap;
+  max-width: var(--maxw); margin-inline: auto;
+  padding: var(--s-24) var(--gutter);
+}
+.band__label { color: var(--on-dark); }
+.band__cap { color: var(--on-dark-70); }
+@media (max-width: 767px) {
+  /* 56vw is the image's own 16:9, so the band stops cropping instead of going letterbox. */
+  .band { height: 56vw; min-height: 0; }
+  /* The label and the caption stack at this width, so the scrim has to start higher —
+     the caption is the honesty rule and it has to stay readable. */
+  .band::after { background: linear-gradient(180deg, transparent 28%, rgba(11, 18, 32, 0.80) 100%); }
+  .band__bar { padding: var(--s-16) var(--gutter); gap: var(--s-8); }
+}
+
+/* --------------------------------------------------------------------------
    0. Sample strip
    -------------------------------------------------------------------------- */
 .strip {
@@ -242,6 +291,8 @@ body.store {
 /* --------------------------------------------------------------------------
    01 — Ranked
    -------------------------------------------------------------------------- */
+/* The section reads photograph -> product row: the line worn, then the line itself. */
+.ranked__shot { margin-bottom: var(--s-64); }
 .ranked__row {
   display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--s-24);
   align-items: end;
@@ -259,13 +310,18 @@ body.store {
    02 — Core
    -------------------------------------------------------------------------- */
 .core__row { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s-32); }
+.core__cell { min-width: 0; }
+.core__cell .mfig { margin-bottom: var(--s-24); }
 .core__item .t-card-title { display: block; margin-top: var(--s-12); }
 .core__item .t-price { display: block; margin-top: var(--s-4); color: var(--ink-70); }
-@media (max-width: 767px) { .core__row { grid-template-columns: 1fr; } }
+@media (max-width: 767px) { .core__row { grid-template-columns: 1fr; row-gap: var(--s-56); } }
 
 /* --------------------------------------------------------------------------
    03 — Sets
    -------------------------------------------------------------------------- */
+/* Photograph left, the three cuts right. Stacks below 1000px. */
+.sets__grid { display: grid; grid-template-columns: 30% 1fr; gap: var(--s-48); align-items: center; }
+@media (max-width: 1000px) { .sets__grid { grid-template-columns: 1fr; gap: var(--s-48); align-items: start; } }
 .sets__row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-32); align-items: end; }
 .sets__item svg { width: 100%; height: auto; }
 .sets__item .t-label { display: block; margin-top: var(--s-16); color: var(--ink-45); text-align: center; }
@@ -314,7 +370,12 @@ body.store {
 /* --------------------------------------------------------------------------
    05 — Gis
    -------------------------------------------------------------------------- */
-.gis__grid { display: grid; grid-template-columns: 1fr 380px; gap: var(--s-48); align-items: start; }
+/* The 死 back is the section's strongest image, so it takes the left column and the
+   render row + spec table stack in the right. The spec keeps its original 380px measure
+   rather than stretching to the wider column. */
+.gis__grid { display: grid; grid-template-columns: 30% 1fr; gap: var(--s-48); align-items: start; }
+.gis__main { display: grid; gap: var(--s-48); min-width: 0; }
+.gis__main .spec { max-width: 380px; }
 .gis__placeholder {
   aspect-ratio: 3 / 2; border: 1px dashed var(--bone-line); background: var(--bone-deep);
   display: grid; place-content: center; gap: var(--s-12); text-align: center; padding: var(--s-24);
@@ -491,3 +552,15 @@ body.store {
 @media (max-width: 1000px) { .gis__grid { grid-template-columns: 1fr; } }
 
 .gis__item--featured svg { transform: scale(1.06); transform-origin: 50% 60%; }
+
+/* --------------------------------------------------------------------------
+   Lookbook strip — two model frames between the gis and the studio.
+   3fr / 4fr sizes the 3:4 frame and the 1:1 frame to the SAME height, so neither
+   image is cropped to fit the other and the two captions land on one baseline.
+   -------------------------------------------------------------------------- */
+.look__label { display: block; color: var(--ink-45); margin-bottom: var(--s-32); }
+.look__row {
+  display: grid; grid-template-columns: 3fr 4fr; gap: var(--s-32);
+  align-items: start; max-width: 1012px;
+}
+@media (max-width: 767px) { .look__row { grid-template-columns: 1fr; gap: var(--s-40); max-width: none; } }

@@ -155,17 +155,22 @@ function buildRanked() {
 
 /* ── 4. section 02 — core ──────────────────────────────────────────────── */
 
+/**
+ * Each core cell is [model photograph] over [render]. The photograph is static markup in
+ * index.html — it carries its own AI caption and must not depend on this module running —
+ * so the render mounts into the cell rather than replacing the row.
+ */
 function buildCore() {
-  const ids = ['core-ls-black', 'core-ls-white'];
-  $('#coreRow').innerHTML = ids.map(id => {
-    const p = findProduct(id);
-    return `
+  for (const mount of $$('#coreRow .core__mount')) {
+    const p = findProduct(mount.dataset.core);
+    if (!p) continue;
+    mount.innerHTML = `
       <button class="card core__item" type="button" data-id="${esc(p.id)}">
         <span class="stage">${productSvg(p, { size: 620 })}</span>
         <span class="card__title t-card-title">${esc(p.name)}</span>
         <span class="card__price t-price">${priceText(p)}</span>
       </button>`;
-  }).join('');
+  }
 }
 
 /* ── 5. section 03 — sets ──────────────────────────────────────────────── */

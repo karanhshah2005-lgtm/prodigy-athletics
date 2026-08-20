@@ -38,7 +38,26 @@ const state = {
   activePanel: 'style',    // style | art | colour | ranked | scenes | export
   sheetOpen: false,        // mobile bottom-sheet visibility
   scenesSelected: { front: true, back: true, cutsheet: false, grid: false, set: false },
+  onboardDone: false,      // once artwork has landed the onboarding card never returns this session
+  artSteps: { add: true, placement: true, adjust: true },   // <details open> state for Art panel steps 1/2/3
+  linkStatus: { msg: '', kind: '' },             // mirrored into every .link-status node
 };
+
+/** The honest disclosure that sits under BOTH link inputs. Verbatim, do not soften. */
+const LINK_NOTE = 'Pinterest blocks direct reads, so pin links go through a public reader (10–20 s). '
+  + 'Faster: right-click the image on Pinterest → Copy image → Ctrl+V here.';
+state.linkStatus.msg = LINK_NOTE;
+
+/**
+ * The three honesty rows the cut sheet itself carries (src/render/panel.js), mirrored
+ * here verbatim so they are legible in the studio and not only in the exported PNG.
+ * Keep in sync with panel.js if that file's rows ever change.
+ */
+const CUT_SHEET_NOTES = [
+  { key: 'BLEED', text: 'drawn at approx. 8 mm equivalent — this sheet has no established real-world scale; confirm bleed with your printer' },
+  { key: 'FABRIC', text: 'category default, not a confirmed spec: 100% polyester, sublimation-ready, white base — dark blanks cannot be sublimated' },
+  { key: 'NOTE', text: 'Cross-seam alignment is confirmed at sampling, not on this sheet.' },
+];
 
 const SCENES = [
   { key: 'front', label: 'Front' },
@@ -48,14 +67,34 @@ const SCENES = [
   { key: 'set', label: 'Set view' },
 ];
 
-const RAIL_ITEMS = [
-  { key: 'style', label: 'Style', icon: '\u{1F455}' },
-  { key: 'art', label: 'Art', icon: '\u{1F5BC}' },
-  { key: 'colour', label: 'Colour', icon: '●' },
-  { key: 'ranked', label: 'Ranked', icon: '\u{1F94B}' },
-  { key: 'export', label: 'Export', icon: '⬇' },
+// Monochrome inline glyphs — currentColor, so the rail's active gold state tints them.
+// (No emoji anywhere in the UI: docs/DESIGN-SYSTEM.md copy rules.)
+function glyph(paths, { fillRule = '' } = {}) {
+  return `<svg class="ico" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"
+    fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"${fillRule}>${paths}</svg>`;
+}
+const ICONS = {
+  shirt: glyph('<path d="M9 3.2 4.8 5.1 3 8.6l3.1 1.7V21h11.8V10.3L21 8.6l-1.8-3.5L15 3.2a3 3 0 0 1-6 0Z"/>'),
+  image: glyph('<rect x="3" y="4.5" width="18" height="15" rx="1.6"/><circle cx="8.4" cy="10" r="1.5"/><path d="m3.6 17.6 4.9-4.6 3.4 3.2 3.4-3.6 5.1 5"/>'),
+  drop: glyph('<path d="M12 3.2c0 0 6 6.3 6 10.1a6 6 0 0 1-12 0c0-3.8 6-10.1 6-10.1Z"/><path d="M9 13.6a3 3 0 0 0 3 3"/>'),
+  belt: glyph('<rect x="2.5" y="9" width="19" height="6" rx="1.2"/><rect x="9" y="7.2" width="6" height="9.6" rx="1.2"/><path d="M12 10.6v2.8"/>'),
+  download: glyph('<path d="M12 3.5v11.2"/><path d="m7.4 10.6 4.6 4.6 4.6-4.6"/><path d="M4.2 19.8h15.6"/>'),
+  grid: glyph('<rect x="3" y="3" width="18" height="18" rx="1.6"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>'),
+  link: glyph('<path d="M9.6 14.4 14.4 9.6"/><path d="m11.2 7.4 1.9-1.9a3.8 3.8 0 0 1 5.4 5.4l-1.9 1.9"/><path d="m12.8 16.6-1.9 1.9a3.8 3.8 0 0 1-5.4-5.4l1.9-1.9"/>'),
+};
+
+const PANEL_ITEMS = [
+  { key: 'style', label: 'Style', icon: ICONS.shirt },
+  { key: 'art', label: 'Art', icon: ICONS.image },
+  { key: 'colour', label: 'Colour', icon: ICONS.drop },
+  { key: 'ranked', label: 'Ranked', icon: ICONS.belt },
 ];
-const TAB_ITEMS = [RAIL_ITEMS[0], RAIL_ITEMS[1], RAIL_ITEMS[2], RAIL_ITEMS[3], { key: 'scenes', label: 'Scenes', icon: '▦' }, RAIL_ITEMS[4]];
+// Desktop rail: no Export entry. The scenes rail on the right is permanently visible at
+// ≥1024px and already carries the picker AND the Export button; a rail entry rendered a
+// second identical gold "Export selected" into the left panel at the same time.
+const RAIL_ITEMS = PANEL_ITEMS;
+// Mobile strip: there is no scenes rail below 1024px, so Scenes + Export live here.
+const TAB_ITEMS = [...PANEL_ITEMS, { key: 'scenes', label: 'Scenes', icon: ICONS.grid }, { key: 'export', label: 'Export', icon: ICONS.download }];
 
 const gridSetCache = { grid: null, set: null };
 let gridSetDebounce = null;
@@ -74,6 +113,7 @@ const cutsheetNotesEl = document.getElementById('cutsheetNotes');
 const scenesRailEl = document.getElementById('scenesRail');
 const toastHostEl = document.getElementById('toastHost');
 const fileInputEl = document.getElementById('fileInput');
+const onboardCardEl = document.getElementById('onboardCard');
 
 const cropModalEl = document.getElementById('cropModal');
 const cropImgEl = document.getElementById('cropImg');
@@ -166,10 +206,22 @@ function buildGarmentSvg({ style, view, uid, size = 1000, detail = 'full', artBu
   return renderGarment({ style, view, baseColor: state.baseColor, slots, uid, size, detail, defs });
 }
 
-function assignArtToActiveSlot(art) {
+function assignArtToActiveSlot(art, { repeat = false } = {}) {
   const slotDef = visibleSlots().find((s) => s.key === state.activeSlot) || slotsFor(state.style, state.view)[0];
   if (slotDef) state.activeSlot = slotDef.key;
-  state.art[state.activeSlot] = { art, transform: { ...DEFAULT_TRANSFORM }, tile: !isPanelSlot(slotDef) && slotDef && slotDef.key !== 'all' ? false : true };
+  // Panel pieces repeat by default (a sleeve panel reads as fabric). The whole-garment
+  // 'all' slot does NOT: a user's own image tiled 2.5× across the torso was the first
+  // thing they saw, seams and all. Generated demo patterns pass repeat:true — they are
+  // drawn to repeat.
+  const tile = isPanelSlot(slotDef) ? true : (slotDef && slotDef.key === 'all' ? !!repeat : false);
+  state.art[state.activeSlot] = { art, transform: { ...DEFAULT_TRANSFORM }, tile };
+  state.onboardDone = true;          // artwork has landed — the onboarding card is done for the session
+  // Hand the user straight to the controls they now need. Without this the panel stayed
+  // on Style and "adjust the scale" had no visible entry point at all.
+  state.activePanel = 'art';
+  state.artSteps.add = false;        // step 1 collapses once there IS artwork
+  state.artSteps.adjust = true;
+  if (matchMedia('(max-width: 1023px)').matches) state.sheetOpen = true;
   invalidateGridSetCache();
   render();
 }
@@ -187,6 +239,7 @@ function loadSampleData() {
   }
   state.ranked.on = true;
   state.ranked.belt = 'blue';
+  state.onboardDone = true;
   invalidateGridSetCache();
   showToast('Sample data loaded — placeholder artwork, not a client asset.');
   render();
@@ -427,8 +480,8 @@ function buildStylePanel() {
       <div class="style-grid">${cards}</div>
     </div>
     <div class="panel-section">
-      <label class="toggle-row"><input type="checkbox" data-action="toggle-aop" ${state.aop ? 'checked' : ''}> All-over print</label>
-      <div class="panel-note">Floods the whole garment with one artwork — the default for sublimation. Named pieces still layer on top of it.</div>
+      <label class="toggle-row"><input type="checkbox" data-action="toggle-aop" ${state.aop ? 'checked' : ''}> Simple mode</label>
+      <div class="panel-note">Hides the individual panel print areas. The all-over print and the chest logo zone stay, so one artwork covers the whole garment.</div>
     </div>`;
 }
 
@@ -439,7 +492,9 @@ function buildActiveSlotControls(slotDef, entry) {
   }
   const t = entry.transform;
   const scalePct = Math.round(t.scale * 100);
-  const panel = isPanelSlot(slotDef);
+  // The whole-garment slot gets the toggle too — it is the slot most likely to be handed
+  // a photo or a logo, where a repeat is the wrong answer.
+  const canRepeat = isPanelSlot(slotDef) || slotDef.key === 'all';
   return `
     <div class="control-row">
       <div class="control-label"><span>Scale</span></div>
@@ -458,11 +513,26 @@ function buildActiveSlotControls(slotDef, entry) {
     </div>
     <div class="control-row">
       <div class="control-label"><span>Position</span></div>
-      <div class="panel-note" style="margin-top:0">Drag the artwork directly on the canvas.</div>
+      <div class="panel-note" style="margin-top:0">Drag the garment on the canvas to move the artwork.</div>
       <button type="button" class="btn btn--secondary btn-block" data-action="recenter">Back to centre</button>
     </div>
-    ${panel ? `<label class="toggle-row"><input type="checkbox" data-action="toggle-tile" ${entry.tile !== false ? 'checked' : ''}> Tile artwork</label>` : ''}
-    <button type="button" class="btn btn--secondary btn-block" data-action="remove-art" style="margin-top:14px;">Remove art</button>`;
+    ${canRepeat ? `<label class="toggle-row"><input type="checkbox" data-action="toggle-tile" ${entry.tile !== false ? 'checked' : ''}> Repeat artwork</label>
+    <div class="panel-note">Off places one copy, scaled to the print area. On repeats it as a pattern.</div>` : ''}
+    <button type="button" class="btn btn--secondary btn-block btn-remove" data-action="remove-art">Remove artwork</button>`;
+}
+
+/** The "from a link" block — rendered in the Art panel, above the upload zone. */
+function buildLinkBox() {
+  return `
+    <div class="link-box" id="linkBox">
+      <div class="link-label">${ICONS.link}<span>From Pinterest or any image link</span></div>
+      <div class="link-row">
+        <label class="sr-only" for="linkInput">Pinterest pin or image link</label>
+        <input type="url" class="link-input" id="linkInput" placeholder="Paste a pin or image link&hellip;" autocomplete="off" spellcheck="false" value="${esc(linkFieldValue)}">
+        <button type="button" class="btn btn--primary" data-action="fetch-link">Fetch</button>
+      </div>
+      <div class="link-status${state.linkStatus.kind ? ' is-' + state.linkStatus.kind : ''}" aria-live="polite">${esc(state.linkStatus.msg)}</div>
+    </div>`;
 }
 
 function buildArtPanel() {
@@ -471,10 +541,10 @@ function buildArtPanel() {
     const entry = state.art[s.key];
     const active = s.key === state.activeSlot ? 'active' : '';
     const thumb = entry && entry.art ? `<img src="${entry.art.dataUrl}" alt="">` : 'empty';
-    return `<button type="button" class="slot-row ${active}" data-action="set-active-slot" data-key="${s.key}">
+    return `<button type="button" class="slot-row ${active}" data-action="set-active-slot" data-key="${s.key}" aria-pressed="${s.key === state.activeSlot}">
       <span class="slot-thumb">${thumb}</span>
       <span class="slot-meta">
-        <span class="slot-name">${esc(s.label)}</span><br>
+        <span class="slot-name">${esc(s.label)}</span>
         <span class="slot-size">${printSizeLabel(s.printPx)}</span>
       </span>
     </button>`;
@@ -482,33 +552,47 @@ function buildArtPanel() {
 
   const activeSlotDef = vis.find((s) => s.key === state.activeSlot);
   const activeEntry = state.art[state.activeSlot];
+  const placedCount = vis.filter((s) => state.art[s.key] && state.art[s.key].art).length;
+  const hasAnyArt = Object.keys(state.art).some((k) => state.art[k] && state.art[k].art);
+  // Step 1 is ~430px tall. Once there IS artwork it collapses, so Placement and Adjust —
+  // the controls the user now needs — sit above the fold instead of below the input they
+  // have already finished with.
+  const addOpen = (!hasAnyArt || state.artSteps.add) ? 'open' : '';
+  const addMeta = activeEntry && activeEntry.art ? esc(activeEntry.art.name || 'Artwork placed') : '';
 
   return `
-    <div class="panel-section">
-      <div class="panel-title">Print areas</div>
-      <div class="slot-list">${rows}</div>
-      <div class="upload-zone" id="uploadZone" data-action="browse">
-        Drop image here or <b>browse</b>
-        <div class="hint">PNG &middot; JPG &middot; WebP &middot; SVG &middot; or paste an image with Ctrl+V</div>
+    <details class="panel-section step" data-step="add" ${addOpen}>
+      <summary><p class="eyebrow">1 &mdash; Add artwork</p><span class="step-meta">${addMeta}</span></summary>
+      <div class="step-body">
+      ${buildLinkBox()}
+      <div class="upload-zone" id="uploadZone" data-action="browse" role="button" tabindex="0">
+        Drop an image here or <b>browse</b>
+        <div class="hint">PNG &middot; JPG &middot; WebP &middot; SVG &middot; or paste with Ctrl+V</div>
       </div>
-      <div class="link-box" id="linkBox">
-        <label for="linkInput" class="link-label">From a link</label>
-        <div class="link-row">
-          <input type="url" id="linkInput" placeholder="Paste a Pinterest pin or image link" autocomplete="off" spellcheck="false">
-          <button type="button" class="btn btn--primary" data-action="fetch-link">Fetch</button>
-        </div>
-        <div class="link-status" id="linkStatus" aria-live="polite">Pinterest blocks direct reads, so pin links go through a public reader (10–20 s). Faster: right-click the image on Pinterest → Copy image → Ctrl+V here.</div>
-      </div>
+      <p class="eyebrow sample-label">Or try sample art</p>
       <div class="sample-buttons">
-        <button type="button" data-action="use-demo" data-kind="geo">Try a sample — Geo</button>
-        <button type="button" data-action="use-demo" data-kind="camo">Try a sample — Camo</button>
-        <button type="button" data-action="use-demo" data-kind="mark">Try a sample — Mark</button>
+        <button type="button" data-action="use-demo" data-kind="geo">Geo</button>
+        <button type="button" data-action="use-demo" data-kind="camo">Camo</button>
+        <button type="button" data-action="use-demo" data-kind="mark">Mark</button>
       </div>
-    </div>
-    <div class="panel-section active-slot-controls">
-      <div class="panel-title">${activeSlotDef ? esc(activeSlotDef.label) : 'Selected area'}</div>
-      ${buildActiveSlotControls(activeSlotDef, activeEntry)}
-    </div>`;
+      <div class="panel-note">Sample artwork is placeholder art generated in the browser, not a client asset.</div>
+      </div>
+    </details>
+
+    <details class="panel-section step" data-step="placement" ${state.artSteps.placement ? 'open' : ''}>
+      <summary><p class="eyebrow">2 &mdash; Placement</p><span class="step-meta">${placedCount} of ${vis.length} filled</span></summary>
+      <div class="step-body">
+        <div class="slot-list">${rows}</div>
+        <div class="panel-note">Each print area shows the artwork size the factory receives at 300 dpi.</div>
+      </div>
+    </details>
+
+    <details class="panel-section step" data-step="adjust" ${state.artSteps.adjust ? 'open' : ''}>
+      <summary><p class="eyebrow">3 &mdash; Adjust</p><span class="step-meta">${activeSlotDef ? esc(shortLabel(activeSlotDef.label)) : ''}</span></summary>
+      <div class="step-body active-slot-controls">
+        ${buildActiveSlotControls(activeSlotDef, activeEntry)}
+      </div>
+    </details>`;
 }
 
 function buildColourPanel() {
@@ -593,12 +677,45 @@ function renderScenesPickerHTML() {
   </div>`;
 }
 
+function exportSummaryText() {
+  const sel = SCENES.filter((sc) => state.scenesSelected[sc.key]);
+  return sel.length
+    ? `${sel.length} scene${sel.length > 1 ? 's' : ''}: ${sel.map((sc) => sc.label).join(', ')}`
+    : 'No scenes selected — tick them under Scenes.';
+}
+
+/**
+ * Ticking a scene only changes a checkbox and one summary line. A full render() rebuilt
+ * both scene lists (re-rendering every thumbnail) and threw keyboard focus away, so this
+ * patches the two things that actually moved and syncs the duplicate picker on mobile.
+ */
+function syncSceneSelectionUI(sourceEl) {
+  document.querySelectorAll('[data-action="toggle-scene"]').forEach((cb) => {
+    if (cb !== sourceEl) cb.checked = !!state.scenesSelected[cb.dataset.scene];
+  });
+  document.querySelectorAll('.export-summary').forEach((el) => { el.textContent = exportSummaryText(); });
+  document.querySelectorAll('[data-action="export-selected"]').forEach(applyExportEmphasis);
+}
+
+/**
+ * Before there is anything to export, Export is not the primary act — the link box is.
+ * A gold block 3.9× the area of the real CTA was the loudest thing on an empty studio,
+ * and DESIGN-SYSTEM.md §1 caps gold at three visible instances.
+ */
+function applyExportEmphasis(btn) {
+  if (!btn) return;
+  const quiet = !state.onboardDone;
+  btn.classList.toggle('btn--primary', !quiet);
+  btn.classList.toggle('btn--secondary', quiet);
+}
+
 function renderExportActionHTML() {
+  const quiet = !state.onboardDone;
   return `<div class="panel-section" style="border-top:none;margin-top:0;padding-top:0;">
     <div class="panel-title">Export</div>
-    <div class="export-summary">${(() => { const sel = SCENES.filter(sc => state.scenesSelected[sc.key]); return sel.length ? `${sel.length} scene${sel.length > 1 ? 's' : ''}: ${sel.map(sc => esc(sc.label)).join(', ')}` : 'No scenes selected — tick them under Scenes.'; })()}</div>
-    <button type="button" class="btn btn--primary btn-block" data-action="export-selected">Export selected</button>
-    <div class="export-status"></div>
+    <div class="export-summary">${esc(exportSummaryText())}</div>
+    <button type="button" class="btn ${quiet ? 'btn--secondary' : 'btn--primary'} btn-block" data-action="export-selected">Export selected</button>
+    <div class="export-status">${quiet ? 'No artwork placed yet — this exports the plain garment.' : ''}</div>
     <div class="panel-note">PNGs are web previews at 2000&ndash;3000 px. The cut sheet is a flat pattern starting point in the format factories send back &mdash; confirm scale and bleed with your printer.</div>
   </div>`;
 }
@@ -674,13 +791,12 @@ async function renderCutSheetView() {
   svgHostEl.innerHTML = svg;
   let warnings = [];
   try { warnings = mod.seamStraddleWarnings({ style: state.style, slots }) || []; } catch (e) { console.warn('seamStraddleWarnings failed:', e); }
-  if (warnings.length) {
-    cutsheetNotesEl.hidden = false;
-    cutsheetNotesEl.innerHTML = warnings.map((w) => `<div class="warn-item">${esc(w)}</div>`).join('');
-  } else {
-    cutsheetNotesEl.hidden = true;
-    cutsheetNotesEl.innerHTML = '';
-  }
+  // The sheet's own honesty rows are 12px inside a 1820-unit viewBox — about 4 CSS px on
+  // screen. They stay in the SVG for the exported PNG; these are the same three lines at a
+  // size a person can actually read in the studio.
+  const sheetNotes = CUT_SHEET_NOTES.map((n) => `<div class="sheet-note"><b>${esc(n.key)}</b> ${esc(n.text)}</div>`).join('');
+  cutsheetNotesEl.hidden = false;
+  cutsheetNotesEl.innerHTML = warnings.map((w) => `<div class="warn-item">${esc(w)}</div>`).join('') + sheetNotes;
 }
 
 function updateCanvas(opts) {
@@ -987,12 +1103,26 @@ function initDragLayer() {
 // ───────────────────────────── crop modal ─────────────────────────────
 
 let cropSession = null;
+let cropLastFocus = null;
+/** Everything behind the crop backdrop. Inerted while it is open. */
+const behindModalEls = ['.topbar', '#tabStrip', '.studio-shell'].map((s) => document.querySelector(s)).filter(Boolean);
+function setBehindModalInert(on) { behindModalEls.forEach((el) => { el.inert = on; }); }
+
+function cropFocusables() {
+  return [...cropModalEl.querySelectorAll('button, input, [href], [tabindex]:not([tabindex="-1"])')]
+    .filter((el) => !el.disabled && el.offsetParent !== null);
+}
 
 function openCropModal(art) {
   cropSession = { art, box: { x: 0, y: 0, w: 10, h: 10 } };
   cropImgEl.src = art.dataUrl;
   cropModalEl.hidden = false;
   cropSquareEl.checked = true;
+  // aria-modal is a promise to the user that the page behind is out of reach. Make it true:
+  // park focus on the primary action, hold Tab inside, and inert the shell underneath.
+  cropLastFocus = document.activeElement;
+  setBehindModalInert(true);
+  try { cropApplyEl.focus({ preventScroll: true }); } catch { cropApplyEl.focus(); }
   const onReady = () => { initCropBox(); updateCropPreview(); };
   if (cropImgEl.complete && cropImgEl.naturalWidth) onReady();
   else cropImgEl.onload = onReady;
@@ -1002,6 +1132,10 @@ function closeCropModal() {
   cropModalEl.hidden = true;
   cropSession = null;
   cropImgEl.removeAttribute('src');
+  setBehindModalInert(false);
+  const back = cropLastFocus;
+  cropLastFocus = null;
+  if (back && document.contains(back)) { try { back.focus({ preventScroll: true }); } catch { /* noop */ } }
 }
 
 function initCropBox() {
@@ -1049,7 +1183,8 @@ function updateCropPreview() {
   const cropped = cropToArt();
   const uid = 'crop-preview';
   const slotDef = visibleSlots().find((s) => s.key === state.activeSlot) || slotsFor(state.style, state.view)[0];
-  const bucket = { ...state.art, [state.activeSlot]: { art: cropped, transform: { ...DEFAULT_TRANSFORM }, tile: isPanelSlot(slotDef) || (slotDef && slotDef.key === 'all') } };
+  // Must match assignArtToActiveSlot's default, or the preview lies about the placement.
+  const bucket = { ...state.art, [state.activeSlot]: { art: cropped, transform: { ...DEFAULT_TRANSFORM }, tile: isPanelSlot(slotDef) } };
   const { defs, slots } = buildDefsAndSlots(state.style, state.view, uid, bucket);
   const svg = state.ranked.on
     ? renderRanked({ style: state.style, view: state.view, belt: state.ranked.belt, body: state.ranked.body, uid, size: 260, detail: 'lite', defs, slots })
@@ -1120,6 +1255,17 @@ function initCropModal() {
     paintCropBox(); updateCropPreview();
   });
 
+  // Tab cycles inside the dialog while it is open.
+  cropModalEl.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab' || cropModalEl.hidden) return;
+    const items = cropFocusables();
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    const cur = document.activeElement;
+    if (e.shiftKey && (cur === first || !cropModalEl.contains(cur))) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (cur === last || !cropModalEl.contains(cur))) { e.preventDefault(); first.focus(); }
+  });
+
   cropCancelEl.addEventListener('click', closeCropModal);
   cropFullEl.addEventListener('click', () => {
     if (!cropSession) return;
@@ -1148,15 +1294,30 @@ async function handleUploadedFile(file) {
 }
 
 let linkBusy = false;
+
+/** Every link field on the page shares one value — the onboarding card and the Art panel box. */
+let linkFieldValue = '';
+function setLinkFieldValue(v, exceptEl = null) {
+  linkFieldValue = v;
+  document.querySelectorAll('input.link-input').forEach((el) => { if (el !== exceptEl) el.value = v; });
+}
+
+/**
+ * Progress / error text for the link resolver. Mirrored into EVERY .link-status node —
+ * the onboarding card and the Art panel box both show it while a fetch is running.
+ */
 function setLinkStatus(msg, kind = '') {
-  const el = document.getElementById('linkStatus');
-  if (el) { el.textContent = msg; el.className = 'link-status' + (kind ? ' is-' + kind : ''); }
+  state.linkStatus = { msg, kind };
+  document.querySelectorAll('.link-status').forEach((el) => {
+    el.textContent = msg;
+    el.className = 'link-status' + (kind ? ' is-' + kind : '');
+  });
 }
 async function ingestFromInput({ file = null, text = '', dataTransfer = null } = {}) {
   if (linkBusy) return;
   linkBusy = true;
-  const btn = document.querySelector('[data-action="fetch-link"]');
-  if (btn) btn.disabled = true;
+  const btns = [...document.querySelectorAll('[data-action="fetch-link"]')];
+  btns.forEach((b) => { b.disabled = true; });
   try {
     const art = await resolveArtInput({ file, text, dataTransfer }, (m) => setLinkStatus(m, 'busy'));
     setLinkStatus(art.warnings && art.warnings.length ? art.warnings[0] : 'Image loaded — crop or use as is.', 'ok');
@@ -1166,27 +1327,39 @@ async function ingestFromInput({ file = null, text = '', dataTransfer = null } =
     setLinkStatus(e.message || PIN_HELP, 'err');
   } finally {
     linkBusy = false;
-    if (btn) btn.disabled = false;
+    document.querySelectorAll('[data-action="fetch-link"]').forEach((b) => { b.disabled = false; });
   }
 }
 function initLinkHandlers() {
-  // Ctrl+V anywhere in the studio: image data wins, then a URL
+  // Ctrl+V anywhere in the studio: image data wins, then a URL.
+  // A link field is NOT excluded — pasting an image while focused there still works.
   document.addEventListener('paste', (e) => {
-    const inField = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.target.id !== 'linkInput';
-    if (inField) return;
+    const t = e.target;
+    const inOtherField = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') && !t.classList.contains('link-input');
+    if (inOtherField) return;
     const dt = e.clipboardData; if (!dt) return;
     const img = [...(dt.files || [])].find(f => f.type.startsWith('image/'));
     const text = dt.getData('text/plain') || dt.getData('text/uri-list') || '';
     if (!img && !text) return;
     if (!img && classifyInput(text).kind === 'text') return;   // plain text — leave it alone
     e.preventDefault();
-    if (state.activePanel !== 'art') { state.activePanel = 'art'; state.sheetOpen = true; render(); }
-    if (!img && text) { const li = document.getElementById('linkInput'); if (li) li.value = text.trim(); }
+    if (!img && text) setLinkFieldValue(text.trim());
+    if (!state.onboardDone && state.activePanel !== 'art') { state.activePanel = 'art'; render(); }
     ingestFromInput({ file: img || null, text: img ? '' : text });
   });
-  // Enter in the link field
-  contextualPanelEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.target && e.target.id === 'linkInput') { e.preventDefault(); ingestFromInput({ text: e.target.value }); }
+  // Enter in either link field (onboarding card or Art panel) — one shared handler
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const t = e.target;
+    if (!t || !t.classList || !t.classList.contains('link-input')) return;
+    e.preventDefault();
+    setLinkFieldValue(t.value, t);
+    ingestFromInput({ text: t.value });
+  });
+  // keep the two link fields in sync as the user types
+  document.addEventListener('input', (e) => {
+    const t = e.target;
+    if (t && t.classList && t.classList.contains('link-input')) setLinkFieldValue(t.value, t);
   });
 }
 
@@ -1224,6 +1397,29 @@ function initUploadHandlers() {
     e.preventDefault();
     ingestFromInput({ dataTransfer: e.dataTransfer });
   });
+
+  // "drop an image anywhere" — the document-level net. The handlers above run first
+  // (they are on descendants) and call preventDefault, so this never double-fires.
+  let dragDepth = 0;
+  document.addEventListener('dragenter', (e) => {
+    if (!e.dataTransfer) return;
+    dragDepth++;
+    document.body.classList.add('is-dragging-file');
+  });
+  document.addEventListener('dragleave', () => {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) document.body.classList.remove('is-dragging-file');
+  });
+  document.addEventListener('dragover', (e) => { if (!e.defaultPrevented) e.preventDefault(); });
+  document.addEventListener('drop', (e) => {
+    dragDepth = 0;
+    document.body.classList.remove('is-dragging-file');
+    if (e.defaultPrevented) return;      // already handled by the upload zone / panel
+    e.preventDefault();
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) handleUploadedFile(file);
+    else if (e.dataTransfer) ingestFromInput({ dataTransfer: e.dataTransfer });
+  });
 }
 
 // ───────────────────────────── rails + master render ─────────────────────────────
@@ -1233,7 +1429,22 @@ function renderIconRail() {
 }
 function renderTabStrip() {
   tabStripEl.innerHTML = TAB_ITEMS.map((it) => `<button type="button" class="tab-btn ${state.activePanel === it.key ? 'active' : ''}" data-action="set-panel" data-panel="${it.key}">${esc(it.label)}</button>`).join('');
+  // innerHTML resets scrollLeft to 0, which parked the active gold pill off-screen and
+  // left nothing on a phone saying which panel was open. Centre it. (Assigning
+  // scrollLeft rather than scrollIntoView so this can never scroll the page itself.)
+  const active = tabStripEl.querySelector('.tab-btn.active');
+  if (active) {
+    const target = active.offsetLeft - (tabStripEl.clientWidth - active.offsetWidth) / 2;
+    tabStripEl.scrollLeft = Math.max(0, target);
+  }
+  updateTabStripFade();
 }
+/** The right-edge fade says "there is more" — drop it at the end so it never dims the pill. */
+function updateTabStripFade() {
+  const atEnd = tabStripEl.scrollLeft + tabStripEl.clientWidth >= tabStripEl.scrollWidth - 2;
+  tabStripEl.classList.toggle('at-end', atEnd);
+}
+tabStripEl.addEventListener('scroll', updateTabStripFade, { passive: true });
 function renderViewSwitcher() {
   const tabs = [['front', 'Front'], ['back', 'Back'], ['spin', '360°'], ['cutsheet', 'Cut sheet']];
   viewSwitcherEl.innerHTML = tabs.map(([k, l]) => `<button type="button" role="tab" aria-selected="${state.canvasTab === k}" class="${state.canvasTab === k ? 'active' : ''}" data-action="set-canvas-tab" data-tab="${k}">${l}</button>`).join('');
@@ -1249,7 +1460,55 @@ document.addEventListener('pointerdown', (e) => {
   state.sheetOpen = false; contextualPanelEl.classList.remove('sheet-open'); renderTabStrip();
 }, { capture: true });
 
+/** <details open> state for Art steps 2/3 has to survive the panel being re-rendered. */
+function bindStepDetails(container) {
+  container.querySelectorAll('details[data-step]').forEach((d) => {
+    d.addEventListener('toggle', () => { state.artSteps[d.dataset.step] = d.open; });
+  });
+}
+
+/**
+ * The onboarding card is the headline input: it sits over the empty stage until the
+ * first artwork lands, then never returns for the session. Hidden on the 360 and cut
+ * sheet tabs, which have their own canvas content.
+ */
+function updateOnboardCard() {
+  if (!onboardCardEl) return;
+  const show = !state.onboardDone && (state.canvasTab === 'front' || state.canvasTab === 'back');
+  onboardCardEl.hidden = !show;
+  canvasStageEl.classList.toggle('is-onboarding', show);
+}
+
+/**
+ * render() rewrites the panel and the scenes rail wholesale, which drops keyboard focus
+ * to <body>. A keyboard user could not tick two export scenes in a row without tabbing
+ * from the top of the document again. Capture a stable signature of the focused control
+ * before the rewrite, find its replacement after, and put focus back.
+ */
+function focusSignature(el) {
+  if (!el || el === document.body || !el.dataset) return null;
+  const host = el.closest && el.closest('#contextualPanel, #scenesRail, #iconRail, #tabStrip, #viewSwitcher');
+  if (!host) return null;                       // outside the rebuilt regions — leave it alone
+  const d = { ...el.dataset };
+  if (!Object.keys(d).length && !el.id) return null;
+  return JSON.stringify([host.id, el.id || '', el.tagName, d]);
+}
+function restoreFocus(sig) {
+  if (!sig) return;
+  const hosts = [contextualPanelEl, scenesRailEl, iconRailEl, tabStripEl, viewSwitcherEl];
+  for (const host of hosts) {
+    if (!host) continue;
+    for (const el of host.querySelectorAll('[data-action], [id]')) {
+      if (focusSignature(el) === sig) {
+        try { el.focus({ preventScroll: true }); } catch { el.focus(); }
+        return;
+      }
+    }
+  }
+}
+
 function render() {
+  const sig = focusSignature(document.activeElement);
   ensureActiveSlot();
   renderIconRail();
   renderTabStrip();
@@ -1257,8 +1516,11 @@ function render() {
   contextualPanelEl.innerHTML = `<button type="button" class="sheet-close" data-action="close-sheet" aria-label="Close panel"><span class="sheet-handle"></span><span class="sheet-close-x">&times;</span></button>` + renderPanelBody(state.activePanel);
   contextualPanelEl.classList.toggle('sheet-open', state.sheetOpen);
   bindContinuousControls(contextualPanelEl);
+  bindStepDetails(contextualPanelEl);
   scenesRailEl.innerHTML = renderScenesRailBody();
   bindContinuousControls(scenesRailEl);
+  restoreFocus(sig);
+  updateOnboardCard();
   updateCanvas({ overlays: true });
   if (state.ranked.on) refreshCoverage();
 }
@@ -1298,7 +1560,8 @@ function onGlobalClick(e) {
       fileInputEl.click();
       break;
     case 'use-demo':
-      assignArtToActiveSlot(demoArt(el.dataset.kind));
+      // Geo and Camo are generated to repeat; Mark is a single device and must not.
+      assignArtToActiveSlot(demoArt(el.dataset.kind), { repeat: el.dataset.kind !== 'mark' });
       break;
     case 'recenter': {
       const entry = state.art[state.activeSlot];
@@ -1334,8 +1597,12 @@ function onGlobalClick(e) {
       exportSelected();
       break;
     case 'fetch-link': {
-      const li = document.getElementById('linkInput');
-      ingestFromInput({ text: li ? li.value : '' });
+      // one handler, both boxes: prefer the field this button sits with, else any of them
+      const row = el.closest('.link-row');
+      const li = (row && row.querySelector('input.link-input')) || document.querySelector('input.link-input');
+      const text = li ? li.value : linkFieldValue;
+      setLinkFieldValue(text);
+      ingestFromInput({ text });
       return;
     }
     case 'load-sample-data':
@@ -1367,7 +1634,7 @@ function onGlobalChange(e) {
       break;
     case 'toggle-scene':
       state.scenesSelected[el.dataset.scene] = el.checked;
-      render();
+      syncSceneSelectionUI(el);   // no full render — keeps focus on the checkbox
       break;
     default: break;
   }
@@ -1377,7 +1644,23 @@ function onGlobalChange(e) {
 
 document.addEventListener('click', onGlobalClick);
 document.addEventListener('change', onGlobalChange);
+// keyboard access for the upload zone (role="button")
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const z = e.target && e.target.closest && e.target.closest('#uploadZone');
+  if (!z) return;
+  e.preventDefault();
+  fileInputEl.click();
+});
+// Escape closes the crop modal too
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !cropModalEl.hidden) closeCropModal();
+});
 initDragLayer();
 initCropModal();
 initUploadHandlers();
 render();
+setLinkStatus(LINK_NOTE, '');
+// the headline input is pre-focused: paste-a-link is the first thing the studio asks for
+const heroInput = document.getElementById('linkInputHero');
+if (heroInput && !onboardCardEl.hidden) { try { heroInput.focus({ preventScroll: true }); } catch { heroInput.focus(); } }

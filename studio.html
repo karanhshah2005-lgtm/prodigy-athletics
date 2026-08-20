@@ -17,8 +17,10 @@
     <a class="ap-link" href="index.html#shop">Ranked</a>
     <span class="ap-link is-current" aria-current="page">Studio</span>
     <button type="button" id="sampleDataBtn" class="ap-link ap-link--btn" data-action="load-sample-data" title="Fill the current garment with sample artwork">Sample data</button>
-    <span class="topbar-proto-note">Prototype &mdash; sample data, not a live tool</span>
   </nav>
+  <!-- Frozen honesty disclosure. A direct child of the header, NOT of .ap-nav: the nav
+       scrolls and is masked at narrow widths, which clipped this note out of sight. -->
+  <span class="topbar-proto-note">Prototype &mdash; sample data, not a live tool</span>
   <a class="ap-logo" href="index.html" aria-label="Prodigy Athletics — home">
     <img src="assets/wordmark.svg" alt="Prodigy Athletics" width="200" height="38">
   </a>
@@ -39,6 +41,30 @@
         <div id="svgHost" class="svg-host"></div>
         <div id="overlayHost" class="overlay-host" aria-hidden="true"></div>
         <div id="dragLayer" class="drag-layer" aria-hidden="true"></div>
+      </div>
+
+      <!-- Onboarding: the headline input. Hidden for the rest of the session once
+           artwork has landed (studio.js: state.onboardDone). -->
+      <div class="onboard" id="onboardCard" hidden>
+        <div class="onboard-card" id="onboardDropZone">
+          <p class="eyebrow">Step 1 &mdash; Artwork</p>
+          <h2 class="onboard-title">Start with an image</h2>
+          <div class="link-row">
+            <label class="sr-only" for="linkInputHero">Pinterest pin or image link</label>
+            <input type="url" class="link-input" id="linkInputHero" placeholder="Paste a Pinterest pin or image link&hellip;" autocomplete="off" spellcheck="false">
+            <button type="button" class="btn btn--primary" data-action="fetch-link">Fetch</button>
+          </div>
+          <div class="link-status" aria-live="polite"></div>
+          <p class="onboard-alt">or drop / paste (Ctrl+V) an image anywhere</p>
+          <div class="onboard-samples">
+            <span class="onboard-alt onboard-alt--tight">No artwork to hand? Sample art:</span>
+            <div class="sample-buttons">
+              <button type="button" data-action="use-demo" data-kind="geo">Geo</button>
+              <button type="button" data-action="use-demo" data-kind="camo">Camo</button>
+              <button type="button" data-action="use-demo" data-kind="mark">Mark</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="cutsheet-notes" id="cutsheetNotes" hidden></div>

@@ -593,3 +593,8 @@ body.store {
 @media (max-width: 1023px) {
   .hero__models--action { aspect-ratio: 16 / 10; min-height: 0; max-height: 60svh; }
 }
+
+/* sets on navy: renders sit on a raised dark stage, labels in the on-dark register */
+.sets__shot { margin-bottom: var(--s-32); }
+.sets__row--dark .sets__item { background: var(--ink-raise, #131B2C); }
+.sets__row--dark .t-label { color: var(--on-dark-45, #737C8A); }

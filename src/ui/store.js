@@ -146,15 +146,6 @@ const HERO_MARKS = {
 
 /* ── 3. section 01 — ranked ────────────────────────────────────────────── */
 
-function buildRanked() {
-  const row = $('#rankedRow');
-  row.innerHTML = RANKED_SS.map(p => `
-    <button class="card card--tile ranked__item" type="button" data-id="${esc(p.id)}">
-      ${productSvg(p, { size: 420, detail: 'full' })}
-      <span class="t-label">${esc(BELT_LABEL[p.ranked.belt])}</span>
-    </button>`).join('');
-}
-
 /* ── 4. section 02 — core ──────────────────────────────────────────────── */
 
 /**
@@ -692,7 +683,6 @@ $('#main').addEventListener('click', (e) => {
 
 const nextFrame = (fn) => requestAnimationFrame(() => requestAnimationFrame(fn));
 nextFrame(() => {
-  buildRanked();
   buildCore();
   nextFrame(() => {
     buildSets();

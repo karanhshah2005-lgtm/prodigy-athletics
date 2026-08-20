@@ -23,6 +23,7 @@ resized to ≤1600 px, quality 82.
 | ranked-pair.webp | woman in ranked SS blue + man in black LS, full length | 4:5 |
 | hero-gi-roll.webp | HERO — two athletes rolling in Prodigy gis: black Prodigy × 死 gi (死 back patch, skull sleeves) vs white gi with PRODIGY lapel | 16:9 |
 | gi-comp-wide.webp | competition scene, black 死 gi vs white PRODIGY gi, crowd bokeh | 16:9 |
+| sets-scramble-wide.webp | SETS — two athletes mid-scramble in the matching Recon Camo set, low angle | 16:9 |
 
 Prompts asked for: no logos other than the word PRODIGY, no other text, premium restrained
 editorial light. Small print artefacts (mirrored letters on a far sleeve, a stray patch) exist

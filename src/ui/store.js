@@ -93,6 +93,7 @@ let heroApi = null;
 async function mountHero() {
   const host = $('#heroSpin');
   const hint = $('#heroDrag');
+  if (!host) return;   // hero runs imagery-only; the 360 lives on PDPs and in the Studio
   // Without WebGL the host stops being a rotatable control, so it drops back to an image.
   const toStaticImage = () => {
     host.removeAttribute('tabindex');

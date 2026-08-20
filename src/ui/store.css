@@ -239,7 +239,7 @@ body.store {
 }
 .hero__top {
   flex: 1 1 auto; position: relative; z-index: 1;
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 44%); gap: var(--s-32);
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 36%); gap: var(--s-24);
   align-items: stretch; max-width: var(--maxw); margin-inline: auto; width: 100%;
   padding: var(--s-24) var(--gutter) 0;
 }
@@ -586,3 +586,10 @@ body.store {
   align-items: start; max-width: 1012px;
 }
 @media (max-width: 767px) { .look__row { grid-template-columns: 1fr; gap: var(--s-40); max-width: none; } }
+
+/* hero action figure (gi roll) — fills the tall left cell, faces kept clear of the crop */
+.hero__models--action { min-height: 520px; }
+.hero__models--action img { object-position: 50% 38%; }
+@media (max-width: 1023px) {
+  .hero__models--action { aspect-ratio: 16 / 10; min-height: 0; max-height: 60svh; }
+}

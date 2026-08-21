@@ -598,3 +598,9 @@ body.store {
 .sets__shot { margin-bottom: var(--s-32); }
 .sets__row--dark .sets__item { background: var(--ink-raise, #131B2C); }
 .sets__row--dark .t-label { color: var(--on-dark-45, #737C8A); }
+
+/* AI model thumbnails in the shop grid */
+.card .stage--photo { background: var(--ink-raise, #131B2C); }
+.card .card__photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; display: block; }
+.shop__ai-note { color: var(--ink-45, #7C8492); margin: var(--s-8, 8px) 0 0; }
+.sec--navy .shop__ai-note { color: var(--on-dark-45, #737C8A); }

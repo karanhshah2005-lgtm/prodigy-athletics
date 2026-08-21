@@ -1,0 +1,3 @@
+/** Product ids that have an AI-generated model thumbnail in assets/models/thumbs/<id>.webp.
+ * Generated with gemini-3.1-flash-image; every use carries the AI-model disclosure. */
+export const MODEL_THUMBS = new Set(["core-ls-black", "core-ls-white", "core-set", "core-ss-black", "core-ss-white", "maple-ls", "maple-set", "ranked-ls-black", "ranked-ls-blue", "ranked-ls-brown", "ranked-ls-purple", "ranked-ls-white", "ranked-ss-black", "ranked-ss-blue", "ranked-ss-brown", "ranked-ss-purple", "ranked-ss-white", "recon-ls", "recon-set", "recon-shorts", "recon-spats", "recon-ss", "shi-gi-black", "shi-gi-white", "shorts-black", "spats-black"]);

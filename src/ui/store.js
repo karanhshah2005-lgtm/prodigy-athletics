@@ -10,6 +10,7 @@
  */
 
 import { renderGarment, renderRanked, STYLES, GI_PRESETS, BELT_HEX } from '../render/garment.js';
+import { MODEL_THUMBS } from '../data/thumbs.js';
 import { renderCutSheet } from '../render/panel.js';
 import { artPatternDef, artPatternRef } from '../render/art.js';
 import { makePattern } from '../data/patterns.js';
@@ -339,10 +340,17 @@ function buildStudio() {
  * than crossfade to an empty stage).
  */
 function cardHtml(p, { more = false, back = true } = {}) {
+  // Thumbnails are AI-generated model shots (client direction); hovering crossfades to
+  // the product render. Products without a shot fall back to the render alone.
+  const hasThumb = MODEL_THUMBS.has(p.id);
+  const media = hasThumb
+    ? `<img class="card__photo" src="assets/models/thumbs/${esc(p.id)}.webp" width="675" height="900" loading="lazy" decoding="async"
+         alt="AI-generated model wearing ${esc(p.name.toLowerCase())}">`
+    : productSvg(p, { size: 316, detail: 'lite' });
   return `
     <button class="card${more ? ' card--more' : ''}" type="button" data-id="${esc(p.id)}">
-      <span class="stage">
-        ${productSvg(p, { size: 316, detail: 'lite' })}
+      <span class="stage${hasThumb ? ' stage--photo' : ''}">
+        ${media}
         ${back ? `<span class="stage stage--back" data-back="${esc(p.id)}"></span>` : ''}
       </span>
       <span class="card__title t-card-title">${esc(p.name)}</span>

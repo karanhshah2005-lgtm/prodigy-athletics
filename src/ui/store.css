@@ -78,7 +78,13 @@ body.store {
 /* --------------------------------------------------------------------------
    Primitives
    -------------------------------------------------------------------------- */
-.wrap { width: 100%; max-width: var(--maxw); margin-inline: auto; padding-inline: var(--gutter); }
+/* Page gutter respects a notch in landscape. env() is 0px everywhere else, and
+   max(40px, 0px) is 40px, so desktop metrics are untouched. */
+.wrap {
+  width: 100%; max-width: var(--maxw); margin-inline: auto;
+  padding-left: max(var(--gutter), env(safe-area-inset-left));
+  padding-right: max(var(--gutter), env(safe-area-inset-right));
+}
 
 .skip-link {
   position: absolute; left: -9999px; top: 0; z-index: 200;
@@ -177,10 +183,15 @@ body.store {
 /* --------------------------------------------------------------------------
    0. Sample strip
    -------------------------------------------------------------------------- */
+/* min-height, not height: at 360px the line wraps to two, and a fixed 28px box let the
+   honesty text spill over the header. It also had no gutter, so the text ran into both
+   screen edges. Desktop is one line inside 28px exactly as before. */
 .strip {
-  height: 28px; display: flex; align-items: center; justify-content: center;
+  min-height: 28px; display: flex; align-items: center; justify-content: center;
   background: var(--ink-navy); color: var(--on-dark-45); text-align: center;
+  padding: var(--s-4) max(var(--s-16), env(safe-area-inset-right)) var(--s-4) max(var(--s-16), env(safe-area-inset-left));
 }
+@media (min-width: 768px) { .strip { padding-block: 0; } }
 
 /* --------------------------------------------------------------------------
    1. Header — 72px sticky, transparent over the hero, ink-navy after 80px
@@ -194,7 +205,9 @@ body.store {
 .hdr.is-solid { background: var(--ink-navy); border-bottom-color: var(--ink-line); }
 .hdr__inner {
   height: 100%; display: flex; align-items: center; gap: var(--s-32);
-  max-width: var(--maxw); margin-inline: auto; padding-inline: var(--gutter);
+  max-width: var(--maxw); margin-inline: auto;
+  padding-left: max(var(--gutter), env(safe-area-inset-left));
+  padding-right: max(var(--gutter), env(safe-area-inset-right));
 }
 /* The wordmark is set in the h2 token (26px Barlow Condensed 600 UPPER), not a bespoke
    size — the type scale is closed and a logotype is not a reason to open it. */
@@ -214,13 +227,30 @@ body.store {
 /* Mobile: the nav collapses behind a MENU toggle so the header stays 56px. */
 .hdr__menu { display: none; color: var(--on-dark); background: none; padding: 0; }
 @media (max-width: 767px) {
-  .hdr__menu { display: block; }
+  /* MENU and CART were 13px-tall hit areas — the whole phone navigation was a
+     one-line-of-text target. The type token is unchanged; the BOX grows to 44px and
+     the extra height is absorbed by the 56px header, so nothing moves visually. */
+  .hdr__menu, .hdr__cart {
+    display: inline-flex; align-items: center; min-height: 44px;
+    padding-inline: var(--s-4); margin-inline: calc(var(--s-4) * -1);
+  }
+  /* inline-flex makes "Cart" and the count two flex items and eats the space between
+     them. 0.34em reproduces a 13px Barlow space at +0.06em tracking. */
+  .hdr__cart { gap: 0.34em; }
+  /* The wordmark is also the home link and was a 23px-tall target. */
+  .hdr__wordmark { min-height: 44px; }
+  .hdr__inner { gap: var(--s-12); }
   .hdr__nav {
     position: absolute; top: 100%; left: 0; right: 0; flex-direction: column;
-    align-items: flex-start; gap: var(--s-20); margin: 0;
-    padding: var(--s-24) var(--gutter); background: var(--ink-navy);
+    align-items: stretch; gap: 0; margin: 0;
+    padding: var(--s-8) var(--gutter);
+    padding-bottom: max(var(--s-8), env(safe-area-inset-bottom));
+    background: var(--ink-navy);
     border-bottom: 1px solid var(--ink-line);
+    max-height: calc(100svh - var(--hdr-h) - 28px); overflow-y: auto;
   }
+  /* Each row is a 44px band rather than a 13px line of text. */
+  .hdr__nav .hdr__link { display: flex; align-items: center; min-height: 44px; }
   .hdr__nav:not(.is-open) { display: none; }
 }
 
@@ -262,7 +292,19 @@ body.store {
 @media (max-width: 1023px) {
   .hero__top { grid-template-columns: 1fr; gap: var(--s-16); }
   .hero__models { aspect-ratio: 4 / 5; min-height: 0; max-height: 72svh; }
+  /* The AI disclosure is frozen copy and has to stay READABLE, not merely present.
+     Below 1024px the figures go full-bleed, the line wraps to two, and a text-shadow
+     over a mid-tone photograph was not enough — it sat across the models' feet at 45%
+     opacity. Here it rides its own scrim, full width, in the on-dark-70 register.
+     Desktop keeps the original single-line treatment and is untouched. */
+  .hero__models figcaption {
+    left: 0; right: 0; bottom: 0; color: var(--on-dark-70);
+    padding: var(--s-32) max(var(--s-16), env(safe-area-inset-left)) var(--s-12);
+    background: linear-gradient(180deg, transparent 0%, rgba(11, 18, 32, 0.82) 62%);
+    text-shadow: none;
+  }
 }
+
 .hero__spin {
   /* 560px is the design-system height. The render is the subject of this section, so the
      stage is sized to it and the hero is allowed to run past 100svh; the cap only keeps
@@ -293,6 +335,12 @@ body.store {
 }
 @media (max-width: 767px) {
   .hero__spin { width: min(560px, 94vw); height: min(380px, 52svh); }
+  /* On a phone the two figures stack, so the brand line and the only CTA landed ~950px
+     down — a full viewport below the fold. The copy leads instead and the imagery
+     follows it. Desktop still overlays the copy at the hero's bottom-left. */
+  .hero__copy { order: -1; padding-top: var(--s-24); padding-bottom: var(--s-32); }
+  .hero__copy h1 { margin: var(--s-12) 0 var(--s-24); }
+  .hero__top { padding-top: 0; padding-bottom: var(--s-24); }
 }
 
 /* --------------------------------------------------------------------------
@@ -387,7 +435,15 @@ body.store {
 .detail__row.is-active .detail__cap { display: block; }
 .detail__cap .todo { color: var(--on-dark-45); }
 
-@media (max-width: 1000px) { .detail__grid { grid-template-columns: 1fr; } }
+@media (max-width: 1000px) {
+  .detail__grid { grid-template-columns: 1fr; }
+  /* The leader line's job is to connect the dot to the caption COLUMN. Once the list
+     stacks underneath, it points at the stage edge and nothing else — a gold instance
+     spent on nothing (DESIGN-SYSTEM.md §1 permits gold here only as a leader line). */
+  .detail__lead { display: none; }
+  /* 24px dot, 44px hit area: the ring stays the design-system size, the target does not. */
+  .detail__dot::before { content: ''; position: absolute; inset: -10px; }
+}
 
 /* --------------------------------------------------------------------------
    05 — Gis
@@ -460,6 +516,14 @@ body.store {
 .shopall { margin-top: var(--s-64); }
 .shopall button { background: none; color: inherit; padding: 0; }
 
+@media (max-width: 767px) {
+  /* 2-up cards: titles run to two lines on some products and one on others, which left
+     the prices on two different baselines across a row. Reserve the second line. */
+  .card__title { min-height: calc(14px * 1.2 * 2); }
+  /* 13px-tall text link -> 44px band, same type token, same underline. */
+  .shopall button { display: inline-flex; align-items: center; min-height: 44px; }
+}
+
 /* unconfirmed-fact token, wherever it appears outside a spec table */
 .todo { color: var(--ink-45); }
 .sec--navy .todo, .ftr .todo { color: var(--on-dark-45); }
@@ -479,6 +543,17 @@ body.store {
 .ftr__mark { color: var(--on-dark); }
 .ftr__legal { color: var(--on-dark-45); text-align: right; }
 @media (max-width: 999px) { .ftr__cols { grid-template-columns: repeat(2, 1fr); row-gap: var(--s-40); } .ftr__legal { text-align: left; } }
+@media (max-width: 767px) {
+  /* Footer links were 17px tall with a 12px gap. The BAND has to be on the anchor, not
+     on the <li> — a 44px row around a 17px link is still a 17px target.
+     padding, not flex: several of these wrap a "— to confirm" token, and turning the
+     anchor into a flex container makes the label and the token two flex items, which
+     collapses the space between them ("Shipping— to confirm"). */
+  .ftr__col ul { gap: 0; }
+  .ftr__col li > a,
+  .ftr__col li > span { display: block; padding-block: var(--s-12); min-height: 44px; }
+  .ftr { padding-bottom: calc(var(--s-96) + env(safe-area-inset-bottom)); }
+}
 
 /* --------------------------------------------------------------------------
    PDP modal
@@ -548,6 +623,80 @@ body.store {
 }
 
 /* --------------------------------------------------------------------------
+   PDP on a phone — a full-screen sheet, not a floating card. The second half of the
+   query catches the landscape phone (844x390), which is wider than 767px but has the
+   same problem: a 40/20-padded dialog with a close button that scrolls out of reach.
+
+   Three things were wrong at 390x844: the overlay's 40/20 padding left the dialog
+   350px wide with the storefront visible around it; the close button is absolute
+   inside a 3,456px-tall .pdp, so it scrolled away after the first screen and the
+   only way out was the hardware back gesture or Escape; and Add to cart sat ~920px
+   into the scroll with nothing pinning it.
+   -------------------------------------------------------------------------- */
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 560px) {
+  .pdp-overlay {
+    padding: 0;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .pdp {
+    max-width: none; min-height: 100%;
+    padding: var(--s-20);
+    padding-top: calc(var(--s-16) + 44px + env(safe-area-inset-top));
+    /* Clears the fixed action bar below (see .pdp__add). */
+    padding-bottom: calc(var(--s-128) + env(safe-area-inset-bottom));
+  }
+
+  /* Fixed to the viewport, so it is reachable from any scroll position in the sheet.
+     The overlay has no transform, so `fixed` resolves against the viewport. */
+  .pdp__close {
+    position: fixed;
+    top: calc(var(--s-8) + env(safe-area-inset-top));
+    right: calc(var(--s-8) + env(safe-area-inset-right));
+    width: 44px; height: 44px; z-index: 6;
+    background: var(--bone); border: 1px solid var(--bone-line);
+    font-size: 22px; line-height: 1;
+  }
+
+  /* Add to cart becomes a permanent action bar. `position: sticky; bottom: 0` was tried
+     first and does nothing here: bottom-sticky only pulls a box UP from a natural
+     position below the fold, and .pdp__add sits near the TOP of a 1,534px buy box, so
+     it simply scrolled away like any other block. Fixed keeps it on screen for the whole
+     PDP, which is what the phone actually needs.
+     The "checkout is not connected" line rides in the bar — it is honesty copy attached
+     to this control and must not be separable from it. */
+  .pdp__add {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+    margin-top: 0;
+    padding: var(--s-12) max(var(--s-20), env(safe-area-inset-left));
+    padding-bottom: max(var(--s-12), env(safe-area-inset-bottom));
+    background: var(--bone); border-top: 1px solid var(--bone-line);
+  }
+  .pdp__add .pdp__note { margin-top: var(--s-8); }
+
+  /* 36px is the desktop segmented-control height; on touch the CELLS become 44px, so
+     the control is 46px including its own hairline. Labels, borders and fills are
+     untouched. */
+  .seg { height: 46px; }
+  .pdp__field select { height: 48px; }
+  .pdp__sec .tlink { display: inline-flex; align-items: center; min-height: 44px; }
+}
+
+/* Landscape phone: a 1:1 stage across the full 804px column is 756px tall on a 390px
+   screen — two full screens of scrolling before the product name. The gallery and the
+   buy box sit side by side instead, which is what the extra width is for. */
+@media (max-width: 1023px) and (max-height: 560px) {
+  .pdp__grid { grid-template-columns: 46% 1fr; gap: var(--s-24); }
+  .pdp__crops { grid-template-columns: repeat(3, 1fr); }
+  /* Stacked, the action bar eats 104px of a 390px screen. One row instead — the
+     "checkout is not connected" line stays in the bar, beside the button. */
+  .pdp__add { display: flex; align-items: center; gap: var(--s-16); }
+  .pdp__add .btn--wide { width: auto; flex: 0 0 240px; height: 44px; }
+  .pdp__add .pdp__note { margin-top: 0; }
+  .pdp { padding-bottom: calc(var(--s-96) + env(safe-area-inset-bottom)); }
+}
+
+/* --------------------------------------------------------------------------
    Motion — one entrance per viewport height, honoured for reduced motion
    -------------------------------------------------------------------------- */
 .reveal { opacity: 0; transform: translateY(16px); }
@@ -604,3 +753,26 @@ body.store {
 .card .card__photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; display: block; }
 .shop__ai-note { color: var(--ink-45, #7C8492); margin: var(--s-8, 8px) 0 0; }
 .sec--navy .shop__ai-note { color: var(--on-dark-45, #737C8A); }
+
+/* --------------------------------------------------------------------------
+   Landscape phone (844x390 and friends).
+
+   `aspect-ratio` + `max-height` on the hero figures makes the box derive its WIDTH
+   from the capped height, so at 844x390 a 275px image sat in a 394px column with a
+   navy void beside it, and the two figures came out different heights. Short
+   viewports get an explicit height, no ratio, and two real columns.
+
+   Declared at the end of the file on purpose: the `.hero__models--action` overrides
+   in the block above are at the same specificity and would otherwise win.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1023px) and (max-height: 560px) {
+  .hero { min-height: 0; }
+  .hero__top { grid-template-columns: 1fr 1fr; gap: var(--s-16); align-items: start; }
+  .hero__models,
+  .hero__models--action {
+    aspect-ratio: auto; max-height: none; min-height: 0; height: 46svh;
+  }
+  .hero__copy { padding-bottom: var(--s-32); }
+  /* The band is 56vw at this width, which is 470px on a 390px-tall screen. */
+  .band { height: 62svh; }
+}

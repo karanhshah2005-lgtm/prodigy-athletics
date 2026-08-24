@@ -737,12 +737,19 @@ function renderPanelBody(tab) {
 function renderEmptyOverlays() {
   const vis = visibleSlots();
   const rankAuto = rankedAutoSlotKeys();
+  // On a phone the stage is ~330px wide. Six nested print-area boxes at 10px, several
+  // of them shorter than their own two lines of text, rendered as unreadable mush —
+  // the all-over box wrapped the body box wrapped the chest box, all overlapping.
+  // Below 1024px only the slot the panel is currently about gets a guide; the full
+  // spec list stays available (and legible) in the Placement step.
+  const compact = matchMedia('(max-width: 1023px)').matches;
   let html = '';
   for (const s of vis) {
     const entry = state.art[s.key];
     const hasArt = !!(entry && entry.art);
     const isRankAuto = state.ranked.on && rankAuto.has(s.key) && !hasArt;
     if (hasArt || isRankAuto) continue;
+    if (compact && s.key !== state.activeSlot) continue;
     // Once an all-over print is placed the spec sheet has done its job — keep only
     // the ACTIVE slot's guide so labels never sit on top of the artwork.
     if (state.art.all && state.art.all.art && s.key !== state.activeSlot) continue;
@@ -752,7 +759,7 @@ function renderEmptyOverlays() {
     // collides with the panel labels centred inside their own boxes.
     const anchorCls = s.key === 'all' ? ' is-whole' : '';
     html += `<div class="empty-slot-overlay ${isActive ? 'is-active' : ''}${anchorCls}" style="left:${x / 10}%;top:${y / 10}%;width:${w / 10}%;height:${h / 10}%">
-      <span>${esc(shortLabel(s.label))}<br>${printSizeLabel(s.printPx, { brief: true })}</span>
+      <span>${esc(shortLabel(s.label))}<span class="eso-size">${printSizeLabel(s.printPx, { brief: true })}</span></span>
     </div>`;
   }
   overlayHostEl.innerHTML = html;
@@ -1451,14 +1458,88 @@ function renderViewSwitcher() {
 }
 function renderScenesRailBody() { return renderScenesPickerHTML() + renderExportActionHTML(); }
 
+/** One place that puts the sheet away, so the scrim can never be left behind it. */
+function closeSheet() {
+  state.sheetOpen = false;
+  contextualPanelEl.classList.remove('sheet-open');
+  syncSheetChrome();
+  renderTabStrip();
+}
+/** Mirrors state.sheetOpen onto <body>, which is what drives the scrim and, in
+ *  landscape, the canvas column's inset. */
+function syncSheetChrome() {
+  document.body.classList.toggle('sheet-is-open', state.sheetOpen && matchMedia('(max-width: 1023px)').matches);
+}
+
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && state.sheetOpen) { state.sheetOpen = false; contextualPanelEl.classList.remove('sheet-open'); renderTabStrip(); }
+  if (e.key === 'Escape' && state.sheetOpen) closeSheet();
 });
 document.addEventListener('pointerdown', (e) => {
   if (!state.sheetOpen || !matchMedia('(max-width: 1023px)').matches) return;
   if (e.target.closest('.contextual-panel, .tab-strip, .icon-rail')) return;
-  state.sheetOpen = false; contextualPanelEl.classList.remove('sheet-open'); renderTabStrip();
+  closeSheet();
 }, { capture: true });
+
+/**
+ * Height of the fixed-ish chrome (site header + tab strip). The landscape side sheet
+ * hangs off it, so it has to be measured rather than guessed: the header grows a second
+ * row below 720px to carry the prototype disclosure, and the tab strip is absent above
+ * 1024px.
+ */
+function syncChromeHeight() {
+  const bar = document.querySelector('.topbar');
+  const h = (bar ? bar.offsetHeight : 0) + (tabStripEl ? tabStripEl.offsetHeight : 0);
+  document.documentElement.style.setProperty('--chrome-h', h + 'px');
+}
+
+/**
+ * The on-screen keyboard. iOS shrinks the VISUAL viewport but leaves the layout
+ * viewport alone, so a `position:fixed; bottom:0` sheet sits underneath the keyboard —
+ * which is exactly where the studio's headline link input lives. --kb-inset lifts the
+ * sheet by however much of the layout viewport the keyboard is covering.
+ */
+function initKeyboardInset() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const sync = () => {
+    const covered = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    document.documentElement.style.setProperty('--kb-inset', covered + 'px');
+  };
+  vv.addEventListener('resize', sync);
+  vv.addEventListener('scroll', sync);
+  sync();
+}
+
+/**
+ * Drag the grab handle down to dismiss. The handle is also a button, so a tap still
+ * closes; this only adds the gesture people reach for on a bottom sheet. Disabled in
+ * the landscape side-sheet layout, where "down" is not the way out.
+ */
+function initSheetDrag() {
+  const isBottomSheet = () => matchMedia('(max-width: 1023.98px)').matches && !matchMedia('(max-height: 560px)').matches;
+  let startY = 0, dy = 0, dragging = false;
+  contextualPanelEl.addEventListener('pointerdown', (e) => {
+    const grip = e.target.closest('.sheet-close');
+    if (!grip || !state.sheetOpen || !isBottomSheet()) return;
+    dragging = true; startY = e.clientY; dy = 0;
+    contextualPanelEl.classList.add('is-dragging');
+    try { grip.setPointerCapture(e.pointerId); } catch { /* noop */ }
+  });
+  contextualPanelEl.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    dy = Math.max(0, e.clientY - startY);       // downward only
+    contextualPanelEl.style.transform = `translateY(${dy}px)`;
+  });
+  const end = () => {
+    if (!dragging) return;
+    dragging = false;
+    contextualPanelEl.classList.remove('is-dragging');
+    contextualPanelEl.style.transform = '';
+    if (dy > 60) closeSheet();
+  };
+  contextualPanelEl.addEventListener('pointerup', end);
+  contextualPanelEl.addEventListener('pointercancel', end);
+}
 
 /** <details open> state for Art steps 2/3 has to survive the panel being re-rendered. */
 function bindStepDetails(container) {
@@ -1515,6 +1596,7 @@ function render() {
   renderViewSwitcher();
   contextualPanelEl.innerHTML = `<button type="button" class="sheet-close" data-action="close-sheet" aria-label="Close panel"><span class="sheet-handle"></span><span class="sheet-close-x">&times;</span></button>` + renderPanelBody(state.activePanel);
   contextualPanelEl.classList.toggle('sheet-open', state.sheetOpen);
+  syncSheetChrome();
   bindContinuousControls(contextualPanelEl);
   bindStepDetails(contextualPanelEl);
   scenesRailEl.innerHTML = renderScenesRailBody();
@@ -1532,9 +1614,7 @@ function onGlobalClick(e) {
   if (!el) return;
   switch (el.dataset.action) {
     case 'close-sheet': {
-      state.sheetOpen = false;
-      contextualPanelEl.classList.remove('sheet-open');
-      renderTabStrip();
+      closeSheet();
       return;
     }
     case 'set-panel': {
@@ -1545,10 +1625,6 @@ function onGlobalClick(e) {
       render();
       break;
     }
-    case 'close-sheet':
-      state.sheetOpen = false;
-      render();
-      break;
     case 'set-style':
       setStyle(el.dataset.style);
       break;
@@ -1659,6 +1735,20 @@ document.addEventListener('keydown', (e) => {
 initDragLayer();
 initCropModal();
 initUploadHandlers();
+initKeyboardInset();
+initSheetDrag();
+syncChromeHeight();
+addEventListener('resize', syncChromeHeight, { passive: true });
+if (window.ResizeObserver) {
+  const ro = new ResizeObserver(syncChromeHeight);
+  const bar = document.querySelector('.topbar');
+  if (bar) ro.observe(bar);
+  if (tabStripEl) ro.observe(tabStripEl);
+}
+// Rotating a phone swaps the bottom sheet for the side sheet (and back), and swaps the
+// canvas guides between "all print areas" and "the active one" — both need a re-render.
+matchMedia('(max-width: 1023px)').addEventListener('change', () => render());
+matchMedia('(max-height: 560px)').addEventListener('change', () => { syncSheetChrome(); syncChromeHeight(); });
 render();
 setLinkStatus(LINK_NOTE, '');
 // the headline input is pre-focused: paste-a-link is the first thing the studio asks for

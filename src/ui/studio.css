@@ -641,9 +641,16 @@ details.rule-details summary, details.myth-details summary { cursor: pointer; co
     z-index: 2;
     margin-top: var(--s-16, 16px);
     padding: var(--s-12, 12px) 0;
+    padding-bottom: max(var(--s-12, 12px), env(safe-area-inset-bottom));
     background: var(--navy, #0B1220);
     box-shadow: 0 -8px 16px rgba(11,18,32,.92);
   }
+  .crop-actions .btn { min-height: 44px; }
+}
+/* The backdrop itself keeps clear of the notch and the home indicator. */
+.crop-modal-backdrop {
+  padding-top: max(var(--s-16, 16px), env(safe-area-inset-top));
+  padding-bottom: max(var(--s-16, 16px), env(safe-area-inset-bottom));
 }
 
 /* ============================================================ responsive */
@@ -659,8 +666,13 @@ details.rule-details summary, details.myth-details summary { cursor: pointer; co
     padding: 12px;
   }
   .contextual-panel {
-    position: fixed; left: 0; right: 0; bottom: 0;
+    position: fixed; left: 0; right: 0;
+    /* --kb-inset is set from visualViewport (studio.js) so the sheet rides ABOVE the
+       on-screen keyboard instead of being buried under it while the link input has
+       focus. It is 0px whenever no keyboard is up. */
+    bottom: var(--kb-inset, 0px);
     max-height: 62vh;
+    max-height: 62svh;
     border-right: none;
     border-top: 1px solid var(--line, #2A3140);
     border-radius: 14px 14px 0 0;
@@ -668,10 +680,30 @@ details.rule-details summary, details.myth-details summary { cursor: pointer; co
     transform: translateY(101%);
     transition: transform .22s ease;
     z-index: 200;
+    padding-bottom: max(var(--s-16, 16px), env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
   }
   .contextual-panel.sheet-open { transform: translateY(0); }
   /* partial-height snap so a slice of the preview stays visible; visible grab handle */
-  .contextual-panel.sheet-open { max-height: 55vh; }
+  .contextual-panel.sheet-open { max-height: 55vh; max-height: 55svh; }
+  /* While the user is dragging the handle, follow the finger instead of animating. */
+  .contextual-panel.is-dragging { transition: none; }
+
+  /* A bottom sheet with no scrim read as a second column that happened to overlap the
+     canvas: the stage stayed at full brightness and the onboarding card's gold border
+     showed through the sheet's rounded corners. Tapping it closes the sheet (the
+     existing document pointerdown handler already treats "outside the panel" as close). */
+  .sheet-scrim {
+    position: fixed; inset: 0; z-index: 199;
+    background: rgba(6, 10, 18, .55);
+    opacity: 0; pointer-events: none;
+    transition: opacity .22s ease;
+  }
+  .studio-body.sheet-is-open .sheet-scrim { opacity: 1; pointer-events: auto; }
+  /* The tab strip is how you move between panels WHILE a sheet is open, and the header
+     carries the frozen prototype disclosure. Both stay above the scrim: undimmed, still
+     tappable, and excluded from the close-on-outside-tap rule. */
+  .topbar, .tab-strip { position: relative; z-index: 201; }
 
   .scenes-rail { display: none; }
   .canvas-stage { width: min(70vh, 100vw - 32px); }
@@ -685,10 +717,64 @@ details.rule-details summary, details.myth-details summary { cursor: pointer; co
      `.onboard { position:absolute }` rule is declared after this block and would win.) */
   .canvas-region { overflow: visible; }
   .canvas-stage-wrap { flex-direction: column; }
+
+  /* ---- touch targets. Every type token below is unchanged; only the hit band grows. */
+  .tab-strip { padding: 8px; gap: 8px; }
+  .tab-strip .tab-btn { min-height: 44px; }
+  .view-switcher button { height: 44px; }
+  .ap-logo { min-height: 44px; }
+  .sample-buttons button { min-height: 44px; }
+  .swatch, .custom-color-row input[type="color"] { width: 44px; height: 44px; }
+  .body-btn { min-height: 44px; }
+  .toggle-row, .crop-square-toggle { min-height: 44px; }
+  details.step > summary { min-height: 44px; }
+  details.rule-details summary, details.myth-details summary {
+    display: flex; align-items: center; min-height: 44px;
+  }
+  details.rule-details a { display: inline-flex; align-items: center; min-height: 44px; }
+  /* The Art panel's own link box keeps the compact 36px desktop metrics; on touch the
+     field and its button are the two controls the studio asks for first. Scoped through
+     .studio-body so it outranks the base `.link-row input` block declared further down. */
+  .studio-body .link-row input,
+  .studio-body .link-row .btn { height: 44px; }
+  /* 14px crop handles are unusable with a finger. The dot stays 14px; the grab area
+     becomes 44px through a transparent pseudo-element. */
+  .crop-handle::after { content: ''; position: absolute; inset: -15px; }
+}
+
+/* ---------------------------------------------------------------------------
+   Landscape phone (844x390). A 55svh bottom sheet is 215px on a 390px-tall screen
+   and buried the garment completely — "the canvas stays visible while a panel is
+   open" simply could not hold. On short viewports the panel docks to the right
+   instead, and the canvas column is inset by its width so the stage re-centres in
+   what is left rather than sliding underneath it.
+   --------------------------------------------------------------------------- */
+@media (max-width: 1023.98px) and (max-height: 560px) {
+  .contextual-panel {
+    /* Starts BELOW the header + tab strip (--chrome-h is measured in studio.js). Pinned
+       to the top of the viewport instead, the header sat over the panel's grab handle,
+       and raising the panel over the header would have covered the frozen prototype
+       disclosure at narrower landscape widths. */
+    top: var(--chrome-h, 112px); bottom: 0; left: auto; right: 0;
+    width: min(300px, 46vw);
+    max-height: none; border-radius: 0;
+    border-top: 0; border-left: 1px solid var(--line, #2A3140);
+    box-shadow: -8px 0 24px rgba(0,0,0,.35);
+    transform: translateX(101%);
+    transition: transform .22s ease;
+    padding-right: max(var(--s-16, 16px), env(safe-area-inset-right));
+  }
+  .contextual-panel.sheet-open { transform: translateX(0); max-height: none; }
+  .studio-body.sheet-is-open .canvas-region { padding-right: min(300px, 46vw); }
+  /* The grab handle turns on its side with the sheet. Scoped through .studio-body so it
+     outranks the generic .sheet-close block declared further down the file. */
+  .studio-body .sheet-close { justify-content: flex-end; padding-right: 44px; }
+  .studio-body .sheet-close .sheet-handle { width: 4px; height: 32px; }
 }
 
 @media (min-width: 1024px) {
   .contextual-panel { transform: none !important; position: static !important; max-height: none !important; }
+  .sheet-scrim { display: none; }
 }
 
 /* prevent any horizontal overflow at narrow widths */
@@ -697,6 +783,12 @@ html, body { max-width: 100%; }
 /* whole-garment ('all') overlay: label pinned top-left, panels keep centred labels */
 .empty-slot-overlay.is-whole { align-items: flex-start; justify-content: flex-start; text-align: left; }
 .empty-slot-overlay.is-whole > span { background: rgba(11,18,32,.75); padding: 3px 6px; border-radius: 4px; }
+.eso-size { display: block; }
+/* On a ~330px stage six overlapping print-area boxes were unreadable mush. studio.js
+   already narrows this to the active slot below 1024px; dropping the px/inch line as
+   well keeps the one remaining label inside its own box. The figures are still in the
+   Placement list, at a readable size. */
+@media (max-width: 560px) { .eso-size { display: none; } }
 
 .coverage-caveat { font-size: 11px; line-height: 1.45; color: var(--muted, #A9AFB8); margin-top: 6px; }
 
@@ -737,6 +829,9 @@ html, body { max-width: 100%; }
   .ap-nav { gap: 22px; }
   .ap-logo { margin-right: 0; }
   .ap-logo img { height: 20px; }
+  /* The whole studio site nav was an 11px-tall touch target. The 11px type token is
+     untouched; only the hit band grows, and it fits inside the 50px header row. */
+  .ap-link { display: inline-flex; align-items: center; min-height: 44px; }
 }
 /* At 320px the nav overflowed with overflow:visible and "Studio" printed straight over
    the wordmark. Let the nav scroll inside its own track instead; the logo never yields. */
@@ -748,10 +843,15 @@ html, body { max-width: 100%; }
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    touch-action: pan-x;
   }
   .ap-nav::-webkit-scrollbar { display: none; }
-  .ap-logo { flex: none; }
-  .ap-logo img { height: 18px; }
+  /* The wordmark's viewBox is 1380x150, so `height:18px` renders it 166px wide — 46% of
+     a 360px screen. It left the nav 12px of clearance and "STUDIO" faded straight into
+     the letterforms. 14px keeps it a wordmark and hands the nav back ~37px, and the
+     padding puts real white space between the two. */
+  .ap-logo { flex: none; padding-left: 12px; }
+  .ap-logo img { height: 14px; }
 }
 
 /* 360° view */
@@ -859,8 +959,8 @@ body.is-dragging-file .upload-zone { border-color: var(--accent, #E8A33D); color
   .onboard { padding: var(--s-12, 12px) 0 0; align-items: flex-start; bottom: auto; }
   .onboard-card { width: 100%; padding: var(--s-16, 16px); }
   .onboard-title { font-size: 24px; margin: var(--s-4, 4px) 0 var(--s-12, 12px); }
-  .onboard-card .link-row input { height: 42px; font-size: 13px; }
-  .onboard-card .link-row .btn { height: 42px; padding: 0 var(--s-16, 16px); font-size: 12px; }
+  .onboard-card .link-row input { height: 44px; font-size: 13px; }
+  .onboard-card .link-row .btn { height: 44px; padding: 0 var(--s-16, 16px); font-size: 12px; }
   .onboard-card .link-status { font-size: 11px; }
   .onboard-alt { margin-top: var(--s-12, 12px); }
   .onboard-samples { margin-top: var(--s-12, 12px); padding-top: var(--s-12, 12px); }

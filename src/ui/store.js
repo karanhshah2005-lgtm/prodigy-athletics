@@ -4,13 +4,14 @@
  * Implements docs/DESIGN-SYSTEM.md: sample strip, sticky header, 360 hero, the six
  * numbered sections, the shop grid and the PDP.
  *
- * Every garment on this page is produced by src/render/*. There is no photography and
- * no placeholder image file. Prices are sample data (catalog.js), specs render
- * "— TO CONFIRM", and nothing certifies anything against the IBJJF rule book.
+ * Every garment view on this page is produced by src/render/*. Photography is the
+ * client's own (docs/PHOTOS.md) and only appears where it genuinely shows the product.
+ * Prices are sample data (catalog.js), specs render "— TO CONFIRM", and nothing
+ * certifies anything against the IBJJF rule book.
  */
 
 import { renderGarment, renderRanked, STYLES, GI_PRESETS, BELT_HEX } from '../render/garment.js';
-import { MODEL_THUMBS } from '../data/thumbs.js';
+import { PHOTO_THUMBS } from '../data/thumbs.js';
 import { renderCutSheet } from '../render/panel.js';
 import { artPatternDef, artPatternRef } from '../render/art.js';
 import { makePattern } from '../data/patterns.js';
@@ -150,9 +151,9 @@ const HERO_MARKS = {
 /* ── 4. section 02 — core ──────────────────────────────────────────────── */
 
 /**
- * Each core cell is [model photograph] over [render]. The photograph is static markup in
- * index.html — it carries its own AI caption and must not depend on this module running —
- * so the render mounts into the cell rather than replacing the row.
+ * Each core cell is [team photograph] over [render]. The photograph is static markup in
+ * index.html — it carries its own credit caption and must not depend on this module
+ * running — so the render mounts into the cell rather than replacing the row.
  */
 function buildCore() {
   for (const mount of $$('#coreRow .core__mount')) {
@@ -291,37 +292,32 @@ function setSpot(i) {
 
 /* ── 7. section 05 — gis ───────────────────────────────────────────────── */
 
-const GI_MARKS = {
-  chest: { kind: 'lockup', color: 'auto', width: 78 },
-  back: { kind: 'word', color: 'auto', width: 250 },
-  sleeves: { text: 'PRODIGY', color: 'auto' },
-};
-
 /**
- * The gi jacket only renders if the renderer ships a 'gi' style. Until it does, the
- * section keeps its "GI RENDER — TO CONFIRM" slot rather than showing a stand-in.
+ * Section 04 — the gi row is the three GENIUS SKUs (the real product line, catalog.js)
+ * rendered from the pattern files, plus the Prodigy × 死 studio concept. Every card is a
+ * .card[data-id] button, so the page's delegated handler opens its PDP. The gi jacket
+ * only renders if the renderer ships a 'gi' style; otherwise the static placeholder stays.
  */
 function buildGis() {
   if (!STYLES.gi || !GI_PRESETS) return;
-  // Featured: the Prodigy × 死 gi (black), then the plain white and blue.
-  const colours = [
-    { key: 'black', label: 'Prodigy × 死 — Black', design: 'shi', marks: null },
-    { key: 'white', label: 'White', design: null, marks: GI_MARKS },
-    { key: 'blue', label: 'Blue', design: null, marks: GI_MARKS },
-  ];
+  const genius = ['genius-gi-black', 'genius-gi-white', 'genius-gi-blue'].map(findProduct).filter(Boolean);
   let out;
   try {
-    out = colours.map(c => `
-      <div class="gis__item${c.design ? ' gis__item--featured' : ''}">
-        ${svgFor({ style: 'gi', baseColor: GI_PRESETS[c.key], marks: c.marks, design: c.design, size: 420 })}
-        <span class="t-label">${esc(c.label)}</span>
-      </div>`).join('');
+    out = genius.map(p => `
+      <button class="card card--tile gis__item" type="button" data-id="${esc(p.id)}">
+        ${productSvg(p, { size: 420 })}
+        <span class="t-label">${esc(p.name)}</span>
+      </button>`).join('') + `
+      <button class="card card--tile gis__item gis__item--featured" type="button" data-id="shi-gi-black">
+        ${svgFor({ style: 'gi', baseColor: GI_PRESETS.black, design: 'shi', size: 420 })}
+        <span class="t-label">Prodigy × 死 — studio concept</span>
+      </button>`;
   } catch (err) {
     console.warn('gi render unavailable', err);
     return;
   }
   $('#gisRow').innerHTML = `<div class="gis__row">${out}</div>
-    <p class="t-caption gis__note">Sample colourways. The range Prodigy actually stocks <span class="todo">— to confirm</span>.</p>`;
+    <p class="t-caption gis__note">Renders of the cut — the GENIUS embroidery lives in the photographs, not the renders. The 死 gi is a <a class="tlink" href="studio.html">studio</a> concept, not a product Prodigy stocks. The full range <span class="todo">— to confirm</span>.</p>`;
 }
 
 /* ── 8. section 06 — studio ────────────────────────────────────────────── */
@@ -340,12 +336,13 @@ function buildStudio() {
  * than crossfade to an empty stage).
  */
 function cardHtml(p, { more = false, back = true } = {}) {
-  // Thumbnails are AI-generated model shots (client direction); hovering crossfades to
-  // the product render. Products without a shot fall back to the render alone.
-  const hasThumb = MODEL_THUMBS.has(p.id);
+  // Thumbnails are the client's own photographs (docs/PHOTOS.md), attached only where
+  // the photo genuinely shows that product; hovering crossfades to the product render.
+  // Products without a photograph fall back to the render alone.
+  const hasThumb = PHOTO_THUMBS.has(p.id);
   const media = hasThumb
-    ? `<img class="card__photo" src="assets/models/thumbs/${esc(p.id)}.webp" width="675" height="900" loading="lazy" decoding="async"
-         alt="AI-generated model wearing ${esc(p.name.toLowerCase())}">`
+    ? `<img class="card__photo" src="assets/photos/thumbs/${esc(p.id)}.webp" width="672" height="900" loading="lazy" decoding="async"
+         alt="Team photograph of ${esc(p.name.toLowerCase())}">`
     : productSvg(p, { size: 316, detail: 'lite' });
   return `
     <button class="card${more ? ' card--more' : ''}" type="button" data-id="${esc(p.id)}">
@@ -395,9 +392,10 @@ const pdpBody = $('#pdpBody');
 let pdpSpin = null;
 let cart = 0;
 
-const CUT_LABEL = { ls: 'Long sleeve', ss: 'Short sleeve', shorts: 'Shorts', spats: 'Spats' };
+const CUT_LABEL = { ls: 'Long sleeve', ss: 'Short sleeve', shorts: 'Shorts', spats: 'Spats', gi: 'Gi' };
 
 function specRows(p) {
+  const gi = p.style === 'gi';
   const rows = [
     ['Cut', CUT_LABEL[p.style]],
     ['Sleeve', p.style === 'ls' ? 'Long' : p.style === 'ss' ? 'Short' : '—'],
@@ -405,8 +403,8 @@ function specRows(p) {
     ['Rank colour', p.ranked ? 'Sleeve panels and collar binding' : 'None'],
     ['Fabric', null],
     ['Weight', null],
-    ['Print method', 'Dye sublimation, all-over'],
-    ['Sizes', 'XS–4XL'],
+    ['Print method', gi ? null : 'Dye sublimation, all-over'],
+    ['Sizes', gi ? 'A0–A6' : 'XS–4XL'],
   ];
   return rows.map(([k, v]) => `<tr><th class="t-label" scope="row">${esc(k)}</th><td class="t-body-s">${v ? esc(v) : '<span class="todo">— to confirm</span>'}</td></tr>`).join('');
 }

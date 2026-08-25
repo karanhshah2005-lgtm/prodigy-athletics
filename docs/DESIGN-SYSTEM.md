@@ -192,8 +192,10 @@ PRODUCT GRID
 ================================================================
 4. IMAGERY RULES — RENDERS ONLY
 ================================================================
-  • Every product image is output from render/garment.js. Never a photograph, never stock,
-    never an AI-generated photo. If it cannot be rendered, it is not shown.
+  • Every product VIEW is output from render/garment.js. Never stock, never an
+    AI-generated photo. If it cannot be rendered, it is not shown. The one exception:
+    the client's own photography (docs/PHOTOS.md) may appear as campaign imagery or a
+    grid thumbnail, credited, and only where it genuinely shows that product.
   • Two canonical framings and no others:
       FLAT — orthographic front or back, 1:1, garment occupies 80% of stage height,
              optically centred, baseline at 88%.
@@ -209,9 +211,9 @@ PRODUCT GRID
   • Full-bleed panels: minimum 3, maximum 5 garments, all baseline-aligned on a shared
     horizon at 68% of panel height.
   • Hero render assets: 2× DPR, 1200px long edge, WebP q82. Grid cards: 632px, WebP q80.
-  • No people, no gyms, no mats, no lifestyle context. The absence of photography is a
-    position for a relaunching brand, and the page should look deliberate about it rather
-    than apologetic.
+  • Renders carry the product; people, gyms, mats and lifestyle context come only from the
+    client's own photography (docs/PHOTOS.md), credited, and never standing in for a
+    product view.
 
 ================================================================
 5. MOTION
@@ -616,14 +618,14 @@ EIGHT LINES THAT PASS
 5.  "One artwork, cut for the rashguard, the shorts and the spats. That is a set."
     → Defines the merchandising unit in fourteen words. No "collection", no "curated".
 
-6.  "Sizes run XS to 4XL. A1 and A2 are gi sizing and do not apply here."
-    → Category credibility for the price of a sentence. §2 flags this as the fastest way to
-      be spotted as an outsider.
+6.  "Sizes run XS to 4XL on rashguards. Gis run A0 to A6 — the two ladders never mix."
+    → Category credibility for the price of a sentence. §2 flags mixing the ladders as the
+      fastest way to be spotted as an outsider.
 
-7.  "Every image on this site is a render from our own pattern files. There is no photography
-    yet."
-    → Turns the constraint into the position. Also the honesty rule stated in the brand's
-      own voice rather than in a disclaimer.
+7.  "Product views are renders from our own pattern files. Where the team has photographed a
+    product, the photograph leads."
+    → The honesty rule stated in the brand's own voice rather than in a disclaimer, updated
+      for the client photography supplied 2026-08-24 (docs/PHOTOS.md).
 
 8.  "Dye sublimation prints flat on the roll, then the pieces are cut and sewn. Coverage costs
     nothing, so the art runs to the seam."

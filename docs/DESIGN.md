@@ -9,10 +9,10 @@ Two deliverables, one codebase:
    export mockups and a factory cut sheet.
 2. **The Storefront** (`index.html`) — an XMartial-style catalog showing the range.
 
-The connective idea: **one renderer, two consumers.** The storefront's product images are
-produced by the same code as the Studio's preview. There is no product photography in this
-project and none is needed — which is exactly right for a brand whose catalog does not
-physically exist yet.
+The connective idea: **one renderer, two consumers.** The storefront's product views are
+produced by the same code as the Studio's preview. Campaign photography is the client's
+own (docs/PHOTOS.md, supplied 2026-08-24) and appears only where it genuinely shows the
+product; everything else is a render.
 
 ---
 
@@ -282,11 +282,15 @@ to technical sportswear than fight merch.
 
 ### What the client must supply
 
-Vector logo files and lockups · exact brand hex/Pantone · licensed typefaces (or permission
-to choose) · whether a tagline exists at all · real SKUs and prices with currency (CAD/USD) ·
-the gi range · whether the ranked rashguard line is short-sleeve only · product photography ·
-**the SAU relationship in writing** · and confirmation of whether they still control
-`prodigy-athletics.com` and the Shopify tenancy, since both now point at another brand.
+Vector logo files and lockups (the logo itself — a geometric brain over PROD·I·GY
+ATHLETICS with "THINK AND WIN" — is now confirmed by the client's photography,
+docs/PHOTOS.md, but no vector files exist) · exact brand hex/Pantone · licensed typefaces
+(or permission to choose) · real SKUs and prices with currency (CAD/USD) · the full gi
+range (the GENIUS gi in black/white/blue is confirmed by photography) · whether the
+ranked rashguard line is short-sleeve only · **the SAU relationship in writing** · and
+confirmation of whether they still control `prodigy-athletics.com` and the Shopify
+tenancy, since both now point at another brand. Product photography was supplied
+2026-08-24 (docs/PHOTOS.md).
 
 ### What this means for the demo
 

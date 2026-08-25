@@ -25,8 +25,8 @@ products the photograph genuinely shows (src/data/thumbs.js).
 | file | source content | slot |
 |---|---|---|
 | hero-action.webp | no-gi clinch, full gym, crest wall | hero wide |
-| hero-sunset.webp | purple-panel SS + shorts at sunset | hero portrait (base frame) |
-| hero-rot-gi-seated.webp / -white.webp / -lineup.webp / -blue.webp | seated black gi · white gi · black gi lineup · blue gi arena | hero portrait rotation overlays |
+| hero-sunset.webp | purple-panel SS + shorts at sunset | hero portrait (static) |
+| hero-rot-skirt-patch.webp / -taping.webp / -genius-belt.webp | seated gi w/ skirt brain patch · taping fingers · GENIUS skirt + purple belt | hero wide rotation overlays |
 | band-belt.webp | purple belt tied over black GENIUS gi | editorial band |
 | core-ls-worn.webp | black LS, chest logo (crop) | 01 Core |
 | core-ls-taping.webp | black LS, taping fingers (crop) | 01 Core |

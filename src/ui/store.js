@@ -149,29 +149,29 @@ const HERO_MARKS = {
 /* ── 2b. hero photo rotation ───────────────────────────────────────────── */
 
 /**
- * The portrait hero figure cycles through the client's photographs. The sunset frame in
- * index.html stays the base layer — LCP, no-JS and reduced-motion behaviour are exactly
- * the static page — and the overlays only download after the window load event. The
- * overlays are decorative repetition of "the team, photographed", so they carry empty
- * alt + aria-hidden and screen readers keep the stable base description; the credit
- * caption is true for every frame.
+ * The wide action hero figure cycles through the client's photographs; the sunset
+ * portrait next to it stays put (client-directed). The clinch frame in index.html stays
+ * the base layer — LCP, no-JS and reduced-motion behaviour are exactly the static page —
+ * and the overlays only download after the window load event. The overlays are
+ * decorative repetition of "the team, photographed", so they carry empty alt +
+ * aria-hidden and screen readers keep the stable base description; the credit caption
+ * is true for every frame.
  */
 const HERO_ROTATE_MS = 1000;   // client-directed cadence
 const HERO_ROTATION = [
-  'assets/photos/hero-rot-gi-seated.webp',
-  'assets/photos/hero-rot-gi-white.webp',
-  'assets/photos/hero-rot-gi-lineup.webp',
-  'assets/photos/hero-rot-gi-blue.webp',
+  'assets/photos/hero-rot-skirt-patch.webp',
+  'assets/photos/hero-rot-taping.webp',
+  'assets/photos/hero-rot-genius-belt.webp',
 ];
 
 function buildHeroRotation() {
   if (REDUCED) return;
-  const fig = $('.hero__models:not(.hero__models--action)');
+  const fig = $('.hero__models--action');
   const cap = fig && fig.querySelector('figcaption');
   if (!fig || !cap) return;
   const start = () => {
     const overlays = HERO_ROTATION.map((src) => {
-      const img = el(`<img class="hero__rot" src="${src}" alt="" aria-hidden="true" width="928" height="1152" decoding="async">`);
+      const img = el(`<img class="hero__rot" src="${src}" alt="" aria-hidden="true" width="1376" height="768" decoding="async">`);
       fig.insertBefore(img, cap);
       return img;
     });

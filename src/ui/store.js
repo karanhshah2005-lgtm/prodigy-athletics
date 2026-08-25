@@ -146,6 +146,46 @@ const HERO_MARKS = {
   back: { kind: 'word', color: '#F5F3EE', width: 250 },
 };
 
+/* ── 2b. hero photo rotation ───────────────────────────────────────────── */
+
+/**
+ * The portrait hero figure cycles through the client's photographs. The sunset frame in
+ * index.html stays the base layer — LCP, no-JS and reduced-motion behaviour are exactly
+ * the static page — and the overlays only download after the window load event. The
+ * overlays are decorative repetition of "the team, photographed", so they carry empty
+ * alt + aria-hidden and screen readers keep the stable base description; the credit
+ * caption is true for every frame.
+ */
+const HERO_ROTATE_MS = 1000;   // client-directed cadence
+const HERO_ROTATION = [
+  'assets/photos/hero-rot-gi-seated.webp',
+  'assets/photos/hero-rot-gi-white.webp',
+  'assets/photos/hero-rot-gi-lineup.webp',
+  'assets/photos/hero-rot-gi-blue.webp',
+];
+
+function buildHeroRotation() {
+  if (REDUCED) return;
+  const fig = $('.hero__models:not(.hero__models--action)');
+  const cap = fig && fig.querySelector('figcaption');
+  if (!fig || !cap) return;
+  const start = () => {
+    const overlays = HERO_ROTATION.map((src) => {
+      const img = el(`<img class="hero__rot" src="${src}" alt="" aria-hidden="true" width="928" height="1152" decoding="async">`);
+      fig.insertBefore(img, cap);
+      return img;
+    });
+    let i = 0;   // 0 = the base photograph; 1..n = overlays
+    setInterval(() => {
+      if (document.hidden) return;   // a background tab holds its frame
+      i = (i + 1) % (overlays.length + 1);
+      overlays.forEach((img, j) => img.classList.toggle('is-on', j + 1 === i));
+    }, HERO_ROTATE_MS);
+  };
+  if (document.readyState === 'complete') start();
+  else addEventListener('load', start, { once: true });
+}
+
 /* ── 3. section 01 — ranked ────────────────────────────────────────────── */
 
 /* ── 4. section 02 — core ──────────────────────────────────────────────── */
@@ -679,6 +719,7 @@ function observeReveals() {
 // yielded chunks. Building 25 grid cards synchronously delayed first paint (and font
 // application) past the preload budget.
 mountHero();
+buildHeroRotation();
 
 // Every product tile on the page — grid card, ranked belt, core pair, set piece — opens
 // its PDP through one delegated handler.

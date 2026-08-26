@@ -35,7 +35,10 @@ Repo root: `C:\Users\Jenis\prodigy-athletics` (git, branch master). Windows. Nod
 ## Brand rules — trust-critical, the client will read the output
 
 - Do NOT claim any partnership between Prodigy Athletics and SAU. No source documents one.
-- Do NOT use the SAU crest/name or "Invincible Fighting Championships" anywhere.
+- Do NOT use the SAU crest/name or "Invincible Fighting Championships" anywhere. One
+  owner-directed exception on record (2026-08-26, DESIGN.md §7 rule 2): the promotion's
+  own banner/floor marks are legibly in frame in the two batch-2 landing photographs;
+  written SAU permission for that is an open must-supply item. Extend this to nothing.
 - Invent NO prices and NO SKUs presented as real. Zero real price points exist. Sample data
   must be visibly labelled as sample data.
 - Invent NO achievements, athlete counts, testimonials, review counts, or "as seen in" logos.

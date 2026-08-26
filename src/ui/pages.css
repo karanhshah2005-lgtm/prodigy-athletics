@@ -5,7 +5,8 @@
  * with the wordmark on the right, then full-bleed photography. Loads AFTER brand.css
  * and store.css and reuses their tokens and type registers (.t-nav, .t-label, .t-micro,
  * .t-h2); everything here is scoped to .pageshell so the store and studio are untouched.
- * All photography is the client's own (docs/PHOTOS.md) — no renders on these pages.
+ * Photography is the client's own plus credited event frames (docs/PHOTOS.md) — no
+ * renders on these pages.
  */
 
 .pageshell { --ink-100: #0B1220; background: var(--bone, #F5F3EE); color: var(--ink-100); margin: 0; }
@@ -45,6 +46,14 @@
 .tile:hover .tile__box img { transform: scale(1.02); }
 .tile__cap { display: block; margin-top: var(--s-12, 12px); max-width: 58ch; }
 .tile:hover .tile__cap { color: var(--gold-ink, #8A5A12); }
+
+/* Culture sections (2026-08-26, the Thinkandwin lookbook). figure.tile is the
+   non-link tile — no shop deep-link when no product is shown — so both link
+   affordances (gold caption + image zoom) are suppressed there. */
+.cult__sect { margin-top: var(--s-96, 96px); }
+figure.tile { margin: 0; }
+figure.tile:hover .tile__cap { color: inherit; }
+figure.tile:hover .tile__box img { transform: none; }
 
 /* ── footer ───────────────────────────────────────────────────────────── */
 .psf { padding: var(--s-48, 48px) var(--gutter, 40px); display: flex; flex-wrap: wrap; gap: var(--s-16, 16px); align-items: baseline; justify-content: space-between; color: var(--ink-45, #7C8492); }

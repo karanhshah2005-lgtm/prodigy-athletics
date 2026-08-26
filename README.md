@@ -6,12 +6,15 @@ Static, zero-dependency demo for **Prodigy Athletics** (Canadian BJJ apparel):
   shorts and spats (front + back), factory print-panel / cut sheet, PNG export (single views,
   set view).
 - **`index.html`** — the landing page, modelled on albinoandpreto.com (client direction):
-  two full-bleed photo panels linking to the shop and to Culture.
+  two full-bleed photo panels (credited third-party event photography, docs/PHOTOS.md
+  batch 2) linking to the shop and to Culture.
 - **`shop.html`** — an XMartial-style catalog where **every product view is rendered live in
   the browser**; the client's own photography (docs/PHOTOS.md) appears as campaign imagery and
   as grid thumbnails where it genuinely shows the product.
-- **`culture.html`** — a lookbooks-style grid (modelled on albinoandpreto.com/blogs/lookbooks)
-  of the client's photography, captioned honestly, linking into shop sections.
+- **`culture.html`** — two lookbook sections (modelled on albinoandpreto.com/blogs/lookbooks):
+  "Thinkandwin." — credited third-party event photography, captioned to exactly what each
+  frame shows, deliberately linking nowhere because no product is shown; and "The line,
+  worn." — the client's own photography, linking into shop sections.
 
 Everything here is **sample data**: prices, SKUs, shipping/returns copy are placeholders
 pending the client's real assets. See `docs/DESIGN.md §7` for what is OBSERVED vs PROPOSED and

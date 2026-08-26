@@ -193,9 +193,12 @@ PRODUCT GRID
 4. IMAGERY RULES — RENDERS ONLY
 ================================================================
   • Every product VIEW is output from render/garment.js. Never stock, never an
-    AI-generated photo. If it cannot be rendered, it is not shown. The one exception:
-    the client's own photography (docs/PHOTOS.md) may appear as campaign imagery or a
-    grid thumbnail, credited, and only where it genuinely shows that product.
+    AI-generated photo. If it cannot be rendered, it is not shown. Two photography
+    exceptions (docs/PHOTOS.md): (a) the client's own frames (batch 1) may appear as
+    campaign imagery or a grid thumbnail, credited, and only where they genuinely show
+    that product; (b) credited third-party event frames (batch 2, owner-directed) carry
+    atmosphere only — landing panels + the Thinkandwin culture section, never a product
+    view, never a shop deep-link from a tile, never captioned as Prodigy's own.
   • Two canonical framings and no others:
       FLAT — orthographic front or back, 1:1, garment occupies 80% of stage height,
              optically centred, baseline at 88%.
@@ -211,9 +214,9 @@ PRODUCT GRID
   • Full-bleed panels: minimum 3, maximum 5 garments, all baseline-aligned on a shared
     horizon at 68% of panel height.
   • Hero render assets: 2× DPR, 1200px long edge, WebP q82. Grid cards: 632px, WebP q80.
-  • Renders carry the product; people, gyms, mats and lifestyle context come only from the
-    client's own photography (docs/PHOTOS.md), credited, and never standing in for a
-    product view.
+  • Renders carry the product; people, gyms, mats and lifestyle context come only from
+    the photography in docs/PHOTOS.md (the client's own, or credited batch-2 event
+    frames), never standing in for a product view.
 
 ================================================================
 5. MOTION

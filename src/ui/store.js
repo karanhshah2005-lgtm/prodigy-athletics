@@ -6,20 +6,16 @@
  *
  * Every garment view on this page is produced by src/render/*. Photography is the
  * client's own (docs/PHOTOS.md) and only appears where it genuinely shows the product.
- * Prices are sample data (catalog.js), specs render "— TO CONFIRM", and nothing
- * certifies anything against the IBJJF rule book.
+ * Prices are sample data (catalog.js) and specs render "— TO CONFIRM".
  */
 
-import { renderGarment, renderRanked, STYLES, GI_PRESETS, BELT_HEX } from '../render/garment.js';
+import { renderGarment, STYLES, GI_PRESETS } from '../render/garment.js';
 import { PHOTO_THUMBS } from '../data/thumbs.js';
 import { renderCutSheet } from '../render/panel.js';
 import { artPatternDef, artPatternRef } from '../render/art.js';
 import { makePattern } from '../data/patterns.js';
 import { svgToPng } from '../render/export.js';
-import {
-  PRODUCTS, findProduct, BELTS, BELT_LABEL, SIZES,
-  RANKED_SS, IBJJF_814, IBJJF_URL,
-} from '../data/catalog.js';
+import { PRODUCTS, findProduct, SIZES } from '../data/catalog.js';
 
 /* ── helpers ───────────────────────────────────────────────────────────── */
 
@@ -37,10 +33,10 @@ const priceText = (p) => `$${p.price.amount} sample`;
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /**
- * One garment render. Handles the artwork pattern defs and the ranked construction.
+ * One garment render. Handles the artwork pattern defs.
  * Every svg gets its own uid so ids never cross-wire between instances.
  */
-function svgFor({ style, view = 'front', baseColor, artSpec = null, artScale = 1, ranked = null, marks = null, size = 1000, detail = 'full', design = null, part = null }) {
+function svgFor({ style, view = 'front', baseColor, artSpec = null, artScale = 1, marks = null, size = 1000, detail = 'full', design = null, part = null }) {
   const uid = nextUid();
   let defs = '', slots = {};
   if (artSpec) {
@@ -48,15 +44,12 @@ function svgFor({ style, view = 'front', baseColor, artSpec = null, artScale = 1
     defs = artPatternDef({ uid, art, tile: true, transform: { scale: artScale } });
     slots = { all: artPatternRef({ uid }) };
   }
-  if (ranked) {
-    return renderRanked({ style, view, belt: ranked.belt, body: ranked.body, uid, size, detail, marks, defs, slots, part });
-  }
   return renderGarment({ style, view, baseColor, slots, size, detail, uid, defs, marks, design, part });
 }
 
 const productSvg = (p, opts = {}) => svgFor({
   style: p.style, baseColor: p.baseColor, artSpec: p.artSpec, artScale: p.artScale,
-  ranked: p.ranked, marks: p.marks, design: p.design || null, ...opts,
+  marks: p.marks, design: p.design || null, ...opts,
 });
 
 /**
@@ -185,8 +178,6 @@ function buildHeroRotation() {
   if (document.readyState === 'complete') start();
   else addEventListener('load', start, { once: true });
 }
-
-/* ── 3. section 01 — ranked ────────────────────────────────────────────── */
 
 /* ── 4. section 02 — core ──────────────────────────────────────────────── */
 
@@ -439,8 +430,7 @@ function specRows(p) {
   const rows = [
     ['Cut', CUT_LABEL[p.style]],
     ['Sleeve', p.style === 'ls' ? 'Long' : p.style === 'ss' ? 'Short' : '—'],
-    ['Body colour', p.ranked ? (p.ranked.body === 'white' ? 'White' : 'Black') : 'See colourway'],
-    ['Rank colour', p.ranked ? 'Sleeve panels and collar binding' : 'None'],
+    ['Body colour', 'See colourway'],
     ['Fabric', null],
     ['Weight', null],
     ['Print method', gi ? null : 'Dye sublimation, all-over'],
@@ -459,8 +449,8 @@ const writeView = (v) => { try { sessionStorage.setItem(VIEW_KEY, v); } catch { 
 
 /**
  * Set members: the same artwork line, cut for the other half of the kit. A top proposes
- * the bottoms and a bottom proposes the tops; a line with no counterpart (Ranked has no
- * shorts) gets no block rather than a padded one.
+ * the bottoms and a bottom proposes the tops; a line with no counterpart gets no block
+ * rather than a padded one.
  */
 const isTopStyle = (style) => style === 'ls' || style === 'ss';
 function setMates(p) {
@@ -473,8 +463,7 @@ function setMates(p) {
 function cutSwitch(p) {
   if (!isTopStyle(p.style) || p.pieces) return null;
   return PRODUCTS.find(x => x.line === p.line && x.id !== p.id && isTopStyle(x.style)
-    && x.baseColor === p.baseColor
-    && (x.ranked ? x.ranked.belt : null) === (p.ranked ? p.ranked.belt : null)) || null;
+    && x.baseColor === p.baseColor) || null;
 }
 
 function moreFrom(p, exclude) {
@@ -487,7 +476,7 @@ function openPdp(id) {
   if (!p) return;
   if (pdpSpin) { pdpSpin.dispose(); pdpSpin = null; }
   const isTop = p.style === 'ls' || p.style === 'ss';
-  const canSpin = isTop;   // ranked tops spin too — spin3d takes sleeveColor
+  const canSpin = isTop;
   let view = readView() || 'front';
   if (view === 'spin' && !canSpin) view = 'front';
   const mates = setMates(p);
@@ -515,9 +504,7 @@ function openPdp(id) {
           <span data-slot="flat">${view === 'back' ? back : front}</span>
           <div class="pdp__spin" id="pdpSpinHost"></div>
         </div>
-        ${canSpin ? '' : `<p class="pdp__note t-caption">${isTop
-          ? 'The 360 view does not carry rank colour yet, so it is not offered on this product.'
-          : 'The 360 view covers tops only for now.'}</p>`}
+        ${canSpin ? '' : '<p class="pdp__note t-caption">The 360 view covers tops only for now.</p>'}
       </div>
 
       <div class="pdp__buy">
@@ -533,12 +520,6 @@ function openPdp(id) {
             <button type="button" data-cut="${esc(p.style === 'ss' ? p.id : otherCut.id)}"${p.style === 'ss' ? ' class="is-on"' : ''}>Short</button>
             <button type="button" data-cut="${esc(p.style === 'ls' ? p.id : otherCut.id)}"${p.style === 'ls' ? ' class="is-on"' : ''}>Long</button>
           </div>
-        </div>` : ''}
-
-        ${p.ranked ? `
-        <div class="pdp__field">
-          <label class="t-label" for="pdpBelt">Rank colour</label>
-          <select id="pdpBelt">${BELTS.map(b => `<option value="${b}"${b === p.ranked.belt ? ' selected' : ''}>${BELT_LABEL[b]}</option>`).join('')}</select>
         </div>` : ''}
 
         <div class="pdp__field">
@@ -562,14 +543,6 @@ function openPdp(id) {
           <p class="t-body-s">${esc(p.copy[2])}</p>
           <table class="spec">${specRows(p)}</table>
         </div>
-
-        ${p.ranked ? `
-        <div class="pdp__sec">
-          <span class="t-label">IBJJF Art. 8.1.14</span>
-          <p class="t-body-s">&ldquo;${esc(IBJJF_814)}&rdquo;</p>
-          <p class="t-body-s">The federation publishes no measuring method, so we build well clear of the line.
-            <a class="tlink" href="${IBJJF_URL}" target="_blank" rel="noopener">Rule book</a></p>
-        </div>` : ''}
 
         <div class="pdp__sec">
           <span class="t-label">Shipping and returns</span>
@@ -614,9 +587,6 @@ function openPdp(id) {
     if (b && b.dataset.cut !== p.id) openPdp(b.dataset.cut);
   });
 
-  const beltSel = $('#pdpBelt');
-  if (beltSel) beltSel.addEventListener('change', () => openPdp(`ranked-${p.style}-${beltSel.value}`));
-
   $('#pdpAdd').addEventListener('click', () => {
     cart += 1;
     $('#cartCount').textContent = String(cart);
@@ -629,9 +599,9 @@ function openPdp(id) {
 
 /**
  * The product's own flat render, baked onto the 3D garment: front/back × torso and the
- * two sleeves, unshaded (detail:'tex'), so the 360 carries the same artwork, the same
- * ranked colours and the same marks as the flat views next to it. Data URLs, because the
- * viewer reads these back off a canvas.
+ * two sleeves, unshaded (detail:'tex'), so the 360 carries the same artwork and the same
+ * marks as the flat views next to it. Data URLs, because the viewer reads these back off
+ * a canvas.
  */
 const BAKE_PX = 1024;
 function blobToDataUrl(blob) {
@@ -664,7 +634,7 @@ async function mountPdpSpin(p) {
     pdpSpin = mod.mountSpin(host, {
       style: p.style,
       baseColor: p.baseColor,
-      sleeveColor: p.ranked && p.ranked.belt && BELT_HEX[p.ranked.belt] ? BELT_HEX[p.ranked.belt] : null,
+      sleeveColor: null,
       // With a bake every print — artwork, chest lockup, sleeve run, back word — is
       // already in the texture. Without one, fall back to the procedural marks.
       bake,
@@ -721,7 +691,7 @@ function observeReveals() {
 mountHero();
 buildHeroRotation();
 
-// Every product tile on the page — grid card, ranked belt, core pair, set piece — opens
+// Every product tile on the page — grid card, gi card, core pair, set piece — opens
 // its PDP through one delegated handler.
 $('#main').addEventListener('click', (e) => {
   const c = e.target.closest('.card[data-id]');

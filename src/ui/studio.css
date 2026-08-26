@@ -397,33 +397,6 @@ details.step > .step-body { padding-top: var(--s-12, 12px); }
   width: 34px; height: 34px; border: 2px solid var(--line, #2A3140); border-radius: 6px; background: none; padding: 0; cursor: pointer;
 }
 
-/* ---- ranked panel ---- */
-.belt-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
-.belt-swatch { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s-4, 4px); min-width: 44px; min-height: 44px; padding: 0; background: none; border: none; cursor: pointer; color: var(--muted, #A9AFB8); font: 500 10px/1.4 var(--f-mono, 'IBM Plex Mono', ui-monospace, monospace); letter-spacing: .08em; text-transform: uppercase; }
-.belt-swatch .chip { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line, #2A3140); }
-.belt-swatch.active .chip { border-color: var(--accent, #E8A33D); box-shadow: 0 0 0 2px rgba(232,163,61,.3); }
-.belt-swatch.active { color: var(--fg, #F5F3EE); }
-.body-row { display: flex; gap: 8px; margin-bottom: 10px; }
-.body-btn {
-  flex: 1; min-height: 36px; padding: 0 var(--s-8, 8px); border-radius: 6px; border: 1px solid var(--line, #2A3140);
-  background: transparent; color: var(--fg, #F5F3EE); cursor: pointer;
-  font: 500 11px/1 var(--f-mono, 'IBM Plex Mono', ui-monospace, monospace); letter-spacing: .08em; text-transform: uppercase;
-}
-.body-btn.active { border-color: var(--accent, #E8A33D); background: rgba(232,163,61,.08); color: var(--accent, #E8A33D); }
-.coverage-box {
-  padding: 12px; border-radius: 8px; background: rgba(255,255,255,.03);
-  border: 1px solid var(--line, #2A3140); margin: 12px 0;
-}
-.coverage-pct { font-family: var(--font-display, 'Barlow Condensed', sans-serif); font-size: 26px; color: var(--accent, #E8A33D); line-height: 1; }
-.coverage-label { font-size: 12px; color: var(--muted, #A9AFB8); margin-top: var(--s-4, 4px); line-height: 1.5; }
-details.rule-details, details.myth-details {
-  font-size: 12px; color: var(--muted, #A9AFB8); margin-top: 10px;
-  border: 1px solid var(--line, #2A3140); border-radius: 6px; padding: 8px 10px;
-}
-details.rule-details summary, details.myth-details summary { cursor: pointer; color: var(--fg, #F5F3EE); font-size: 12.5px; }
-.rule-quote { border-left: 2px solid var(--accent, #E8A33D); padding-left: 10px; margin: 8px 0; font-style: italic; line-height: 1.5; }
-.myth-details li { margin-bottom: 6px; line-height: 1.4; }
-
 /* ---- canvas region ---- */
 .canvas-region {
   position: relative;
@@ -725,13 +698,8 @@ details.rule-details summary, details.myth-details summary { cursor: pointer; co
   .ap-logo { min-height: 44px; }
   .sample-buttons button { min-height: 44px; }
   .swatch, .custom-color-row input[type="color"] { width: 44px; height: 44px; }
-  .body-btn { min-height: 44px; }
   .toggle-row, .crop-square-toggle { min-height: 44px; }
   details.step > summary { min-height: 44px; }
-  details.rule-details summary, details.myth-details summary {
-    display: flex; align-items: center; min-height: 44px;
-  }
-  details.rule-details a { display: inline-flex; align-items: center; min-height: 44px; }
   /* The Art panel's own link box keeps the compact 36px desktop metrics; on touch the
      field and its button are the two controls the studio asks for first. Scoped through
      .studio-body so it outranks the base `.link-row input` block declared further down. */
@@ -789,8 +757,6 @@ html, body { max-width: 100%; }
    well keeps the one remaining label inside its own box. The figures are still in the
    Placement list, at a readable size. */
 @media (max-width: 560px) { .eso-size { display: none; } }
-
-.coverage-caveat { font-size: 11px; line-height: 1.45; color: var(--muted, #A9AFB8); margin-top: 6px; }
 
 .topbar-proto-note { font-size: 11px; color: var(--muted, #A9AFB8); margin-left: 12px; letter-spacing: .02em; }
 

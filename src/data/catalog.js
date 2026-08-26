@@ -9,15 +9,14 @@
  * Product shape
  * {
  *   id        string
- *   name      string   card-title register, UPPERCASE, e.g. "RANKED SHORT SLEEVE — BLUE"
- *   line      string   merchandising line: 'Core' | 'Ranked' | 'Recon Camo' | 'Maple' | 'Sets'
- *   eyebrow   string   mono eyebrow on the PDP, e.g. "RANKED — SHORT SLEEVE"
- *   style     'ls'|'ss'|'shorts'|'spats'          garment.js style key
+ *   name      string   card-title register, UPPERCASE, e.g. "CORE LONG SLEEVE — BLACK"
+ *   line      string   merchandising line: 'Genius' | 'Core' | 'Recon Camo' | 'Maple' | 'Sets'
+ *   eyebrow   string   mono eyebrow on the PDP, e.g. "CORE — LONG SLEEVE"
+ *   style     'ls'|'ss'|'shorts'|'spats'|'gi'     garment.js style key
  *   baseColor hex
  *   artSpec   patterns.js spec | null
  *   artScale  number   tile scale for artPatternDef
- *   ranked    { belt, body } | null               drives renderRanked
- *   marks     garment.js `marks` option — EVERY product carries the PRODIGY name
+ *   marks     garment.js `marks` option — EVERY rashguard carries the PRODIGY name
  *   unconfirmed string | undefined            visible "— to confirm" token on card + PDP
  *   price     { sample:true, amount, currency }
  *   sizes     string[]                            XS–4XL. Gi sizing (A0–A6) never appears on a rashguard.
@@ -26,18 +25,13 @@
  * }
  */
 
-import { BELT_HEX, BASE_PRESETS, GI_PRESETS } from '../render/garment.js';
-
-export const BELTS = Object.freeze(['white', 'blue', 'purple', 'brown', 'black']);
-export const BELT_LABEL = Object.freeze({
-  white: 'WHITE', blue: 'BLUE', purple: 'PURPLE', brown: 'BROWN', black: 'BLACK',
-});
+import { BASE_PRESETS, GI_PRESETS } from '../render/garment.js';
 
 /** Rashguard / bottoms sizing. A0–A6 is gi sizing and lives on the gi section only. */
 export const SIZES = Object.freeze(['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL']);
 export const GI_SIZES = 'A0–A6';
 
-export const LINES = Object.freeze(['Genius', 'Core', 'Ranked', 'Recon Camo', 'Maple', 'Sets']);
+export const LINES = Object.freeze(['Genius', 'Core', 'Recon Camo', 'Maple', 'Sets']);
 
 const BLACK = BASE_PRESETS.black;   // #14161b
 const WHITE = BASE_PRESETS.white;   // #ECECEA
@@ -64,17 +58,6 @@ const topMarks = (c) => ({
 });
 const bottomMarks = (c) => ({ waist: { color: c }, leg: { color: c } });
 
-/** Ranked marks: a belt-coloured monogram roundel, knocked out in the body colour. */
-function rankedMarks(belt) {
-  const onWhiteBody = belt === 'black';
-  const knock = onWhiteBody ? BONE_MARK : (belt === 'white' ? INK_MARK : BONE_MARK);
-  return {
-    chest: { kind: 'mono', width: 58, color: knock, bg: BELT_HEX[belt] },
-    sleeves: { text: 'PRODIGY', color: belt === 'white' ? INK_MARK : BONE_MARK },
-    back: { kind: 'word', color: onWhiteBody ? INK_MARK : BONE_MARK, width: 250 },
-  };
-}
-
 /* ── shared paragraphs ─────────────────────────────────────────────────── */
 
 const P_SPEC = 'Fabric — TO CONFIRM. Weight — TO CONFIRM. Dye sublimation prints flat on the roll, then the pieces are cut and sewn.';
@@ -94,32 +77,10 @@ function core(id, style, colorName, hex, amount) {
     id, line: 'Core',
     name: `CORE ${style === 'ls' ? 'LONG SLEEVE' : 'SHORT SLEEVE'} — ${colorName.toUpperCase()}`,
     eyebrow: `CORE — ${style === 'ls' ? 'LONG SLEEVE' : 'SHORT SLEEVE'}`,
-    style, baseColor: hex, artSpec: null, artScale: 1, ranked: null,
+    style, baseColor: hex, artSpec: null, artScale: 1,
     marks: topMarks(markColor), price: price(amount), sizes: SIZES, pieces: null,
     copy: [
       `Core ${cut} in ${colorName.toLowerCase()}, with no artwork on the body. Chest lockup, PRODIGY down both sleeves, one back print.`,
-      P_SPEC,
-      P_FIT,
-    ],
-  };
-}
-
-function ranked(style, belt, amount) {
-  const cutLabel = style === 'ls' ? 'LONG SLEEVE' : 'SHORT SLEEVE';
-  const body = belt === 'black' ? 'white' : 'black';
-  return {
-    id: `ranked-${style}-${belt}`, line: 'Ranked',
-    name: `RANKED ${cutLabel} — ${BELT_LABEL[belt]}`,
-    eyebrow: `RANKED — ${cutLabel}`,
-    // §7 OBSERVED confirms a ranked SHORT-SLEEVE line only, and lists "whether the ranked
-    // rashguard line is short-sleeve only" as an open question. The long sleeve therefore
-    // carries the same visible token every other unconfirmed fact on this site carries.
-    unconfirmed: style === 'ls' ? 'Long sleeve — to confirm' : null,
-    style, baseColor: body === 'white' ? WHITE : BLACK,
-    artSpec: null, artScale: 1, ranked: { belt, body },
-    marks: rankedMarks(belt), price: price(amount), sizes: SIZES, pieces: null,
-    copy: [
-      `Ranked ${CUT_WORD[style]}, ${belt} rank colour. The rank colour sits in the sleeve panels and the collar binding, not in a stripe across the chest.`,
       P_SPEC,
       P_FIT,
     ],
@@ -131,7 +92,7 @@ export const PRODUCTS = Object.freeze([
   {
     id: 'genius-gi-black', line: 'Genius', name: 'GENIUS GI — BLACK',
     eyebrow: 'GI — GENIUS',
-    style: 'gi', baseColor: GI_PRESETS.black, artSpec: null, artScale: 1, ranked: null,
+    style: 'gi', baseColor: GI_PRESETS.black, artSpec: null, artScale: 1,
     marks: null, design: null, price: price(250), sizes: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6'], pieces: 'jacket + pants',
     copy: [
       'Black GENIUS gi, as photographed on the team: embroidered brain between the shoulder blades, GENIUS across the back skirt, brain patch on the front skirt, and the equation stitched down the pant leg. The product view is a render of the cut; the thumbnail photograph is the gi itself.',
@@ -142,7 +103,7 @@ export const PRODUCTS = Object.freeze([
   {
     id: 'genius-gi-white', line: 'Genius', name: 'GENIUS GI — WHITE',
     eyebrow: 'GI — GENIUS',
-    style: 'gi', baseColor: GI_PRESETS.white, artSpec: null, artScale: 1, ranked: null,
+    style: 'gi', baseColor: GI_PRESETS.white, artSpec: null, artScale: 1,
     marks: null, design: null, price: price(250), sizes: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6'], pieces: 'jacket + pants',
     copy: [
       'White GENIUS gi with the same layout as the black: brain at the yoke, GENIUS across the back skirt, brain patch on the front skirt. Photographed competition-side; the product view is a render of the cut.',
@@ -153,7 +114,7 @@ export const PRODUCTS = Object.freeze([
   {
     id: 'genius-gi-blue', line: 'Genius', name: 'GENIUS GI — BLUE',
     eyebrow: 'GI — GENIUS',
-    style: 'gi', baseColor: GI_PRESETS.blue, artSpec: null, artScale: 1, ranked: null,
+    style: 'gi', baseColor: GI_PRESETS.blue, artSpec: null, artScale: 1,
     marks: null, design: null, price: price(250), sizes: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6'], pieces: 'jacket + pants',
     copy: [
       'Competition-blue GENIUS gi — brain patch at the yoke, GENIUS across the back skirt, photographed on the mats at a tournament. The product view is a render of the cut.',
@@ -164,7 +125,7 @@ export const PRODUCTS = Object.freeze([
   {
     id: 'shi-gi-black', line: 'Prodigy × 死', name: 'PRODIGY × 死 GI — BLACK',
     eyebrow: 'GI — STUDIO CONCEPT',
-    style: 'gi', baseColor: '#141416', artSpec: null, artScale: 1, ranked: null,
+    style: 'gi', baseColor: '#141416', artSpec: null, artScale: 1,
     marks: null, design: 'shi', unconfirmed: 'Studio concept — not stocked', price: price(270), sizes: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6'], pieces: 'jacket + pants',
     copy: [
       'Black gi. 死 across the upper back and on the front skirt; a skull on the outer sleeve of each arm and on both shins of the pants; monogram patches either side of the lapel; PRODIGY ATHLETICS down the lapel; contrast stitching on the lapel, cuffs and hem.',
@@ -175,7 +136,7 @@ export const PRODUCTS = Object.freeze([
   {
     id: 'shi-gi-white', line: 'Prodigy × 死', name: 'PRODIGY × 死 GI — WHITE',
     eyebrow: 'GI — STUDIO CONCEPT',
-    style: 'gi', baseColor: '#F4F2EC', artSpec: null, artScale: 1, ranked: null,
+    style: 'gi', baseColor: '#F4F2EC', artSpec: null, artScale: 1,
     marks: null, design: 'shi', unconfirmed: 'Studio concept — not stocked', price: price(270), sizes: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6'], pieces: 'jacket + pants',
     copy: [
       'White gi with the same 死 layout: back and skirt character, skulls on both sleeves and both shins, monograms, lapel wordmark, contrast stitching.',
@@ -183,10 +144,6 @@ export const PRODUCTS = Object.freeze([
       'Gi sizes A0–A6 — size chart TO CONFIRM.',
     ],
   },
-  /* ── Ranked — the one confirmed line (§7 OBSERVED) ─────────────────── */
-  ...BELTS.map(b => ranked('ss', b, 75)),
-  ...BELTS.map(b => ranked('ls', b, 85)),
-
   /* ── Core ──────────────────────────────────────────────────────────── */
   core('core-ls-black', 'ls', 'Black', BLACK, 78),
   core('core-ls-white', 'ls', 'White', WHITE, 78),
@@ -197,7 +154,7 @@ export const PRODUCTS = Object.freeze([
   {
     id: 'recon-ls', line: 'Recon Camo', name: 'RECON CAMO LONG SLEEVE',
     eyebrow: 'RECON CAMO — LONG SLEEVE',
-    style: 'ls', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62, ranked: null,
+    style: 'ls', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62,
     marks: topMarks(BONE_MARK), price: price(88), sizes: SIZES, pieces: null,
     copy: [
       'Recon Camo long sleeve. The camo runs to the seam on every panel, so the pattern carries across the join instead of stopping at a panel edge.',
@@ -208,7 +165,7 @@ export const PRODUCTS = Object.freeze([
   {
     id: 'recon-ss', line: 'Recon Camo', name: 'RECON CAMO SHORT SLEEVE',
     eyebrow: 'RECON CAMO — SHORT SLEEVE',
-    style: 'ss', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62, ranked: null,
+    style: 'ss', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62,
     marks: topMarks(BONE_MARK), price: price(78), sizes: SIZES, pieces: null,
     copy: [
       'Recon Camo short sleeve. Same file as the long sleeve, re-cut for the shorter pattern piece.',
@@ -219,7 +176,7 @@ export const PRODUCTS = Object.freeze([
   {
     id: 'recon-shorts', line: 'Recon Camo', name: 'RECON CAMO GRAPPLING SHORTS',
     eyebrow: 'RECON CAMO — SHORTS',
-    style: 'shorts', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62, ranked: null,
+    style: 'shorts', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62,
     marks: bottomMarks(BONE_MARK), price: price(62), sizes: SIZES, pieces: null,
     copy: [
       'Recon Camo grappling shorts. PRODIGY sits on the waistband and down the right leg.',
@@ -230,7 +187,7 @@ export const PRODUCTS = Object.freeze([
   {
     id: 'recon-spats', line: 'Recon Camo', name: 'RECON CAMO SPATS',
     eyebrow: 'RECON CAMO — SPATS',
-    style: 'spats', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62, ranked: null,
+    style: 'spats', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62,
     marks: bottomMarks(BONE_MARK), price: price(68), sizes: SIZES, pieces: null,
     copy: [
       'Recon Camo spats. Waistband name, one leg print, and the same camo file as the tops.',
@@ -241,7 +198,7 @@ export const PRODUCTS = Object.freeze([
   {
     id: 'recon-set', line: 'Sets', name: 'RECON CAMO SET — LONG SLEEVE + SHORTS',
     eyebrow: 'SETS — RECON CAMO',
-    style: 'ls', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62, ranked: null,
+    style: 'ls', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62,
     marks: topMarks(BONE_MARK), price: price(142), sizes: SIZES,
     pieces: [{ style: 'shorts', marks: bottomMarks(BONE_MARK) }],
     copy: [
@@ -255,7 +212,7 @@ export const PRODUCTS = Object.freeze([
   {
     id: 'maple-ls', line: 'Maple', name: 'MAPLE LONG SLEEVE',
     eyebrow: 'MAPLE — LONG SLEEVE',
-    style: 'ls', baseColor: '#C8102E', artSpec: MAPLE, artScale: 0.85, ranked: null,
+    style: 'ls', baseColor: '#C8102E', artSpec: MAPLE, artScale: 0.85,
     marks: topMarks(INK_MARK), price: price(88), sizes: SIZES, pieces: null,
     copy: [
       'Maple long sleeve. Two red bands, a white centre panel and one leaf, drawn as flat shapes rather than a photograph of a flag.',
@@ -266,7 +223,7 @@ export const PRODUCTS = Object.freeze([
   {
     id: 'maple-set', line: 'Sets', name: 'MAPLE SET — LONG SLEEVE + SPATS',
     eyebrow: 'SETS — MAPLE',
-    style: 'ls', baseColor: '#C8102E', artSpec: MAPLE, artScale: 0.85, ranked: null,
+    style: 'ls', baseColor: '#C8102E', artSpec: MAPLE, artScale: 0.85,
     marks: topMarks(INK_MARK), price: price(150), sizes: SIZES,
     pieces: [{ style: 'spats', marks: bottomMarks(INK_MARK) }],
     copy: [
@@ -280,7 +237,7 @@ export const PRODUCTS = Object.freeze([
   {
     id: 'shorts-black', line: 'Core', name: 'GRAPPLING SHORTS — BLACK',
     eyebrow: 'CORE — SHORTS',
-    style: 'shorts', baseColor: BLACK, artSpec: null, artScale: 1, ranked: null,
+    style: 'shorts', baseColor: BLACK, artSpec: null, artScale: 1,
     marks: bottomMarks(BONE_MARK), price: price(62), sizes: SIZES, pieces: null,
     copy: [
       'Grappling shorts in black, with no artwork. PRODIGY on the waistband and down the right leg.',
@@ -291,7 +248,7 @@ export const PRODUCTS = Object.freeze([
   {
     id: 'spats-black', line: 'Core', name: 'SPATS — BLACK',
     eyebrow: 'CORE — SPATS',
-    style: 'spats', baseColor: BLACK, artSpec: null, artScale: 1, ranked: null,
+    style: 'spats', baseColor: BLACK, artSpec: null, artScale: 1,
     marks: bottomMarks(BONE_MARK), price: price(66), sizes: SIZES, pieces: null,
     copy: [
       'Spats in black, with no artwork. Waistband name and one leg print.',
@@ -304,7 +261,7 @@ export const PRODUCTS = Object.freeze([
   {
     id: 'core-set', line: 'Sets', name: 'CORE SET — LONG SLEEVE + SHORTS',
     eyebrow: 'SETS — CORE',
-    style: 'ls', baseColor: BLACK, artSpec: null, artScale: 1, ranked: null,
+    style: 'ls', baseColor: BLACK, artSpec: null, artScale: 1,
     marks: topMarks(BONE_MARK), price: price(132), sizes: SIZES,
     pieces: [{ style: 'shorts', marks: bottomMarks(BONE_MARK) }],
     copy: [
@@ -323,9 +280,3 @@ export function productsByLine(line) {
   return PRODUCTS.filter(p => p.line === line);
 }
 
-/** The five ranked short sleeves, in belt order — the homepage 01 panel. */
-export const RANKED_SS = Object.freeze(BELTS.map(b => findProduct(`ranked-ss-${b}`)));
-
-/** IBJJF Art. 8.1.14, quoted verbatim. Never paraphrase, never certify against it. */
-export const IBJJF_814 = 'Both genders must wear a shirt of elastic material (skin tight) long enough to cover the torso all the way to the waistband of the shorts, colored black, white, or black and white, and with at least 10% of the rank color(belt) to which the athlete belongs.';
-export const IBJJF_URL = 'https://ibjjf.com/books-videos';

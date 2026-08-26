@@ -143,7 +143,7 @@ const HERO_MARKS = {
 
 /**
  * The wide action hero figure cycles through the client's photographs; the sunset
- * portrait next to it stays put (client-directed). The clinch frame in index.html stays
+ * portrait next to it stays put (client-directed). The clinch frame in shop.html stays
  * the base layer — LCP, no-JS and reduced-motion behaviour are exactly the static page —
  * and the overlays only download after the window load event. The overlays are
  * decorative repetition of "the team, photographed", so they carry empty alt +
@@ -183,7 +183,7 @@ function buildHeroRotation() {
 
 /**
  * Each core cell is [team photograph] over [render]. The photograph is static markup in
- * index.html — it carries its own credit caption and must not depend on this module
+ * shop.html — it carries its own credit caption and must not depend on this module
  * running — so the render mounts into the cell rather than replacing the row.
  */
 function buildCore() {

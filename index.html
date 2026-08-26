@@ -3,300 +3,58 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Prodigy Athletics — Gis, Rashguards, Sets (Sample Storefront)</title>
-<meta name="description" content="Sample storefront for Prodigy Athletics. Product views are renders from our own pattern files; photography is the team's own. Prices, product copy and specifications are placeholders.">
+<title>Prodigy Athletics</title>
+<meta name="description" content="Prodigy Athletics — gis and rashguards. Think and win. Sample site; prices and product copy are placeholders.">
 <meta name="robots" content="noindex">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="src/brand.css">
 <link rel="stylesheet" href="src/ui/store.css">
-<script type="importmap">
-{"imports":{
-  "three": "./vendor/three/three.module.js",
-  "three/addons/": "./vendor/three/addons/"
-}}
-</script>
+<link rel="stylesheet" href="src/ui/pages.css">
 </head>
-<body class="store">
-<a class="skip-link t-button" href="#shop">Skip to products</a>
+<body class="pageshell">
 
-<!-- 0. SAMPLE STRIP — permanent, not dismissible -->
-<div class="strip t-micro" role="note">Sample storefront — prices and product copy are placeholders</div>
+<!-- SAMPLE STRIP — permanent, not dismissible -->
+<div class="strip t-micro" role="note">Sample site — prices and product copy are placeholders</div>
 
-<!-- 1. HEADER -->
-<header class="hdr" id="hdr">
-  <div class="hdr__inner">
-    <a class="hdr__wordmark t-h2" href="index.html">Prodigy Athletics</a>
-    <nav class="hdr__nav" id="hdrNav" aria-label="Primary">
-      <a class="hdr__link t-nav" href="#gis">Gis</a>
-      <a class="hdr__link t-nav" href="#shop">Rashguards</a>
-      <a class="hdr__link t-nav" href="#sets">Sets</a>
-      <a class="hdr__link t-nav" href="studio.html">Design your own</a>
-    </nav>
-    <span class="hdr__spacer"></span>
-    <button class="hdr__menu t-nav" type="button" id="hdrMenu" aria-expanded="false" aria-controls="hdrNav">Menu</button>
-    <a class="hdr__cart t-nav" href="#shop" id="cartLink">Cart <span id="cartCount">0</span></a>
-  </div>
+<header class="psh">
+  <nav class="psh__nav" aria-label="Primary">
+    <a class="psh__link t-nav" href="shop.html">Shop</a>
+    <a class="psh__link t-nav" href="culture.html">Culture</a>
+  </nav>
+  <span class="psh__spacer"></span>
+  <a class="psh__wordmark t-h2" href="index.html">Prodigy Athletics</a>
 </header>
 
-<main id="main">
+<main>
+  <h1 class="vh">Prodigy Athletics &mdash; think and win</h1>
 
-  <!-- 2. HERO -->
-  <section class="hero" aria-labelledby="heroLine">
-    <div class="hero__top">
-      <figure class="hero__models hero__models--action">
-        <img src="assets/photos/hero-action.webp" width="1376" height="768" alt="Two Prodigy athletes locked in a clinch on the mats at their gym, both in the black long sleeve and spats with the Prodigy brain mark" decoding="async" fetchpriority="high">
-        <figcaption class="t-micro">Photograph — Prodigy Athletics</figcaption>
-      </figure>
-      <figure class="hero__models">
-        <img src="assets/photos/hero-blue-ss.webp" width="928" height="1152" alt="A Prodigy athlete in the blue scale-print short sleeve — brain logo and THINK AND WIN across the chest" decoding="async" fetchpriority="high">
-        <figcaption class="t-micro">Photograph — Prodigy Athletics</figcaption>
-      </figure>
-    </div>
-    <div class="hero__copy">
-      <span class="t-label">Gis &amp; rashguards — relaunching</span>
-      <h1 class="t-display-xl" id="heroLine">Think and win.</h1>
-      <a class="btn btn--gold t-button" href="#shop">Shop the line</a>
-    </div>
-  </section>
+  <!-- Panel 1 — the line. Photograph: the team's own (docs/PHOTOS.md). -->
+  <a class="panel" href="shop.html">
+    <img src="assets/photos/landing-shop.webp" width="1920" height="1080"
+         alt="Two Prodigy athletes locked in a clinch on the mats at their gym, both in the black no-gi kit"
+         decoding="async" fetchpriority="high">
+    <span class="panel__bar">
+      <span class="panel__eyebrow t-micro">Prodigy Athletics &mdash; think and win</span>
+      <span class="panel__cta t-label">Shop the line</span>
+    </span>
+  </a>
 
-  <!-- 2b. EDITORIAL BAND — client photography (docs/PHOTOS.md) -->
-  <section class="band" aria-label="The line, worn on the mats">
-    <img src="assets/photos/band-belt.webp" width="1376" height="768" loading="lazy" decoding="async"
-         alt="Tying the purple belt over the black GENIUS gi — embroidered brain and GENIUS on the skirt, PRODIGY patch below.">
-    <div class="band__bar">
-      <p class="band__label t-label">On the mats</p>
-      <p class="band__cap t-micro">Photograph &mdash; Prodigy Athletics</p>
-    </div>
-  </section>
-
-  <!-- 4. SECTION 02 — CORE -->
-  <section class="sec sec--major sec--bone" id="core" aria-labelledby="coreHead">
-    <div class="wrap">
-      <div class="sechead reveal">
-        <span class="t-label">01 — Core</span>
-        <h2 class="t-display-l" id="coreHead">Black. White. Nothing else.</h2>
-        <p class="t-lead">Long sleeve, chest lockup, sleeve print, back print. The version you wear when you are not thinking about what you are wearing.</p>
-      </div>
-      <div class="core__row" id="coreRow">
-        <div class="core__cell">
-          <figure class="mfig mfig--tall">
-            <span class="mfig__box"><img src="assets/photos/core-ls-worn.webp" width="896" height="1200" loading="lazy" decoding="async"
-                 alt="A Prodigy athlete in the black long sleeve, geometric brain and wordmark on the chest."></span>
-            <figcaption class="mfig__cap t-micro">Photograph &mdash; Prodigy Athletics</figcaption>
-          </figure>
-          <div class="core__mount" data-core="core-ls-black"></div>
-        </div>
-        <div class="core__cell">
-          <!-- No photograph of the white long sleeve exists yet, so this cell is render-only
-               rather than implying the black-garment photo shows the white SKU. -->
-          <figure class="mfig mfig--tall">
-            <span class="mfig__box"><img src="assets/photos/core-ls-taping.webp" width="896" height="1200" loading="lazy" decoding="async"
-                 alt="Taping up before the round in the black long sleeve."></span>
-            <figcaption class="mfig__cap t-micro">Taping up &mdash; the black long sleeve again. No photograph of the white yet.</figcaption>
-          </figure>
-          <div class="core__mount" data-core="core-ls-white"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 5. SECTION 03 — SETS -->
-  <section class="sec sec--major sec--navy" id="sets" aria-labelledby="setsHead">
-    <div class="wrap">
-      <div class="sechead reveal">
-        <span class="t-label">02 — Sets</span>
-        <h2 class="t-display-l" id="setsHead">Built as one.</h2>
-        <p class="t-lead">One file, three cuts. The artwork prints flat on the roll and carries across the rashguard, the shorts and the spats &mdash; on both of you.</p>
-      </div>
-      <figure class="mfig mfig--wide sets__shot">
-        <span class="mfig__box"><img src="assets/photos/sets-clinch.webp" width="1376" height="768" loading="lazy" decoding="async"
-             alt="Two Prodigy athletes tied up in a clinch, both wearing the matching black long sleeve and spats."></span>
-        <figcaption class="mfig__cap t-micro">Photograph &mdash; Prodigy Athletics</figcaption>
-      </figure>
-      <div class="sets__row sets__row--dark" id="setsRow"></div>
-      <p class="sets__cta"><a class="btn btn--ghost t-button" href="#shop">Shop sets</a></p>
-    </div>
-  </section>
-
-  <!-- 6. SECTION 04 — THE DETAIL -->
-  <section class="sec sec--major sec--navy" id="detail" aria-labelledby="detailHead">
-    <div class="wrap">
-      <div class="sechead reveal">
-        <span class="t-label">03 — Detail</span>
-        <h2 class="t-display-l" id="detailHead">Shoulder to cuff.</h2>
-      </div>
-      <div class="detail__grid">
-        <div class="detail__stage" id="detailStage"></div>
-        <ul class="detail__list" id="detailList"></ul>
-      </div>
-    </div>
-  </section>
-
-  <!-- 7. SECTION 05 — GIS -->
-  <section class="sec sec--major sec--bone" id="gis" aria-labelledby="gisHead">
-    <div class="wrap">
-      <div class="sechead reveal">
-        <span class="t-label">04 — Gis</span>
-        <h2 class="t-display-l" id="gisHead">The gi came first.</h2>
-        <p class="t-lead">Prodigy started as a kimono company. GENIUS is the gi the team competes in &mdash; an embroidered brain between the shoulder blades, GENIUS across the back skirt, the equation down the pant leg.</p>
-      </div>
-      <div class="gis__grid">
-        <figure class="mfig mfig--tall">
-          <span class="mfig__box"><img src="assets/photos/gis-back.webp" width="896" height="1200" loading="lazy" decoding="async"
-               alt="The black GENIUS gi from behind, mat-side at a competition — embroidered brain at the yoke, GENIUS across the skirt."></span>
-          <figcaption class="mfig__cap t-micro">Photograph &mdash; Prodigy Athletics</figcaption>
-        </figure>
-        <div class="gis__main">
-          <div id="gisRow">
-            <div class="gis__placeholder">
-              <span class="t-label">Gi render — needs JavaScript</span>
-              <p class="t-caption">The gi renders need JavaScript to draw. The photographs in this section are the client's own; none stands in for a product view.</p>
-            </div>
-          </div>
-          <table class="spec">
-            <caption class="vh">Gi specification</caption>
-            <tbody>
-              <tr><th class="t-label" scope="row">Jacket weave</th><td><span class="todo">— to confirm</span></td></tr>
-              <tr><th class="t-label" scope="row">Jacket gsm</th><td><span class="todo">— to confirm</span></td></tr>
-              <tr><th class="t-label" scope="row">Pant</th><td><span class="todo">— to confirm</span></td></tr>
-              <tr><th class="t-label" scope="row">Sizes</th><td class="t-body-s">A0–A6</td></tr>
-              <tr><th class="t-label" scope="row">Shrinkage</th><td><span class="todo">— to confirm</span></td></tr>
-            </tbody>
-          </table>
-          <div class="gis__photos">
-            <figure class="mfig mfig--square">
-              <span class="mfig__box"><img src="assets/photos/gis-d-brain.webp" width="800" height="800" loading="lazy" decoding="async"
-                   alt="Embroidered brain with lightning bolts at the yoke of the black GENIUS gi, between the shoulder blades."></span>
-              <figcaption class="mfig__cap t-micro">The brain, at the yoke</figcaption>
-            </figure>
-            <figure class="mfig mfig--square">
-              <span class="mfig__box"><img src="assets/photos/gis-d-skirt.webp" width="800" height="800" loading="lazy" decoding="async"
-                   alt="GENIUS embroidered across the back skirt of the black gi, under a purple belt."></span>
-              <figcaption class="mfig__cap t-micro">GENIUS, across the skirt</figcaption>
-            </figure>
-            <figure class="mfig mfig--square">
-              <span class="mfig__box"><img src="assets/photos/gis-d-pants.webp" width="800" height="800" loading="lazy" decoding="async"
-                   alt="A mathematical equation embroidered tonal-on-black down the gi pant leg."></span>
-              <figcaption class="mfig__cap t-micro">The equation, down the leg</figcaption>
-            </figure>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 7b. LOOKBOOK — client photography, no product claim attached -->
-  <section class="sec sec--bonedeep look" aria-label="Lookbook">
-    <div class="wrap">
-      <span class="look__label t-label">Lookbook</span>
-      <div class="look__row">
-        <figure class="mfig mfig--tall">
-          <span class="mfig__box"><img src="assets/photos/look-gi-seated.webp" width="896" height="1200" loading="lazy" decoding="async"
-               alt="Seated mat-side in the black GENIUS gi, purple belt tied, shaker in hand."></span>
-          <figcaption class="mfig__cap t-micro">Photograph &mdash; Prodigy Athletics</figcaption>
-        </figure>
-        <figure class="mfig mfig--square">
-          <span class="mfig__box"><img src="assets/photos/look-sleeve-sq.webp" width="1024" height="1024" loading="lazy" decoding="async"
-               alt="Tonal graphic on the sleeve of the black GENIUS gi, black on black."></span>
-          <figcaption class="mfig__cap t-micro">Photograph &mdash; Prodigy Athletics</figcaption>
-        </figure>
-      </div>
-    </div>
-  </section>
-
-  <!-- 8. SECTION 06 — DESIGN YOUR OWN -->
-  <section class="sec sec--major sec--navy" id="studio" aria-labelledby="studioHead">
-    <div class="wrap">
-      <div class="sechead reveal">
-        <span class="t-label">05 — Studio</span>
-        <h2 class="t-display-l" id="studioHead">Upload it. See it. Send it.</h2>
-        <p class="t-lead">Drop in artwork and see it on the real pattern, front and back. Export the mockup and the factory cut sheet in the same click.</p>
-      </div>
-      <div class="studio__grid">
-        <div class="studio__pane" id="studioGarment"></div>
-        <div class="studio__pane">
-          <div class="studio__sheet" id="studioSheet"></div>
-          <span class="t-label">Cut sheet — cut line, bleed, seams</span>
-        </div>
-      </div>
-      <p class="studio__cta"><a class="btn btn--gold t-button" href="studio.html">Open the studio</a></p>
-    </div>
-  </section>
-
-  <!-- 9. SHOP -->
-  <section class="sec sec--major sec--bone" id="shop" tabindex="-1" aria-labelledby="shopHead">
-    <div class="wrap">
-      <div class="sechead reveal">
-        <span class="t-label">06 — All</span>
-        <h2 class="t-display-l" id="shopHead">The whole range.</h2>
-        <p class="t-lead">Product views are renders from our own pattern files. Where the team has photographed a product, the photograph leads; everything else shows its render.</p>
-      </div>
-      <div class="grid" id="grid"></div>
-      <p class="shopall"><button class="tlink t-button" type="button" id="shopAll">Show all</button></p>
-    </div>
-  </section>
-
+  <!-- Panel 2 — culture. Photograph: the team's own (docs/PHOTOS.md). -->
+  <a class="panel" href="culture.html">
+    <img src="assets/photos/landing-culture.webp" width="1920" height="1080"
+         alt="GENIUS embroidered across the back skirt of the black gi, under a purple belt"
+         loading="lazy" decoding="async">
+    <span class="panel__bar">
+      <span class="panel__eyebrow t-micro">The team, photographed</span>
+      <span class="panel__cta t-label">Culture</span>
+    </span>
+  </a>
 </main>
 
-<!-- 10. FOOTER -->
-<footer class="ftr">
-  <div class="wrap">
-    <div class="ftr__cols">
-      <div class="ftr__col">
-        <h2 class="t-label">Shop</h2>
-        <ul>
-          <li><a class="t-body-s" href="#core">Core</a></li>
-          <li><a class="t-body-s" href="#sets">Sets</a></li>
-          <li><a class="t-body-s" href="#shop">Shorts and spats</a></li>
-          <li><a class="t-body-s" href="#gis">Gis</a></li>
-        </ul>
-      </div>
-      <div class="ftr__col">
-        <h2 class="t-label">Studio</h2>
-        <ul>
-          <li><a class="t-body-s" href="studio.html">Design your own</a></li>
-          <li><a class="t-body-s" href="studio.html">Cut sheet export</a></li>
-          <li><a class="t-body-s" href="#detail">Where the marks sit</a></li>
-        </ul>
-      </div>
-      <div class="ftr__col">
-        <h2 class="t-label">Support</h2>
-        <ul>
-          <li><span class="t-body-s">Sizes XS–4XL</span></li>
-          <li><span class="t-body-s">Shipping <span class="todo">— to confirm</span></span></li>
-          <li><span class="t-body-s">Returns <span class="todo">— to confirm</span></span></li>
-          <li><span class="t-body-s">Contact <span class="todo">— to confirm</span></span></li>
-        </ul>
-      </div>
-      <div class="ftr__col">
-        <h2 class="t-label">Prodigy</h2>
-        <ul>
-          <li><span class="t-body-s">A Canadian kimono company</span></li>
-          <li><span class="t-body-s">Rashguards are the newer line</span></li>
-          <li><span class="t-body-s">Story <span class="todo">— to confirm</span></span></li>
-        </ul>
-      </div>
-    </div>
-    <hr class="ftr__rule">
-    <div class="ftr__bottom">
-      <span class="ftr__mark t-h2">Prodigy Athletics</span>
-      <p class="ftr__legal t-micro">
-        Sample storefront. Prices, product copy and specifications are placeholders.<br>
-        Checkout is not connected. Product views are browser renders.<br>
-        Photography &mdash; Prodigy Athletics.
-      </p>
-    </div>
-  </div>
+<footer class="psf">
+  <span class="t-h2">Prodigy Athletics</span>
+  <span class="t-micro">Sample site &mdash; prices and product copy are placeholders. Photography &mdash; Prodigy Athletics.</span>
 </footer>
 
-<!-- PDP -->
-<div class="pdp-overlay" id="pdpOverlay">
-  <div class="pdp" id="pdp" role="dialog" aria-modal="true" aria-labelledby="pdpTitle" tabindex="-1">
-    <button class="pdp__close" id="pdpClose" aria-label="Close">&times;</button>
-    <div id="pdpBody"></div>
-  </div>
-</div>
-
-<script type="module" src="src/ui/store.js"></script>
 </body>
 </html>

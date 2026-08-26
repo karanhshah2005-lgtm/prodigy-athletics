@@ -7,7 +7,10 @@ Two deliverables, one codebase:
 
 1. **The Studio** (`studio.html`) — upload artwork, see it on real rashguard styles,
    export mockups and a factory cut sheet.
-2. **The Storefront** (`index.html`) — an XMartial-style catalog showing the range.
+2. **The Storefront** (`shop.html`) — an XMartial-style catalog showing the range.
+3. **The Landing** (`index.html`) — two full-bleed photo panels (albinoandpreto.com model,
+   client direction 2026-08-25) linking to the storefront and to Culture.
+4. **Culture** (`culture.html`) — a lookbooks-style grid of the client's photography.
 
 The connective idea: **one renderer, two consumers.** The storefront's product views are
 produced by the same code as the Studio's preview. Campaign photography is the client's
@@ -165,7 +168,9 @@ stocked.
 Static, zero-dependency, no build step, no backend. Deploys to GitHub Pages.
 
 ```
-index.html                storefront
+index.html                landing (two photo panels)
+shop.html                 storefront
+culture.html              lookbook grid
 studio.html               mockup studio
 src/
   render/garment.js       geometry registry + layer stack  (from RENDERER-SEED)
@@ -201,7 +206,8 @@ Each chunk is small enough for one agent.
 6. Ranked mode + coverage estimator + verbatim rule text.
 7. `render/export.js` — PNG at 2000–3000 px, colourway grid, set view, batch scenes.
 8. `data/catalog.js` — 16–24 seeded designs.
-9. `index.html` storefront — hero, tiles, grid with hover swap, filters, PDP, footer.
+9. `shop.html` storefront (originally built as index.html; renamed 2026-08-25 when the
+   landing page took the root) — hero, tiles, grid with hover swap, filters, PDP, footer.
 10. Brand pass — palette, type, logo, copy, SAU positioning.
 11. Adversarial review — honesty of claims, rule citations, mobile, performance.
 

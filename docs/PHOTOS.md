@@ -38,6 +38,8 @@ products the photograph genuinely shows (src/data/thumbs.js).
 | gis-d-brain.webp / gis-d-skirt.webp / gis-d-pants.webp | embroidery details | 04 Gis strip |
 | thumbs/genius-gi-{black,white,blue}.webp | GENIUS gi worn at competition | shop thumbs |
 | thumbs/core-ls-black.webp, thumbs/spats-black.webp | black LS / spats worn | shop thumbs |
+| landing-shop.webp / landing-culture.webp | no-gi clinch wide · GENIUS skirt + belt | landing panels (index.html) |
+| culture-{studio,competition,details,nogi,taping,blue}.webp | studio seated gi · white gi arena · skirt patch · clinch · taping · blue gi arena | culture.html tiles (1080²) |
 
 Background note: a French federation seal ("SCEAU OFFICIEL / FÉDÉRATION …") appears on
 gym walls in some frames. It is incidental background in the client's own photography —

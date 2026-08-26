@@ -1,0 +1,64 @@
+/**
+ * pages.css — the landing page (index.html) and the Culture page (culture.html).
+ *
+ * Modelled on albinoandpreto.com (client direction, 2026-08-25): a minimal caps nav
+ * with the wordmark on the right, then full-bleed photography. Loads AFTER brand.css
+ * and store.css and reuses their tokens and type registers (.t-nav, .t-label, .t-micro,
+ * .t-h2); everything here is scoped to .pageshell so the store and studio are untouched.
+ * All photography is the client's own (docs/PHOTOS.md) — no renders on these pages.
+ */
+
+.pageshell { --ink-100: #0B1220; background: var(--bone, #F5F3EE); color: var(--ink-100); margin: 0; }
+
+/* ── header: links left, wordmark right (A&P arrangement) ─────────────── */
+.psh { display: flex; align-items: center; gap: var(--s-24, 24px); padding: var(--s-16, 16px) var(--gutter, 40px); }
+.psh__nav { display: flex; gap: var(--s-24, 24px); }
+.psh__link { color: inherit; text-decoration: none; }
+.psh__link:hover { color: var(--gold-ink, #8A5A12); }
+.psh__link.is-current { color: var(--ink-45, #7C8492); pointer-events: none; }
+.psh__spacer { flex: 1; }
+.psh__wordmark { color: inherit; text-decoration: none; }
+
+/* ── landing panels: stacked full-bleed photo links ───────────────────── */
+.panel { position: relative; display: block; height: 88svh; min-height: 420px; overflow: hidden; text-decoration: none; }
+.panel:focus-visible { outline: 3px solid var(--gold, #E8A33D); outline-offset: -5px; }
+.panel img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.panel__bar {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: baseline; gap: var(--s-16, 16px);
+  padding: var(--s-48, 48px) var(--gutter, 40px) var(--s-24, 24px);
+  background: linear-gradient(180deg, transparent 0%, rgba(11, 18, 32, 0.78) 45%, rgba(11, 18, 32, 0.85) 100%);
+  color: var(--bone, #F5F3EE);
+}
+.panel__eyebrow { color: var(--bone, #F5F3EE); }
+.panel__cta { color: var(--bone, #F5F3EE); }
+.panel:hover .panel__cta { color: var(--gold, #E8A33D); }
+.panel + .panel { margin-top: var(--s-8, 8px); }
+
+/* ── culture grid: 2-up square tiles, caps caption below (A&P lookbooks) ── */
+.cult { padding: var(--s-24, 24px) var(--gutter, 40px) var(--s-96, 96px); }
+.cult__head { margin: var(--s-24, 24px) 0 var(--s-32, 32px); }
+.cult__grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s-48, 48px) var(--s-32, 32px); }
+.tile { display: block; color: inherit; text-decoration: none; min-width: 0; }
+.tile__box { display: block; aspect-ratio: 1 / 1; overflow: hidden; background: var(--ink-raise, #131B2C); }
+.tile__box img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s ease; }
+.tile:hover .tile__box img { transform: scale(1.02); }
+.tile__cap { display: block; margin-top: var(--s-12, 12px); max-width: 58ch; }
+.tile:hover .tile__cap { color: var(--gold-ink, #8A5A12); }
+
+/* ── footer ───────────────────────────────────────────────────────────── */
+.psf { padding: var(--s-48, 48px) var(--gutter, 40px); display: flex; flex-wrap: wrap; gap: var(--s-16, 16px); align-items: baseline; justify-content: space-between; color: var(--ink-45, #7C8492); }
+
+/* ── small screens ────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .psh { padding: var(--s-12, 12px) var(--s-16, 16px); gap: var(--s-16, 16px); }
+  .panel { height: 72svh; }
+  .panel__bar { padding: var(--s-32, 32px) var(--s-16, 16px) var(--s-16, 16px); flex-wrap: wrap; gap: var(--s-8, 8px); }
+  .cult { padding: var(--s-16, 16px) var(--s-16, 16px) var(--s-64, 64px); }
+  .cult__grid { grid-template-columns: 1fr; gap: var(--s-32, 32px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile__box img { transition: none; }
+  .tile:hover .tile__box img { transform: none; }
+}

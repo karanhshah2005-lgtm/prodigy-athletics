@@ -14,6 +14,13 @@ body.store {
   --ink-70: #4A5464;
   --ink-45: #7C8492;
 
+  /* Owner direction 2026-08-28: the shop page ground is WHITE, not Bone.
+     Rescoped here (shop only) so every bone-keyed surface follows; the landing,
+     Culture and studio pages keep brand.css Bone #F5F3EE. --bone-deep stages
+     and --bone-line hairlines are untouched. */
+  --bone: #FFFFFF;
+  --bone-rgb: 255, 255, 255;
+
   --gutter: var(--s-40);
   --maxw: 1440px;
   --hdr-h: 72px;

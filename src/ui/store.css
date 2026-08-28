@@ -14,12 +14,24 @@ body.store {
   --ink-70: #4A5464;
   --ink-45: #7C8492;
 
-  /* Owner direction 2026-08-28: the shop page ground is WHITE, not Bone.
-     Rescoped here (shop only) so every bone-keyed surface follows; the landing,
-     Culture and studio pages keep brand.css Bone #F5F3EE. --bone-deep stages
-     and --bone-line hairlines are untouched. */
+  /* Owner direction 2026-08-28 (two passes): EVERYTHING on the shop page is
+     WHITE. First the light ground (--bone), then the dark surfaces — hero,
+     band, sets/detail/studio sections, footer, strip, header — retokened to
+     light here rather than restyled rule-by-rule, so every on-dark text token
+     maps to its ink register and every raised-on-navy stage maps to the
+     bone-deep tile. Scoped to body.store only; the landing, Culture and studio
+     pages keep their brand.css values. Components that must STAY dark on the
+     white page (.btn--ink, .btn--gold text, .seg is-on, .skip-link) and text
+     that sits ON photographs (.band bar, hero figcaptions) are pinned to
+     literals right where they are declared. */
   --bone: #FFFFFF;
   --bone-rgb: 255, 255, 255;
+  --ink-navy: #FFFFFF;           /* former dark grounds */
+  --ink-raise: var(--bone-deep); /* former elevated-on-navy stages */
+  --ink-line: var(--bone-line);  /* hairlines follow the ground */
+  --on-dark: var(--ink);
+  --on-dark-70: var(--ink-70);
+  --on-dark-45: var(--ink-45);
 
   --gutter: var(--s-40);
   --maxw: 1440px;
@@ -95,7 +107,7 @@ body.store {
 
 .skip-link {
   position: absolute; left: -9999px; top: 0; z-index: 200;
-  background: var(--ink-navy); color: var(--on-dark); padding: var(--s-12) var(--s-16);
+  background: #0B1220; color: #F5F3EE; padding: var(--s-12) var(--s-16); /* stays dark on the white page */
 }
 .skip-link:focus { left: 0; }
 
@@ -108,9 +120,9 @@ body.store {
   transition: background-color var(--dur-micro) var(--ease-inout),
               border-color var(--dur-micro) var(--ease-inout);
 }
-.btn--gold { background: var(--gold); color: var(--ink-navy); }
+.btn--gold { background: var(--gold); color: #0B1220; } /* literal: --ink-navy is white on .store */
 .btn--gold:hover { background: var(--gold-deep); }
-.btn--ink { background: var(--ink-navy); color: var(--bone); }
+.btn--ink { background: #0B1220; color: #F5F3EE; } /* the dark button stays dark */
 .btn--ink:hover { background: #162034; }
 .btn--ghost { background: transparent; color: inherit; border: 1px solid currentColor; opacity: 0.75; }
 .btn--ghost:hover { opacity: 1; }
@@ -155,6 +167,11 @@ body.store {
 .mfig__cap { display: block; margin-top: var(--s-12); color: var(--ink-45); }
 .sec--navy .mfig__box { background: var(--ink-raise); }
 .sec--navy .mfig__cap { color: var(--on-dark-45); }
+
+/* Owner direction 2026-08-28: every photograph is framed on the white ground.
+   Renders keep their bone-deep stage tiles and stay unframed — the border is
+   what says "photograph". */
+.hero__models, .band, .mfig__box, .card .stage--photo { border: 1px solid var(--bone-line); }
 .mfig--wide .mfig__box { aspect-ratio: 16 / 9; }
 .mfig--tall .mfig__box { aspect-ratio: 3 / 4; }
 .mfig--square .mfig__box { aspect-ratio: 1 / 1; }
@@ -177,8 +194,8 @@ body.store {
   max-width: var(--maxw); margin-inline: auto;
   padding: var(--s-24) var(--gutter);
 }
-.band__label { color: var(--on-dark); }
-.band__cap { color: var(--on-dark-70); }
+.band__label { color: #F5F3EE; }  /* sits ON the photograph, over the scrim */
+.band__cap { color: #ADB3BD; }
 @media (max-width: 767px) {
   /* 56vw is the image's own 16:9, so the band stops cropping instead of going letterbox. */
   .band { height: 56vw; min-height: 0; }
@@ -197,6 +214,7 @@ body.store {
 .strip {
   min-height: 28px; display: flex; align-items: center; justify-content: center;
   background: var(--ink-navy); color: var(--on-dark-45); text-align: center;
+  border-bottom: 1px solid var(--bone-line); /* structure on the all-white page */
   padding: var(--s-4) max(var(--s-16), env(safe-area-inset-right)) var(--s-4) max(var(--s-16), env(safe-area-inset-left));
 }
 @media (min-width: 768px) { .strip { padding-block: 0; } }
@@ -272,8 +290,9 @@ body.store {
   display: flex; flex-direction: column; overflow: hidden;
 }
 .hero::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(180deg, transparent 0%, rgba(11, 18, 32, 0.55) 100%);
+  /* was a bottom-darkening gradient for light copy on the navy hero; the hero
+     is white now and the copy is ink, so the wash is gone */
+  content: none;
 }
 .hero__top {
   flex: 1 1 auto; position: relative; z-index: 1;
@@ -294,7 +313,7 @@ body.store {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%; display: block;
 }
 .hero__models figcaption {
-  position: absolute; left: var(--s-16); bottom: var(--s-16); color: var(--on-dark-45);
+  position: absolute; left: var(--s-16); bottom: var(--s-16); color: #ADB3BD; /* on the photo, not the page */
   text-shadow: 0 1px 2px rgba(0,0,0,.6);
 }
 /* rotation overlays: stacked over the base photograph, faded in one at a time (store.js) */
@@ -309,7 +328,7 @@ body.store {
      opacity. Here it rides its own scrim, full width, in the on-dark-70 register.
      Desktop keeps the original single-line treatment and is untouched. */
   .hero__models figcaption {
-    left: 0; right: 0; bottom: 0; color: var(--on-dark-70);
+    left: 0; right: 0; bottom: 0; color: #ADB3BD; /* rides the photo's own scrim */
     padding: var(--s-32) max(var(--s-16), env(safe-area-inset-left)) var(--s-12);
     background: linear-gradient(180deg, transparent 0%, rgba(11, 18, 32, 0.82) 62%);
     text-shadow: none;
@@ -325,7 +344,7 @@ body.store {
 .hero__spin canvas { cursor: grab; }
 .hero__spin canvas:active { cursor: grabbing; }
 .hero__drag {
-  margin-top: var(--s-16); color: var(--gold); opacity: 0.6; z-index: 1;
+  margin-top: var(--s-16); color: var(--gold-ink); opacity: 0.6; z-index: 1; /* gold-ink: this is text on white */
   transition: opacity var(--dur-state) var(--ease-inout);
 }
 .hero__drag.is-gone { opacity: 0; }
@@ -361,7 +380,7 @@ body.store {
 .sec--major { padding-block: var(--pad-major); }
 .sec--navy { background: var(--ink-navy); color: var(--on-dark); }
 .sec--bone { background: var(--bone); color: var(--ink); }
-.sec--bonedeep { background: var(--bone-deep); color: var(--ink); }
+.sec--bonedeep { background: var(--bone); color: var(--ink); } /* 08-28: the lookbook band joins the white ground */
 
 .sechead { margin-bottom: var(--s-48); }
 .sechead .t-label { display: block; color: var(--ink-45); margin-bottom: var(--s-16); }
@@ -426,9 +445,9 @@ body.store {
   transition: border-color var(--dur-micro) var(--ease-inout), color var(--dur-micro) var(--ease-inout);
 }
 .detail__dot:hover { border-color: var(--on-dark); color: var(--on-dark); }
-.detail__dot.is-active { border-color: var(--gold); color: var(--gold); }
+.detail__dot.is-active { border-color: var(--gold-ink); color: var(--gold-ink); } /* on the light stage now */
 .detail__lead {
-  position: absolute; height: 1px; background: var(--gold); opacity: 0.7; pointer-events: none;
+  position: absolute; height: 1px; background: var(--gold-ink); opacity: 0.7; pointer-events: none;
   transform: translateY(-50%);
 }
 .detail__list { list-style: none; margin: 0; padding: 0; }
@@ -542,7 +561,7 @@ body.store {
 /* --------------------------------------------------------------------------
    Footer
    -------------------------------------------------------------------------- */
-.ftr { background: var(--ink-navy); color: var(--on-dark); padding-block: var(--s-96); }
+.ftr { background: var(--ink-navy); color: var(--on-dark); padding-block: var(--s-96); border-top: 1px solid var(--bone-line); }
 .ftr__cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-32); }
 .ftr__col h2 { color: var(--on-dark-45); margin-bottom: var(--s-16); }
 .ftr__col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-12); }
@@ -599,7 +618,7 @@ body.store {
   border-right: 1px solid var(--bone-line); text-transform: uppercase;
 }
 .seg button:last-child { border-right: 0; }
-.seg button.is-on { background: var(--ink-navy); color: var(--bone); }
+.seg button.is-on { background: #0B1220; color: #F5F3EE; } /* selected chip stays dark */
 
 .pdp__eyebrow { display: block; color: var(--ink-45); }
 .pdp__buy h2 { margin: var(--s-12) 0 var(--s-8); }

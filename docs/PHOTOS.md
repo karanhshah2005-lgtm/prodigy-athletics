@@ -59,14 +59,14 @@ grappling-tournament event frames. **Placement was owner-directed 2026-08-26** (
 landing panels and the Thinkandwin culture section, by named file).
 
 Watermarks (verified per file): three of the seven sources carry the **@photography_bh**
-stamp at lower right — 5867d03f (landing-fight), 98044249 (landing-cage), b41e9d8d
-(culture-tw-cage). No watermark is ever retouched or cloned out, but the slot cover-crops
-do not all preserve it: landing-cage.webp keeps the full stamp, landing-fight.webp clips
-it at the bottom frame edge, and culture-tw-cage.webp's square crop drops it entirely.
-Because the mark does not survive everywhere, both page footers carry an explicit credit
-(index.html: fight-night photography — @photography_bh; culture.html: Thinkandwin frames
-— event photography, @photography_bh and others). The other four sources carry no visible
-mark and their photographers are unknown. **Usage rights are the client's to confirm with
+stamp at lower right — 5867d03f (landing-fight), 98044249 (landing-cage, replaced
+2026-08-29 and removed from assets), b41e9d8d (culture-tw-cage). No watermark is ever
+retouched or cloned out, but the slot cover-crops do not all preserve it:
+landing-fight.webp clips it at the bottom frame edge and culture-tw-cage.webp's square
+crop drops it entirely. Because the mark does not survive everywhere, both page footers
+carry an explicit credit (index.html and culture.html: event photography —
+@photography_bh and others). The other four sources carry no visible mark and their
+photographers are unknown. **Usage rights are the client's to confirm with
 the photographer(s) — TO CONFIRM; listed in DESIGN.md §7 "What the client must supply".**
 
 Honesty rules for this batch (same spirit as the federation-seal rule):
@@ -78,10 +78,11 @@ Honesty rules for this batch (same spirit as the federation-seal rule):
 - Third-party marks: DESIGN.md §7 rule 2 / AGENT-CONTEXT.md forbid **using** the SAU
   crest or the "Invincible Fighting Championships" name in any asset without written SAU
   permission — a rule about the asset, not just the copy. The owner directed these
-  specific frames onto the landing panels 2026-08-26 knowing their content; the
-  promotion's cage banner and floor lettering are legible there, so **that written
-  permission is now an open must-supply item (§7)**, and no frame may ADD such a mark
-  beyond the owner-directed set. The SAU crest itself ships nowhere (culture-tw-armlock
+  specific frames onto the landing panels 2026-08-26 knowing their content; on
+  2026-08-29 the cage-banner frame was replaced (owner direction) by a tournament
+  frame, so the remaining exposure is the promotion's floor lettering in landing
+  panel 1 only. **Written permission for that is still an open must-supply item
+  (§7)**, and no frame may ADD such a mark beyond the owner-directed set. The SAU crest itself ships nowhere (culture-tw-armlock
   was re-cropped to take a referee's SAU shirt out of frame). Unrelated marks (shorts
   sponsors, other clubs' tees, an A&P patch) stay unnamed in all user-facing copy.
 - "The team, photographed / every frame is Prodigy's own" claims were rescoped 2026-08-26
@@ -90,7 +91,8 @@ Honesty rules for this batch (same spirit as the federation-seal rule):
 | file | source (UUID prefix) | content | slot | crop | marks in frame (never named in copy) |
 |---|---|---|---|---|---|
 | landing-fight.webp | 5867d03f | MMA ground control, fist raised | landing panel 1 (→ shop) 1920×1080 | focus_y 0.45 | promotion floor lettering top-left; NEOMMA.COM / H2O sponsor shorts; @photography_bh stamp clipped at bottom edge |
-| landing-cage.webp | 98044249 | athlete in hoodie + headphones shadowboxing alone in the cage | landing panel 2 (→ culture) 1920×1080 | focus_y 0.50 | promotion cage banner, full right edge; full @photography_bh stamp |
+| ~~landing-cage.webp~~ | 98044249 | athlete in hoodie + headphones shadowboxing alone in the cage | REPLACED 2026-08-29 by landing-armlock.webp (owner direction); removed from assets | — | promotion cage banner, full right edge; full @photography_bh stamp |
+| landing-armlock.webp | 03479a44 | black-gi armlock scramble, arena crowd (same source as culture-tw-armlock) | landing panel 2 (→ culture) 1920×1080 | full-width 16:9 window, rows 605–1526 (SAU-crest shirt above frame) | ONE-branded gis; arena crowd |
 | culture-tw-walkout.webp | 296721ca | walkout, gloves up, sparks | Thinkandwin tile 1080² | focus_y 0.30 | fighter-name tee + kanji; promotion name on glove cuff |
 | culture-tw-cage.webp | b41e9d8d | clinch under the lights | Thinkandwin tile 1080² | focus_y 0.33 | club patch on shorts; source stamp @photography_bh cropped out by the square |
 | culture-tw-flat.webp | 061fed50 | b/w — athlete flat on the mat, another competitor reacting | Thinkandwin tile 1080² | focus_y 0.47 | club tee lettering; A&P + USA patches on rashguard |

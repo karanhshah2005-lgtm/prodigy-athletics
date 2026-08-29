@@ -286,11 +286,12 @@ to technical sportswear than fight merch.
    events" only if the client confirms; otherwise say nothing.
 2. **Do not use the SAU crest, name or Invincible Fighting Championships** in any asset
    without written permission from SAU. Never place, recreate or name them in anything we
-   author. Exception on record: on 2026-08-26 the owner directed two third-party event
-   frames onto the landing panels (docs/PHOTOS.md batch 2) in which the promotion's cage
-   banner and floor lettering are legibly in frame; the written SAU permission that
-   covers this is an open must-supply item below, and the exception extends to no other
-   asset. The SAU crest itself ships nowhere.
+   author. Exception on record: on 2026-08-26 the owner directed third-party event
+   frames onto the landing panels (docs/PHOTOS.md batch 2); since 2026-08-29 (cage-banner
+   frame replaced, owner direction) the promotion's floor lettering remains legible in
+   landing panel 1 only. The written SAU permission that covers this is an open
+   must-supply item below, and the exception extends to no other asset. The SAU crest
+   itself ships nowhere.
 3. **Invent no prices and no SKUs.** Zero price points exist for this brand. Use obvious
    placeholders (`$—`) or clearly-labelled sample data.
 4. **Do not confuse the decoys.** `prodigyjj.com` is a US gym in Edmond OK that sells a

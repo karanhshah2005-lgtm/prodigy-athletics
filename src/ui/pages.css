@@ -24,6 +24,11 @@
 .panel { position: relative; display: block; height: 88svh; min-height: 420px; overflow: hidden; text-decoration: none; }
 .panel:focus-visible { outline: 3px solid var(--gold, #E8A33D); outline-offset: -5px; }
 .panel img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Panel 1's frame (landing-banner.webp) carries its subjects high — the puncher's face
+   and the Prodigy cage banner sit in the top third — so on wide viewports the panel's
+   centered cover-crop beheaded both (owner report 2026-09-04). Anchor near the top;
+   the spare rows at the bottom are empty mat. */
+.panel--banner img { object-position: 50% 15%; }
 .panel__bar {
   position: absolute; left: 0; right: 0; bottom: 0;
   display: flex; align-items: baseline; gap: var(--s-16, 16px);

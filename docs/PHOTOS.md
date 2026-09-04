@@ -91,6 +91,30 @@ src/ui/product.js; the shop lead + footer line in shop.html; this section). The
 placeholder frames are the ONLY AI-generated imagery on the site; the landing, Culture
 and every campaign slot on shop.html remain real photography.
 
+## Batch 4 — event posters (2026-09-04) — third-party promotional artwork
+
+Three JPEGs supplied 2026-09-04 (Downloads `att.<id>.jpg`, 792×1224), owner direction:
+"create an events page and add these pictures on it, make it look cool" → events.html
+(poster wall on ink navy; nav link on every page). They are **the promoters' own
+poster artwork, shown whole and as supplied** (WebP q86 at native size — no crop, the
+poster IS the content). Every fact on the page (date, venue, doors, price, site) is
+read off the poster; the page says Prodigy is not the organiser and claims no
+sponsorship, partnership or attendance.
+
+| file | source | poster | promotion marks IN FRAME |
+|---|---|---|---|
+| events-quebec-provincial.webp | att.140LEVJW… | Québec provincial jiu-jitsu championship, 3 Oct 2026, Centre Pierre-Charbonneau, Montréal | **SAU crest + "SUBMISSION ARTS UNITED" wordmark and URL**, FQJJB crest, QR code |
+| events-invincible-v.webp | att.7x_AZKQ… | Invincible V (MMA), 17 Oct 2026, Oshawa Children's Arena | **"INVINCIBLE" title**, @invinciblefight, invinciblefight.com |
+| events-dream-5.webp | att.BNUhny-… | Dream 5 (submission grappling), 18 Oct 2026, Oshawa Children's Arena | "DREAM 5" title, dreamsubmission.com, a sponsor mark on a rashguard |
+
+**§7 rule 2 exposure REOPENED by this batch** (owner direction wins, as on 2026-08-26):
+the SAU crest, the SAU name and the INVINCIBLE title ship legibly in these three
+frames — they are the posters. Written permission from SAU / the promoters to
+reproduce their posters returns to the §7 must-supply list; the posters are not
+cropped, recolored or re-lettered, and nothing in our copy names SAU or claims a
+relationship. To close the exposure again, delete events.html + these three files +
+the nav links (index/culture/shop/product).
+
 ## Batch 2 — event photography (2026-08-26)
 
 Seven JPEGs supplied 2026-08-26 (Downloads, UUID names, 1080–2048 px), plus an eighth

@@ -296,10 +296,14 @@ to technical sportswear than fight merch.
    landing panels (docs/PHOTOS.md batch 2) with the promotion's marks legible; the
    exposure narrowed 2026-08-29 (cage-banner frame replaced) and CLOSED 2026-09-04 —
    the replacement panel-1 frame (landing-banner.webp, owner direction) is cropped
-   above the promotion's floor lettering, so **no legible promotion mark ships in any
-   authored asset**. Keep it closed: no frame may add such a mark, and any re-crop of
-   landing-banner.webp must stay above the floor lettering (docs/PHOTOS.md batch-2
-   table) or the permission question below reopens. The SAU crest itself ships nowhere.
+   above the promotion's floor lettering, so no legible promotion mark shipped in any
+   authored asset. **REOPENED 2026-09-04 (owner direction, events page):** events.html
+   shows three promoter posters whole (docs/PHOTOS.md batch 4) — the SAU crest and
+   name and the INVINCIBLE title are legible because they ARE the posters. Our own
+   copy still names no promoter and claims no relationship; written permission to
+   reproduce the posters is back on the must-supply list. Elsewhere the rule stands:
+   no authored frame may add such a mark, and any re-crop of landing-banner.webp must
+   stay above the floor lettering (docs/PHOTOS.md batch-2 table).
 3. **Invent no prices and no SKUs.** Zero price points exist for this brand. Use obvious
    placeholders (`$—`) or clearly-labelled sample data.
 4. **Do not confuse the decoys.** `prodigyjj.com` is a US gym in Edmond OK that sells a
@@ -314,9 +318,9 @@ docs/PHOTOS.md, but no vector files exist) · exact brand hex/Pantone · license
 (or permission to choose) · real SKUs and prices with currency (CAD/USD) · the full gi
 range (the GENIUS gi in black/white/blue is confirmed by photography) · whether the
 ranked rashguard line is short-sleeve only · **the SAU relationship in writing** ·
-~~written SAU permission for the promotion marks legible in the batch-2 landing
-frames~~ (moot since 2026-09-04 — no legible promotion mark ships; reopens if one
-returns, §7 rule 2) · **a licence from @photography_bh, from the @photography_bji
+**written permission from SAU and the Invincible / Dream promoters to reproduce
+their three event posters on events.html** (docs/PHOTOS.md batch 4 — reopened
+2026-09-04 by owner direction; the batch-2 landing-frame exposure itself stays closed) · **a licence from @photography_bh, from the @photography_bji
 photographer of the 2026-09-04 landing/culture frames, and from the unknown
 photographers of the unmarked batch-2/batch-3 frames, for the event photography** ·
 **written guardian/event consent for the identifiable child and youth competitors in

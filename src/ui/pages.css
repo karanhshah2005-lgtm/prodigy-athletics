@@ -60,12 +60,94 @@ figure.tile { margin: 0; }
 figure.tile:hover .tile__cap { color: inherit; }
 figure.tile:hover .tile__box img { transform: none; }
 
+/* ── events page (events.html, 2026-09-04): a poster wall on ink navy ──────
+   Three promoter posters shown whole (2:3), each lit from behind by a blurred copy
+   of itself, fanned a degree or two on desktop and squared up on hover; a big
+   day numeral + facts read off the poster under each one. Dark page, so the
+   pageshell tokens flip here only. */
+.pageshell--dark { background: var(--ink-navy, #0B1220); color: var(--bone, #F5F3EE); }
+.pageshell--dark .strip { background: #0B1220; color: #737C8A; border-bottom: 1px solid rgba(245, 243, 238, 0.12); }
+.pageshell--dark .psh__link:hover { color: var(--gold, #E8A33D); }
+.pageshell--dark .psh__link.is-current { color: #737C8A; }
+.pageshell--dark .psf { color: #737C8A; border-top: 1px solid rgba(245, 243, 238, 0.08); }
+
+.ev { padding: var(--s-24, 24px) var(--gutter, 40px) var(--s-96, 96px); overflow: hidden; }
+.ev__head { margin: var(--s-40, 40px) 0 var(--s-56, 56px); max-width: 60ch; }
+.ev__eyebrow { display: block; color: var(--gold, #E8A33D); margin-bottom: var(--s-12, 12px); }
+.ev__lead { margin-top: var(--s-16, 16px); color: #A9B0BC; }
+
+.ev__wall { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-48, 48px) var(--s-32, 32px); align-items: start; }
+.ev__card { min-width: 0; opacity: 0; transform: translateY(24px); animation: ev-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) forwards; }
+.ev__card:nth-child(2) { animation-delay: 0.12s; }
+.ev__card:nth-child(3) { animation-delay: 0.24s; }
+@keyframes ev-in { to { opacity: 1; transform: none; } }
+
+.ev__poster {
+  position: relative; display: block; aspect-ratio: 2 / 3; border-radius: 4px;
+  transform: rotate(var(--tilt, 0deg));
+  transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+  outline: none;
+}
+.ev__poster:hover, .ev__poster:focus-visible { transform: rotate(0deg) translateY(-8px) scale(1.02); z-index: 1; }
+.ev__poster:focus-visible .ev__img { box-shadow: 0 0 0 3px var(--gold, #E8A33D), 0 30px 60px rgba(0, 0, 0, 0.55); }
+/* the light behind the poster: the same file, blurred and pushed back */
+.ev__glow {
+  position: absolute; inset: 6%; width: 88%; height: 88%; object-fit: cover;
+  filter: blur(42px) saturate(1.6); opacity: 0.55; transform: translateY(4%) scale(1.04);
+  transition: opacity 0.45s ease;
+}
+.ev__poster:hover .ev__glow { opacity: 0.85; }
+.ev__img {
+  position: relative; display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 4px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.55), 0 2px 0 rgba(255, 255, 255, 0.06) inset;
+  background: #131B2C;
+}
+
+.ev__meta { display: flex; gap: var(--s-20, 20px); margin-top: var(--s-32, 32px); align-items: flex-start; }
+.ev__date { margin: 0; display: flex; flex-direction: column; align-items: center; line-height: 1; flex: 0 0 auto; min-width: 64px; }
+.ev__day { font-family: var(--font-display, 'Barlow Condensed', sans-serif); font-weight: 800; font-size: 64px; letter-spacing: -0.02em; color: var(--bone, #F5F3EE); }
+.ev__mon { color: var(--gold, #E8A33D); margin-top: 2px; }
+.ev__text { min-width: 0; }
+.ev__title { margin: 0; color: var(--bone, #F5F3EE); }
+.ev__where { margin: var(--s-8, 8px) 0 0; color: #A9B0BC; }
+.ev__facts { margin: var(--s-8, 8px) 0 0; color: #737C8A; }
+.ev__count { display: block; margin: var(--s-16, 16px) 0 0; color: var(--gold, #E8A33D); }
+.ev__count:empty { display: none; }
+.ev__link { display: inline-block; margin-top: var(--s-12, 12px); color: var(--bone, #F5F3EE); text-decoration: none; border-bottom: 1px solid rgba(245, 243, 238, 0.35); padding-bottom: 2px; }
+.ev__link:hover { color: var(--gold, #E8A33D); border-bottom-color: currentColor; }
+.ev__card.is-past .ev__count { color: #737C8A; }
+.ev__card.is-past .ev__img { filter: saturate(0.6); }
+.ev__note { margin: var(--s-64, 64px) 0 0; color: #737C8A; max-width: 70ch; }
+
+@media (max-width: 1099px) {
+  .ev__wall { grid-template-columns: repeat(2, 1fr); }
+  .ev__card:nth-child(3) { grid-column: 1 / -1; max-width: calc(50% - 16px); }
+}
+@media (max-width: 767px) {
+  .ev { padding: var(--s-16, 16px) var(--s-16, 16px) var(--s-64, 64px); }
+  .ev__head { margin: var(--s-24, 24px) 0 var(--s-40, 40px); }
+  .ev__wall { grid-template-columns: 1fr; gap: var(--s-56, 56px); }
+  .ev__card:nth-child(3) { grid-column: auto; max-width: none; }
+  .ev__poster { transform: none; }
+  .ev__poster:hover { transform: none; }
+  .ev__day { font-size: 56px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ev__card { opacity: 1; transform: none; animation: none; }
+  .ev__poster, .ev__glow { transition: none; }
+  .ev__poster:hover { transform: rotate(var(--tilt, 0deg)); }
+}
+
 /* ── footer ───────────────────────────────────────────────────────────── */
 .psf { padding: var(--s-48, 48px) var(--gutter, 40px); display: flex; flex-wrap: wrap; gap: var(--s-16, 16px); align-items: baseline; justify-content: space-between; color: var(--ink-45, #7C8492); }
 
 /* ── small screens ────────────────────────────────────────────────────── */
 @media (max-width: 767px) {
   .psh { padding: var(--s-12, 12px) var(--s-16, 16px); gap: var(--s-16, 16px); }
+  /* three nav links + the wordmark no longer fit a 390px row at the h2 size (Events
+     added 2026-09-04) — the wordmark stays on one line, one step smaller, phones only */
+  .psh__nav { gap: var(--s-12, 12px); }
+  .psh__wordmark { white-space: nowrap; font-size: 22px; }
   .panel { height: 72svh; }
   .panel__bar { padding: var(--s-32, 32px) var(--s-16, 16px) var(--s-16, 16px); flex-wrap: wrap; gap: var(--s-8, 8px); }
   .cult { padding: var(--s-16, 16px) var(--s-16, 16px) var(--s-64, 64px); }

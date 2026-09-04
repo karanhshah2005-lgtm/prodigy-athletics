@@ -45,6 +45,11 @@ Repo root: `C:\Users\Jenis\prodigy-athletics` (git, branch master). Windows. Nod
   promotion lettering, watermarks and the SAU crest out of frame — two crops exist
   specifically to exclude SAU marks (scramble: a referee's SAU-crest polo; fence: an
   SAU mat logo). Never re-crop a culture tile without the PHOTOS.md batch-3 table.
+- **events.html (2026-09-04, owner direction)** shows three third-party event posters
+  whole (docs/PHOTOS.md batch 4) — the SAU crest/name and the INVINCIBLE title are
+  legible there because they are the posters, an owner-accepted §7 rule 2 exposure.
+  Never crop, re-letter or recolour a poster; never write copy that names SAU or claims
+  Prodigy organises, sponsors or attends; every fact on the page comes off the poster.
 - Invent NO prices and NO SKUs presented as real. Zero real price points exist. Sample data
   must be visibly labelled as sample data.
 - Invent NO achievements, athlete counts, testimonials, review counts, or "as seen in" logos.

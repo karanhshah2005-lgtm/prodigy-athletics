@@ -61,21 +61,28 @@ the client can look at to imagine the site once they upload their own gi photogr
 **Every product now carries two PLACEHOLDER frames** at
 `assets/photos/products/<id>-{front,back}.webp` (1024², WebP q82, ~1.3 MB for all 38).
 They are **AI-generated stand-ins** (gemini-3.1-flash-image, session scratchpad
-`gen_products.py` + `convert_products.py`, prompts recorded in the script) of a PLAIN
-garment in the product's colour and cut — no logo, no text, no patches, no embroidery —
-laid flat on white in the A&P style. They are not photographs of Prodigy product and
-assert nothing about it: the GENIUS embroidery, the 死 concept art and the Recon/Maple
-artwork exist only in the client's own photography and in the renders. Wherever a
-placeholder appears it is captioned as one (card alt text, product-page figcaptions,
-the shop section lead, the footer legal line, the product page's "About the images").
+`gen_products.py` → `gen_logo.py` → `convert_products.py`, prompts recorded in the
+scripts) of a plain garment in the product's colour and cut, laid flat on white in the
+A&P style, carrying **one mark only: Prodigy's real chest logo** (the geometric
+line-art brain over PROD·I·GY / ATHLETICS), added in a second pass at the owner's
+direction (2026-09-04, "put the prodigy logo on clothing in the thumbnail") from a
+reference crop of the client's own photograph core-ls-worn.webp — white on dark
+garments, black on white ones; left chest on fronts (as worn in that photograph),
+centred between the shoulder blades on backs, left thigh on bottoms. No other text,
+patch or embroidery. They are not photographs of Prodigy product and assert nothing
+else about it: the GENIUS embroidery, "THINK AND WIN", the 死 concept art and the
+Recon/Maple artwork exist only in the client's own photography and in the renders.
+Wherever a placeholder appears it is captioned as one (card alt text, product-page
+figcaptions, the shop section lead, the footer legal line, the product page's "About
+the images").
 
 | id | front / back show |
 |---|---|
-| genius-gi-{black,white,blue} · shi-gi-{black,white} | plain gi jacket + folded trousers in the colourway |
-| core-ls-{black,white} · core-ss-{black,white} | plain long / short sleeve rashguard |
+| genius-gi-{black,white,blue} · shi-gi-{black,white} | gi jacket + folded trousers in the colourway, logo on the left chest / upper back |
+| core-ls-{black,white} · core-ss-{black,white} | long / short sleeve rashguard, logo on the left chest / upper back |
 | recon-{ls,ss,shorts,spats} · recon-set | woodland-camo rashguard / shorts / spats; set = LS + shorts side by side |
 | maple-ls · maple-set | Canadian-flag rashguard (red sleeves, white centre, one leaf); set = LS + red-and-white spats |
-| shorts-black · spats-black · core-set | plain black shorts / spats; set = LS + shorts |
+| shorts-black · spats-black · core-set | black shorts / spats, logo on the left thigh; set = LS + shorts |
 
 **Replacing them:** drop the client's own flat-lay photographs in at the same paths
 (square, front + back, garment on white) and remove the placeholder captions

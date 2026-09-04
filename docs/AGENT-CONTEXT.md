@@ -55,16 +55,18 @@ Repo root: `C:\Users\Jenis\prodigy-athletics` (git, branch master). Windows. Nod
 - Invent NO achievements, athlete counts, testimonials, review counts, or "as seen in" logos.
 - **Placeholder product imagery (2026-09-04, owner direction):** the shop grid and
   product pages (product.html?id=…) carry AI-generated flat-lay-on-white frames at
-  `assets/photos/products/<id>-{front,back}.webp` — plain garments carrying ONLY the
-  client's real chest logo (the geometric brain over PROD·I·GY / ATHLETICS, reproduced
-  from the client's own photograph core-ls-worn.webp at the owner's direction) —
-  standing in for the client's own product photography (docs/PHOTOS.md, "Placeholder
-  product imagery"). They are the ONLY AI imagery on the site and are captioned as
-  placeholders wherever they appear (card alt, product-page figcaptions, shop lead,
-  footer). Never present one as a photograph of Prodigy product; never generate a
-  placeholder that carries the GENIUS embroidery, the 死 art, "THINK AND WIN" or any
-  third-party mark, and never invent a logo variant — the reference crop is the only
-  source. The landing, Culture and every campaign slot stay real photography.
+  `assets/photos/products/<id>-{front,back}.webp` — garments wearing ORIGINAL
+  anime-flavoured CONCEPT DESIGNS plus the client's real chest logo (the geometric brain
+  over PROD·I·GY / ATHLETICS, reproduced from the client's own photograph
+  core-ls-worn.webp via tools/placeholders/logo_ref.png) — standing in for the client's
+  own product photography (docs/PHOTOS.md, "Placeholder product imagery"; pipeline in
+  tools/placeholders/). They are the ONLY AI imagery on the site and are captioned as
+  placeholders + concepts wherever they appear (card alt, product-page figcaptions,
+  shop lead, footer, "About the images"). Never present one as a photograph of Prodigy
+  product or as a design Prodigy sells; never put a named anime/pop-culture character,
+  a lifted image or any third-party mark on one; never invent a logo variant — the
+  reference crop is the only source. The landing, Culture and every campaign slot stay
+  real photography.
 - Palette (PROPOSED): Ink Navy `#0B1220`, Bone White `#F5F3EE`, Prodigy Gold `#E8A33D`,
   neutrals `#1A1A1A` `#5A5A5A` `#DBDBDB`. Body/UI type stack: `Barlow, 'Segoe UI', system-ui,
   sans-serif`. Belt colours (white/blue/purple/brown/black) are a SEPARATE semantic system

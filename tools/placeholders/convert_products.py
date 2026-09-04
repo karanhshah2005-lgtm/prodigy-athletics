@@ -2,7 +2,7 @@
 import os, glob
 from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = os.path.join(HERE, 'gen_logo')   # second pass: plain frames + the Prodigy chest logo (gen_logo.py)
+SRC = os.path.join(HERE, 'gen_design')   # third pass output (gen_design.py); earlier passes: gen, gen_logo
 DST = r'C:\Users\Jenis\prodigy-athletics\assets\photos\products'
 os.makedirs(DST, exist_ok=True)
 n = 0

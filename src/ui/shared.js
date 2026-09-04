@@ -73,7 +73,7 @@ export const productHref = (id) => `product.html?id=${encodeURIComponent(id)}`;
 
 /** Honest alt: says it is a placeholder, says what the frame shows, claims nothing else. */
 export const photoAlt = (p, view) =>
-  `Placeholder image: ${p.name.toLowerCase()} laid flat on white with the Prodigy logo, ${view} view. Stands in for the client's own photograph.`;
+  `Placeholder image: ${p.name.toLowerCase()} laid flat on white in a concept design with the Prodigy logo, ${view} view. Stands in for the client's own photograph.`;
 
 /**
  * One product card, modelled on an albinoandpreto.com collection tile: the flat-lay on

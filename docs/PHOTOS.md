@@ -59,30 +59,34 @@ every product its own page (product.html, modelled on an A&P product page), with
 the client can look at to imagine the site once they upload their own gi photographs.
 
 **Every product now carries two PLACEHOLDER frames** at
-`assets/photos/products/<id>-{front,back}.webp` (1024², WebP q82, ~1.3 MB for all 38).
-They are **AI-generated stand-ins** (gemini-3.1-flash-image, session scratchpad
-`gen_products.py` → `gen_logo.py` → `convert_products.py`, prompts recorded in the
-scripts) of a plain garment in the product's colour and cut, laid flat on white in the
-A&P style, carrying **one mark only: Prodigy's real chest logo** (the geometric
-line-art brain over PROD·I·GY / ATHLETICS), added in a second pass at the owner's
-direction (2026-09-04, "put the prodigy logo on clothing in the thumbnail") from a
-reference crop of the client's own photograph core-ls-worn.webp — white on dark
-garments, black on white ones; left chest on fronts (as worn in that photograph),
-centred between the shoulder blades on backs, left thigh on bottoms. No other text,
-patch or embroidery. They are not photographs of Prodigy product and assert nothing
-else about it: the GENIUS embroidery, "THINK AND WIN", the 死 concept art and the
-Recon/Maple artwork exist only in the client's own photography and in the renders.
-Wherever a placeholder appears it is captioned as one (card alt text, product-page
-figcaptions, the shop section lead, the footer legal line, the product page's "About
-the images").
+`assets/photos/products/<id>-{front,back}.webp` (1024², WebP q82, ~1.4 MB for all 38).
+They are **AI-generated stand-ins** (gemini-3.1-flash-image; pipeline in
+`tools/placeholders/`: `gen_products.py` plain flat-lay → `gen_logo.py` adds the logo →
+`gen_design.py` adds the concept art → `convert_products.py`; every prompt is in the
+scripts) of the garment in the product's colour and cut, laid flat on white in the A&P
+style, wearing **a CONCEPT DESIGN plus Prodigy's real chest logo**. The logo (the
+geometric line-art brain over PROD·I·GY / ATHLETICS) is reproduced from a reference crop
+of the client's own photograph core-ls-worn.webp (`tools/placeholders/logo_ref.png`) —
+white on dark garments, black on white ones; left chest on fronts, between the shoulder
+blades on backs, left thigh on bottoms.
 
-| id | front / back show |
+The concept designs (third pass, owner direction 2026-09-04: "better designs, too
+generic, get creative — anime, pop culture; get rid of the camo") are **original
+anime-flavoured artwork written as prompts, not lifted images** — no named characters, no
+Pinterest rips, no third-party marks — because the site is public and the client will
+show it around. They are sketches of what a line *could* look like so the client can
+imagine his own designs with his logo; the page copy, alt text and the product page's
+"About the images" all say so. They are not photographs of Prodigy product and assert
+nothing about it: the GENIUS embroidery, "THINK AND WIN" and the 死 idea are the
+client's own marks (from batch-1 photography); everything else is invented.
+
+| line | concept (front / back) |
 |---|---|
-| genius-gi-{black,white,blue} · shi-gi-{black,white} | gi jacket + folded trousers in the colourway, logo on the left chest / upper back |
-| core-ls-{black,white} · core-ss-{black,white} | long / short sleeve rashguard, logo on the left chest / upper back |
-| recon-{ls,ss,shorts,spats} · recon-set | woodland-camo rashguard / shorts / spats; set = LS + shorts side by side |
-| maple-ls · maple-set | Canadian-flag rashguard (red sleeves, white centre, one leaf); set = LS + red-and-white spats |
-| shorts-black · spats-black · core-set | black shorts / spats, logo on the left thigh; set = LS + shorts |
+| Genius gi ×3 | embroidered faceted brain with lightning bolts, anime "power-up" speed lines, GENIUS across the back skirt; tonal sleeve graphic; equation on the trousers (echoes the real gi) |
+| Prodigy × 死 gi ×2 | sumi-e ink oni skull with 死 painted over its brow, red hanko seal; small 死 on the chest |
+| Core (LS/SS black & white, shorts, spats, core set) | huge brain back print with radiating manga speed lines + halftone glow + THINK AND WIN; PRODIGY katakana-style down the sleeve / leg |
+| Oni (ex-"Recon Camo", ids still recon-*: LS, SS, shorts, spats, set) | crimson-and-black all-over oni mask, cherry-blossom petals, speed lines, gold accents |
+| Maple (LS, set) | retro-anime red halftone maple leaf inside a red-and-white rising-sun ray burst, thick manga ink outline |
 
 **Replacing them:** drop the client's own flat-lay photographs in at the same paths
 (square, front + back, garment on white) and remove the placeholder captions

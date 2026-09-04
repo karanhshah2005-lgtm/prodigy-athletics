@@ -156,7 +156,7 @@ function render(p) {
 
         <div class="pdp__sec">
           <span class="t-label">About the images</span>
-          <p class="t-body-s">The two photographs are placeholders standing in for Prodigy&rsquo;s own product photography; the logo on them is Prodigy&rsquo;s, reproduced from the team&rsquo;s photographs. The renders are drawn from the pattern file and show the cut, not the fabric.</p>
+          <p class="t-body-s">The two photographs are placeholders standing in for Prodigy&rsquo;s own product photography. The artwork on them is a concept &mdash; a sketch of what the line could look like, not a design Prodigy sells; the logo is Prodigy&rsquo;s, reproduced from the team&rsquo;s photographs. The renders are drawn from the pattern file and show the cut, not the fabric.</p>
         </div>
       </div>
     </div>

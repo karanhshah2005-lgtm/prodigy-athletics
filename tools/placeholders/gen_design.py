@@ -78,7 +78,8 @@ def oni(pid, v, garment):
     else:
         where = ('the mask on the chest of the top and again on the right leg of the bottoms, petals over both' if v == 'front'
                  else 'the mask huge on the back of the top, petals and speed lines on the bottoms')
-    return f'Replace the plain fabric with {art} — {where}. The white Prodigy logo stays crisp on top of the print.'
+    return (f'Replace the fabric print with {art} — {where}. The existing camouflage print must disappear completely: '
+            f'no camouflage shapes may remain anywhere. The white Prodigy logo stays crisp on top of the print.')
 
 def maple(pid, v, garment):
     art = ('a retro-anime all-over print: a giant red halftone-dot maple leaf, a red-and-white rising-sun ray burst behind it, '

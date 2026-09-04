@@ -317,8 +317,11 @@ ranked rashguard line is short-sleeve only · **the SAU relationship in writing*
 ~~written SAU permission for the promotion marks legible in the batch-2 landing
 frames~~ (moot since 2026-09-04 — no legible promotion mark ships; reopens if one
 returns, §7 rule 2) · **a licence from @photography_bh, from the @photography_bji
-photographer of the 2026-09-04 panel-1 frame, and from the unknown photographers of
-the unmarked batch-2 frames, for the event photography** · and confirmation of whether
+photographer of the 2026-09-04 landing/culture frames, and from the unknown
+photographers of the unmarked batch-2/batch-3 frames, for the event photography** ·
+**written guardian/event consent for the identifiable child and youth competitors in
+the batch-3 culture tiles (kids-faceoff, kids-pass, kids-throw, cartwheel —
+docs/PHOTOS.md batch 3, 2026-09-04)** · and confirmation of whether
 they still control `prodigy-athletics.com` and the Shopify tenancy, since both now point
 at another brand. Product photography was supplied 2026-08-24; third-party event
 photography 2026-08-26 (docs/PHOTOS.md).

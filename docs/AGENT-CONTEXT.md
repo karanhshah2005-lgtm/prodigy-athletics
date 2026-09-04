@@ -41,7 +41,10 @@ Repo root: `C:\Users\Jenis\prodigy-athletics` (git, branch master). Windows. Nod
   cropped above the promotion's floor lettering, so no legible promotion mark ships in
   any authored asset (DESIGN.md §7 rule 2). Keep it closed — never re-crop
   landing-banner.webp below its documented window (docs/PHOTOS.md) and add such a
-  mark nowhere.
+  mark nowhere. The batch-3 culture tiles (2026-09-04) are likewise cropped to keep
+  promotion lettering, watermarks and the SAU crest out of frame — two crops exist
+  specifically to exclude SAU marks (scramble: a referee's SAU-crest polo; fence: an
+  SAU mat logo). Never re-crop a culture tile without the PHOTOS.md batch-3 table.
 - Invent NO prices and NO SKUs presented as real. Zero real price points exist. Sample data
   must be visibly labelled as sample data.
 - Invent NO achievements, athlete counts, testimonials, review counts, or "as seen in" logos.

@@ -1,8 +1,9 @@
 # Photography (assets/photos)
 
-Two batches. **Batch 1 (2026-08-24) is the client's own product photography; batch 2
-(2026-08-26) is third-party event photography that shows no Prodigy product.** Every
-honesty claim on the site must be scoped to the right batch.
+Three batches. **Batch 1 (2026-08-24) is the client's own product photography; batches 2
+(2026-08-26) and 3 (2026-09-04) are third-party event photography that shows no Prodigy
+product worn** (batch 3's cage frames show Prodigy's own cage banner). Every honesty
+claim on the site must be scoped to the right batch.
 
 ## Batch 1 — client photography (2026-08-24)
 
@@ -45,7 +46,7 @@ products the photograph genuinely shows (src/data/thumbs.js).
 | thumbs/genius-gi-{black,white,blue}.webp | GENIUS gi worn at competition | shop thumbs |
 | thumbs/core-ls-black.webp, thumbs/spats-black.webp | black LS / spats worn | shop thumbs |
 | ~~landing-shop.webp / landing-culture.webp~~ | no-gi clinch wide · GENIUS skirt + belt | REPLACED 2026-08-26 by batch-2 fight-night panels (below); removed from assets |
-| culture-{studio,competition,details,nogi,taping,blue}.webp | studio seated gi · white gi arena · skirt patch · clinch · taping · blue gi arena | culture.html tiles (1080²) |
+| ~~culture-{studio,competition,details,nogi,taping,blue}.webp~~ | studio seated gi · white gi arena · skirt patch · clinch · taping · blue gi arena | REMOVED 2026-09-04 with the "The line, worn." culture section (owner direction: all culture imagery replaced by batch 3); in git history. Batch-1 photography still ships on shop.html |
 
 Background note: a French federation seal ("SCEAU OFFICIEL / FÉDÉRATION …") appears on
 gym walls in some frames. It is incidental background in the client's own photography —
@@ -106,12 +107,62 @@ Honesty rules for this batch (same spirit as the federation-seal rule):
 | landing-banner.webp | INVINCIBLE145Logo.jpg (2026-09-04) | cage exchange against the fence, **Prodigy Athletics THINK AND WIN banner on the cage post** | landing panel 1 (→ shop) 1920×1080 | full-width 16:9 window, source rows 56–2081 (above the INVINCIBLE floor lettering at ~2210+) | Weyburn Dodge sponsor shorts; @photography_bji stamp below crop (faint corner edge survives) |
 | ~~landing-cage.webp~~ | 98044249 | athlete in hoodie + headphones shadowboxing alone in the cage | REPLACED 2026-08-29 by landing-armlock.webp (owner direction); removed from assets | — | promotion cage banner, full right edge; full @photography_bh stamp |
 | landing-armlock.webp | 03479a44 | black-gi armlock scramble, arena crowd (same source as culture-tw-armlock) | landing panel 2 (→ culture) 1920×1080 | full-width 16:9 window, rows 605–1526 (SAU-crest shirt above frame) | ONE-branded gis; arena crowd |
-| culture-tw-walkout.webp | 296721ca | walkout, gloves up, sparks | Thinkandwin tile 1080² | focus_y 0.30 | fighter-name tee + kanji; promotion name on glove cuff |
-| culture-tw-cage.webp | b41e9d8d | clinch under the lights | Thinkandwin tile 1080² | focus_y 0.33 | club patch on shorts; source stamp @photography_bh cropped out by the square |
-| culture-tw-flat.webp | 061fed50 | b/w — athlete flat on the mat, another competitor reacting | Thinkandwin tile 1080² | focus_y 0.47 | club tee lettering; A&P + USA patches on rashguard |
-| culture-tw-corner.webp | 729ae51a | two athletes mat-side, wave; a purple belt carried past | Thinkandwin tile 1080² | focus_y 0.35 | club tee under one gi |
-| culture-tw-armlock.webp | 03479a44 | black-gi armlock scramble, arena crowd | Thinkandwin tile 1080² | inset (69,548)→(1569,2048), re-cropped 2026-08-26 to exclude a referee's SAU-crest shirt | ONE-branded gis; arena sponsor boards (blurred) |
+| ~~culture-tw-walkout.webp~~ | 296721ca | walkout, gloves up, sparks | REPLACED 2026-09-04 by batch 3; removed from assets | — | fighter-name tee + kanji; promotion name on glove cuff |
+| ~~culture-tw-cage.webp~~ | b41e9d8d | clinch under the lights | REPLACED 2026-09-04 by batch 3; removed from assets | — | club patch on shorts |
+| ~~culture-tw-flat.webp~~ | 061fed50 | b/w — athlete flat on the mat, another competitor reacting | REPLACED 2026-09-04 by batch 3; removed from assets | — | club tee lettering; A&P + USA patches |
+| ~~culture-tw-corner.webp~~ | 729ae51a | two athletes mat-side, wave; a purple belt carried past | REPLACED 2026-09-04 by batch 3; removed from assets | — | club tee under one gi |
+| ~~culture-tw-armlock.webp~~ | 03479a44 | black-gi armlock scramble, arena crowd | REPLACED 2026-09-04 by batch 3; removed from assets (the 2026-08-26 SAU-shirt re-crop is in git history) | — | ONE-branded gis |
 
-Conversion identical to batch 1 (cover-crop → WebP q82); script re-creatable from the
-table above (convert_batch2.py lived in the session scratchpad; the armlock tile uses
-the explicit inset box above instead of a focus_y).
+Conversion identical to batch 1 (cover-crop → WebP q82). Of the batch-2 derivatives only
+landing-armlock.webp still ships (index.html panel 2).
+
+## Batch 3 — event photography (2026-09-04)
+
+Fourteen files supplied 2026-09-04 by named file, owner-directed to REPLACE all culture
+page imagery (both the batch-2 Thinkandwin tiles and the batch-1 "The line, worn."
+grid — that section is gone from the page entirely; batch-1 photography still ships on
+shop.html). Same class as batch 2: third-party fight-night and grappling-tournament
+event frames, NOT the client's own, no Prodigy product worn — though the two INVINCIBLE
+cage frames show **Prodigy's own THINK AND WIN cage banner** (as does landing-banner.webp).
+
+- **Minors:** culture-tw-kids-faceoff, culture-tw-kids-pass, culture-tw-kids-throw and
+  culture-tw-cartwheel show identifiable child/youth competitors. **Written
+  guardian/event consent for commercial use is a §7 must-supply item (new 2026-09-04).**
+- **Promotion marks:** every crop below was placed to keep promotion lettering,
+  watermarks and the SAU crest OUT of frame — the dream3-2_067 crop exists specifically
+  to exclude a referee whose polo carries the SAU crest, and the INVINCIBLE208 crop
+  excludes an SAU mat logo. What remains in-frame and legible is at most: small
+  "INVINCIBLE" text on glove cuffs/shin sleeves (tiles punch/fence/knee — same class as
+  the batch-2 walkout tile, not counted as a legible promotion-mark exposure per the
+  2026-08-29 standard) and partial LED glyphs that do not read as any name (stack:
+  a lone "4"; cartwheel: half a letter). **The §7 rule-2 exposure stays CLOSED. Do not
+  re-crop these tiles without re-checking the source coordinates below.**
+- Club/sponsor marks in frame (GRACIE BARRA and gothic club lettering on gear, TRISTAR
+  shorts, "#ONE"/TEAM ONE kids' gis, SWIFT RESPONSE gi back, Under Armour waistband,
+  Tunisia/Quebec flags on shorts, HoOks) are incidental and stay UNNAMED in all
+  user-facing copy, per the standing rule.
+- Photographer: the DREAM4-* and INVINCIBLE* sources carry the circular
+  **@photography_bji** stamp (reading uncertain, possibly _bjj — same open licence item
+  as the 2026-09-04 landing frame); the crops below exclude it (worst case a faint
+  corner sliver). The dream3-*, DSC*, NMBNMB and SAU_M_ sources carry no visible stamp
+  and their photographers are unknown — licences TO CONFIRM (§7).
+
+| file | source | content | crop (fractions of source, then centered square → 1080²) | notes |
+|---|---|---|---|---|
+| culture-tw-entangle.webp | DREAM4-134Logo.jpg (5336×3558) | no-gi leg-entanglement scramble | (0.250, 0.000)→(0.889, 0.958) | promotion watermark + mat URL text below/left of crop |
+| culture-tw-gripfight.webp | dream3-2_079.jpg (2000×1334) | two-on-one grip fight, low angle, cameraman behind | (0.161, 0.000)→(0.828, 1.000) | no marks |
+| culture-tw-punch.webp | INVINCIBLE123Logo.jpg (3600×2400) | cage exchange, straight punch landing, **Prodigy banner on post** | (0.264, 0.125)→(0.736, 0.833) | crop excludes promotion cage/mat/floor lettering + an SAU-ish mat patch; small promotion text on gloves remains |
+| culture-tw-fence.webp | INVINCIBLE208Logo.jpg (3600×2400) | front headlock at the fence base | (0.217, 0.013)→(0.800, 0.888) | crop excludes SAU mat logo (bottom-left of source) + promotion watermark; small promotion text on gloves/shin sleeve remains |
+| culture-tw-knee.webp | NMBNMB__DSF7526_inv-web.jpg (1080×1620) | knee up in close, cage | (0.000, 0.049)→(1.000, 0.716) | partial Prodigy banner right edge; LED lettering below crop; small promotion text on gloves |
+| culture-tw-backtake.webp | DREAM4-071Logo.jpg (6000×4000) | back take mid-roll | (0.182, 0.000)→(0.848, 1.000) | watermark + stamp outside crop; club lettering on gear |
+| culture-tw-stack.webp | DREAM4-091Logo.jpg (6000×4000) | stack over a bottom strangle (women's match) | (0.383, 0.138)→(0.917, 0.938) | lone LED "4" glyph in frame (no name legible); stamp sliver possible at corner |
+| culture-tw-guillotine.webp | DREAM4-109Logo.jpg (6000×4000) | rolled into a front headlock | (0.158, 0.000)→(0.825, 1.000) | watermark/stamp outside crop; HoOks shorts |
+| culture-tw-scramble.webp | dream3-2_067.jpg (2000×1334) | scramble over a trapped arm, judges' table behind | (0.317, 0.000)→(0.983, 1.000) | **crop exists to exclude the referee's SAU-crest polo (left of window)**; GUARA on gear |
+| culture-tw-cartwheel.webp | dream3-2_055.jpg (2000×1334) | youth cartwheel over a turtled opponent | (0.383, 0.075)→(0.917, 0.875) | LED letter fragment top-left (no name legible); club shorts; minor |
+| culture-tw-kids-faceoff.webp | DSC04869-Enhanced-NR.jpg (1200×1800) | two kids in white gis square off | (0.000, 0.150)→(1.000, 0.817) | minors; club gi lettering |
+| culture-tw-kids-pass.webp | DSC04905-Enhanced-NR.jpg (1694×1129) | kids' gi pass over a turtle | (0.137, 0.000)→(0.803, 1.000) | minors; club patches |
+| culture-tw-takedown.webp | DSC07960-Enhanced-NR.jpg (1600×2400) | low single-leg, referee watching | (0.000, 0.271)→(1.000, 0.938) | no marks |
+| culture-tw-kids-throw.webp | SAU_M_-58.jpg (4000×6000) | kids' blue-gi hip throw | (0.000, 0.317)→(1.000, 0.983) | minors; "#ONE"/TEAM ONE gi branding; no SAU crest in frame despite source filename |
+
+Conversion: convert_culture14.py (session scratchpad, re-creatable from this table) —
+fractional box → centered largest square → 1080² WebP q82.

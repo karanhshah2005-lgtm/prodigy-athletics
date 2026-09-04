@@ -7,7 +7,13 @@ documented and none may be claimed** — see §7 hard rules 1–2.
 Two deliverables, one codebase:
 
 1. **The Studio** (`studio.html`) — upload artwork, see it on real rashguard styles,
-   export mockups and a factory cut sheet.
+   export mockups and a factory cut sheet. **HIDDEN since 2026-09-01 (owner direction):
+   the file stays in the repo and still runs at its own URL, but nothing on the public
+   site links to it.** The storefront's studio section, its nav link and its footer
+   column are commented out in `shop.html` (each carries a re-enable note), and
+   `.ftr__cols` in `src/ui/store.css` is at 3 columns instead of 4 while that footer
+   column is out. `buildStudio()` in `src/ui/store.js` now returns early when its hosts
+   are missing — keep that guard, it is what stops the shop grid dying with it.
 2. **The Storefront** (`shop.html`) — an XMartial-style catalog showing the range.
 3. **The Landing** (`index.html`) — two full-bleed photo panels (albinoandpreto.com model,
    client direction 2026-08-25) linking to the storefront and to Culture.

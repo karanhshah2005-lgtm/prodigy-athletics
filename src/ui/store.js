@@ -142,8 +142,9 @@ const HERO_MARKS = {
 /* ── 2b. hero photo rotation ───────────────────────────────────────────── */
 
 /**
- * The wide action hero figure cycles through the client's photographs; the sunset
- * portrait next to it stays put (client-directed). The clinch frame in shop.html stays
+ * The wide action hero figure — since 2026-09-04 the only hero figure, the blue-SS
+ * portrait beside it is removed (owner direction) — cycles through the client's
+ * photographs. The clinch frame in shop.html stays
  * the base layer — LCP, no-JS and reduced-motion behaviour are exactly the static page —
  * and the overlays only download after the window load event. The overlays are
  * decorative repetition of "the team, photographed", so they carry empty alt +
@@ -341,22 +342,31 @@ function buildGis() {
       </button>`).join('') + `
       <button class="card card--tile gis__item gis__item--featured" type="button" data-id="shi-gi-black">
         ${svgFor({ style: 'gi', baseColor: GI_PRESETS.black, design: 'shi', size: 420 })}
-        <span class="t-label">Prodigy × 死 — studio concept</span>
+        <span class="t-label">Prodigy × 死 — concept</span>
       </button>`;
   } catch (err) {
     console.warn('gi render unavailable', err);
     return;
   }
   $('#gisRow').innerHTML = `<div class="gis__row">${out}</div>
-    <p class="t-caption gis__note">Renders of the cut — the GENIUS embroidery lives in the photographs, not the renders. The 死 gi is a <a class="tlink" href="studio.html">studio</a> concept, not a product Prodigy stocks. The full range <span class="todo">— to confirm</span>.</p>`;
+    <p class="t-caption gis__note">Renders of the cut — the GENIUS embroidery lives in the photographs, not the renders. The 死 gi is a concept, not a product Prodigy stocks. The full range <span class="todo">— to confirm</span>.</p>`;
 }
 
 /* ── 8. section 06 — studio ────────────────────────────────────────────── */
 
+/**
+ * The studio section is commented out of shop.html (hidden 2026-09-01, owner direction),
+ * so both hosts are null. The guard is not defensive dressing: without it this throws,
+ * and the throw takes down the nextFrame callback that queues buildGrid() with it, so
+ * the whole product grid disappears. Keep the guard even after the section returns.
+ */
 function buildStudio() {
-  $('#studioGarment').innerHTML = `<div class="studio__stage">${svgFor({ style: 'ls', baseColor: '#14161b', marks: HERO_MARKS, size: 640 })}</div>`
+  const garmentHost = $('#studioGarment');
+  const sheetHost = $('#studioSheet');
+  if (!garmentHost || !sheetHost) return;
+  garmentHost.innerHTML = `<div class="studio__stage">${svgFor({ style: 'ls', baseColor: '#14161b', marks: HERO_MARKS, size: 640 })}</div>`
     + '<span class="t-label">Live preview</span>';
-  $('#studioSheet').innerHTML = renderCutSheet({ style: 'ls', uid: nextUid(), baseColor: '#14161b' });
+  sheetHost.innerHTML = renderCutSheet({ style: 'ls', uid: nextUid(), baseColor: '#14161b' });
 }
 
 /* ── 9. shop grid ──────────────────────────────────────────────────────── */

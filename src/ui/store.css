@@ -296,7 +296,9 @@ body.store {
 }
 .hero__top {
   flex: 1 1 auto; position: relative; z-index: 1;
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 36%); gap: var(--s-24);
+  /* single column since 2026-09-04: the blue-SS portrait that filled a minmax(0, 36%)
+     second column is removed (owner direction); the action frame carries the hero alone */
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-24);
   align-items: stretch; max-width: var(--maxw); margin-inline: auto; width: 100%;
   padding: var(--s-24) var(--gutter) 0;
 }
@@ -304,7 +306,7 @@ body.store {
   min-width: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; padding-block: var(--s-16);
 }
-/* the shop hero photography pair — the client's own frames (docs/PHOTOS.md batch 1), credited */
+/* the shop hero photograph — the client's own frame (docs/PHOTOS.md batch 1), credited */
 .hero__models {
   position: relative; margin: 0; min-height: 440px; min-width: 0;
   background: var(--ink-raise, #131B2C);
@@ -562,7 +564,9 @@ body.store {
    Footer
    -------------------------------------------------------------------------- */
 .ftr { background: var(--ink-navy); color: var(--on-dark); padding-block: var(--s-96); border-top: 1px solid var(--bone-line); }
-.ftr__cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-32); }
+/* 3 columns, not 4, while the Studio footer column is commented out in shop.html
+   (studio hidden 2026-09-01, owner direction). Back to repeat(4, 1fr) on re-enable. */
+.ftr__cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-32); }
 .ftr__col h2 { color: var(--on-dark-45); margin-bottom: var(--s-16); }
 .ftr__col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-12); }
 .ftr__col a, .ftr__col span { color: var(--on-dark-70); text-decoration: none; }
@@ -798,7 +802,8 @@ body.store {
    -------------------------------------------------------------------------- */
 @media (max-width: 1023px) and (max-height: 560px) {
   .hero { min-height: 0; }
-  .hero__top { grid-template-columns: 1fr 1fr; gap: var(--s-16); align-items: start; }
+  /* was 1fr 1fr for the two-figure hero; one column since the portrait's 2026-09-04 removal */
+  .hero__top { grid-template-columns: 1fr; gap: var(--s-16); align-items: start; }
   .hero__models,
   .hero__models--action {
     aspect-ratio: auto; max-height: none; min-height: 0; height: 46svh;

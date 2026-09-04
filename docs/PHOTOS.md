@@ -32,7 +32,7 @@ products the photograph genuinely shows (src/data/thumbs.js).
 | file | source content | slot |
 |---|---|---|
 | hero-action.webp | no-gi clinch, full gym, crest wall | hero wide |
-| hero-blue-ss.webp | blue scale-print SS, logo + THINK AND WIN | hero portrait (static) |
+| ~~hero-blue-ss.webp~~ | blue scale-print SS, logo + THINK AND WIN | REMOVED 2026-09-04 (owner direction); file deleted from assets, in git history; hero is the wide action frame alone |
 | hero-rot-skirt-patch.webp / -taping.webp / -genius-belt.webp | seated gi w/ skirt brain patch · taping fingers · GENIUS skirt + purple belt | hero wide rotation overlays |
 | band-belt.webp | purple belt tied over black GENIUS gi | editorial band |
 | core-ls-worn.webp | black LS, chest logo (crop) | 01 Core |

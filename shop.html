@@ -31,7 +31,12 @@
       <a class="hdr__link t-nav" href="#shop">Rashguards</a>
       <a class="hdr__link t-nav" href="#sets">Sets</a>
       <a class="hdr__link t-nav" href="culture.html">Culture</a>
+      <!-- STUDIO HIDDEN 2026-09-01 (owner direction). The studio is kept in the repo but
+           nothing on the public site links to it. To bring it back, uncomment this link,
+           the "SECTION 06 — DESIGN YOUR OWN" section below, the two footer links, and the
+           buildStudio() call in src/ui/store.js.
       <a class="hdr__link t-nav" href="studio.html">Design your own</a>
+      -->
     </nav>
     <span class="hdr__spacer"></span>
     <button class="hdr__menu t-nav" type="button" id="hdrMenu" aria-expanded="false" aria-controls="hdrNav">Menu</button>
@@ -44,12 +49,11 @@
   <!-- 2. HERO -->
   <section class="hero" aria-labelledby="heroLine">
     <div class="hero__top">
+      <!-- The static blue scale-print SS portrait that sat beside this frame was removed
+           2026-09-04 (owner direction); hero-blue-ss.webp is deleted (in git history) and
+           .hero__top in store.css is single-column while the hero is one figure. -->
       <figure class="hero__models hero__models--action">
         <img src="assets/photos/hero-action.webp" width="1376" height="768" alt="Two Prodigy athletes locked in a clinch on the mats at their gym, both in the black long sleeve and spats with the Prodigy brain mark" decoding="async" fetchpriority="high">
-        <figcaption class="t-micro">Photograph — Prodigy Athletics</figcaption>
-      </figure>
-      <figure class="hero__models">
-        <img src="assets/photos/hero-blue-ss.webp" width="928" height="1152" alt="A Prodigy athlete in the blue scale-print short sleeve — brain logo and THINK AND WIN across the chest" decoding="async" fetchpriority="high">
         <figcaption class="t-micro">Photograph — Prodigy Athletics</figcaption>
       </figure>
     </div>
@@ -205,7 +209,10 @@
     </div>
   </section>
 
-  <!-- 8. SECTION 06 — DESIGN YOUR OWN -->
+  <!-- 8. SECTION 06 — DESIGN YOUR OWN — HIDDEN 2026-09-01 (owner direction).
+       Kept verbatim, not deleted. Re-enabling means uncommenting this block AND the
+       buildStudio() call in src/ui/store.js, which fills #studioGarment / #studioSheet.
+
   <section class="sec sec--major sec--navy" id="studio" aria-labelledby="studioHead">
     <div class="wrap">
       <div class="sechead reveal">
@@ -223,12 +230,14 @@
       <p class="studio__cta"><a class="btn btn--gold t-button" href="studio.html">Open the studio</a></p>
     </div>
   </section>
+  -->
+
 
   <!-- 9. SHOP -->
   <section class="sec sec--major sec--bone" id="shop" tabindex="-1" aria-labelledby="shopHead">
     <div class="wrap">
       <div class="sechead reveal">
-        <span class="t-label">06 — All</span>
+        <span class="t-label">05 — All</span>
         <h2 class="t-display-l" id="shopHead">The whole range.</h2>
         <p class="t-lead">Product views are renders from our own pattern files. Where the team has photographed a product, the photograph leads; everything else shows its render.</p>
       </div>
@@ -250,8 +259,13 @@
           <li><a class="t-body-s" href="#sets">Sets</a></li>
           <li><a class="t-body-s" href="#shop">Shorts and spats</a></li>
           <li><a class="t-body-s" href="#gis">Gis</a></li>
+          <li><a class="t-body-s" href="#detail">Where the marks sit</a></li>
         </ul>
       </div>
+      <!-- STUDIO COLUMN HIDDEN 2026-09-01 (owner direction). Its third link, "Where the
+           marks sit", moved up into the Shop column above; move it back on re-enable.
+           .ftr__cols in src/ui/store.css also drops from 4 columns to 3 while this is out.
+
       <div class="ftr__col">
         <h2 class="t-label">Studio</h2>
         <ul>
@@ -260,6 +274,7 @@
           <li><a class="t-body-s" href="#detail">Where the marks sit</a></li>
         </ul>
       </div>
+      -->
       <div class="ftr__col">
         <h2 class="t-label">Support</h2>
         <ul>

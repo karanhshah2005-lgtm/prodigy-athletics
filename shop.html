@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Prodigy Athletics — Gis, Rashguards, Sets (Sample Storefront)</title>
-<meta name="description" content="Sample storefront for Prodigy Athletics. Product views are renders from our own pattern files; photography is the team's own. Prices, product copy and specifications are placeholders.">
+<meta name="description" content="Sample storefront for Prodigy Athletics. Product photographs are placeholders; product views are renders from our own pattern files; campaign photography is the team's own. Prices, product copy and specifications are placeholders.">
 <meta name="robots" content="noindex">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="src/brand.css">
@@ -239,8 +239,12 @@
       <div class="sechead reveal">
         <span class="t-label">05 — All</span>
         <h2 class="t-display-l" id="shopHead">The whole range.</h2>
-        <p class="t-lead">Product views are renders from our own pattern files. Where the team has photographed a product, the photograph leads; everything else shows its render.</p>
+        <p class="t-lead">Every product has its own page. The photographs below are placeholders &mdash; each garment flat on white, front and back &mdash; standing in for Prodigy&rsquo;s own product photography until it arrives.</p>
       </div>
+      <!-- Cards are built by src/ui/store.js from src/ui/shared.js cardHtml(): placeholder
+           flat-lay front, back view on hover, name, price — each a link to product.html.
+           Placeholder frames live at assets/photos/products/<id>-<front|back>.webp
+           (docs/PHOTOS.md, "Placeholder product imagery"). -->
       <div class="grid" id="grid"></div>
       <p class="shopall"><button class="tlink t-button" type="button" id="shopAll">Show all</button></p>
     </div>
@@ -299,20 +303,16 @@
       <span class="ftr__mark t-h2">Prodigy Athletics</span>
       <p class="ftr__legal t-micro">
         Sample storefront. Prices, product copy and specifications are placeholders.<br>
-        Checkout is not connected. Product views are browser renders.<br>
-        Photography &mdash; Prodigy Athletics.
+        Checkout is not connected. Product photographs in the range are placeholders; product views are browser renders.<br>
+        Campaign photography &mdash; Prodigy Athletics.
       </p>
     </div>
   </div>
 </footer>
 
-<!-- PDP -->
-<div class="pdp-overlay" id="pdpOverlay">
-  <div class="pdp" id="pdp" role="dialog" aria-modal="true" aria-labelledby="pdpTitle" tabindex="-1">
-    <button class="pdp__close" id="pdpClose" aria-label="Close">&times;</button>
-    <div id="pdpBody"></div>
-  </div>
-</div>
+<!-- Product pages: every product tile links to product.html?id=<id> (src/ui/product.js).
+     The modal PDP that used to live here was replaced 2026-09-04 (owner direction, modelled
+     on albinoandpreto.com product pages). -->
 
 <script type="module" src="src/ui/store.js"></script>
 </body>

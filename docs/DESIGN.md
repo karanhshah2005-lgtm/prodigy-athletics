@@ -323,7 +323,10 @@ photographers of the unmarked batch-2/batch-3 frames, for the event photography*
 the batch-3 culture tiles (kids-faceoff, kids-pass, kids-throw, cartwheel —
 docs/PHOTOS.md batch 3, 2026-09-04)** · and confirmation of whether
 they still control `prodigy-athletics.com` and the Shopify tenancy, since both now point
-at another brand. Product photography was supplied 2026-08-24; third-party event
+at another brand · **flat-lay product photography per SKU, front and back, garment on
+white** (the shop grid and product pages ship AI-generated PLACEHOLDER frames in that
+format since 2026-09-04, captioned as placeholders — docs/PHOTOS.md "Placeholder product
+imagery"; the client's own frames drop in at the same paths). Campaign photography was supplied 2026-08-24; third-party event
 photography 2026-08-26 (docs/PHOTOS.md).
 
 ### What this means for the demo

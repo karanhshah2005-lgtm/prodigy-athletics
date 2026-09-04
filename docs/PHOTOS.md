@@ -43,14 +43,46 @@ products the photograph genuinely shows (src/data/thumbs.js).
 | look-sleeve-sq.webp | tonal gi sleeve graphic (crop) | lookbook square |
 | gis-back.webp | black GENIUS gi, arena, from behind | 04 Gis |
 | gis-d-brain.webp / gis-d-skirt.webp / gis-d-pants.webp | embroidery details | 04 Gis strip |
-| thumbs/genius-gi-{black,white,blue}.webp | GENIUS gi worn at competition | shop thumbs |
-| thumbs/core-ls-black.webp, thumbs/spats-black.webp | black LS / spats worn | shop thumbs |
+| ~~thumbs/genius-gi-{black,white,blue}.webp~~ · ~~thumbs/core-ls-black.webp, thumbs/spats-black.webp~~ | GENIUS gi worn at competition · black LS / spats worn | REMOVED 2026-09-04 (owner direction: shop thumbnails restyled on albinoandpreto.com's flat-lay collection tiles — see "Placeholder product imagery" below); in git history. The same frames still ship as campaign imagery on shop.html |
 | ~~landing-shop.webp / landing-culture.webp~~ | no-gi clinch wide · GENIUS skirt + belt | REPLACED 2026-08-26 by batch-2 fight-night panels (below); removed from assets |
 | ~~culture-{studio,competition,details,nogi,taping,blue}.webp~~ | studio seated gi · white gi arena · skirt patch · clinch · taping · blue gi arena | REMOVED 2026-09-04 with the "The line, worn." culture section (owner direction: all culture imagery replaced by batch 3); in git history. Batch-1 photography still ships on shop.html |
 
 Background note: a French federation seal ("SCEAU OFFICIEL / FÉDÉRATION …") appears on
 gym walls in some frames. It is incidental background in the client's own photography —
 it asserts nothing, and no partnership claim (SAU or otherwise) may be attached to it.
+
+## Placeholder product imagery (2026-09-04) — NOT photography of the product
+
+Owner direction 2026-09-04: restyle the shop thumbnails on albinoandpreto.com's collection
+tiles (flat-lay garment on pure white, square, back view on hover, title + price) and give
+every product its own page (product.html, modelled on an A&P product page), with imagery
+the client can look at to imagine the site once they upload their own gi photographs.
+
+**Every product now carries two PLACEHOLDER frames** at
+`assets/photos/products/<id>-{front,back}.webp` (1024², WebP q82, ~1.3 MB for all 38).
+They are **AI-generated stand-ins** (gemini-3.1-flash-image, session scratchpad
+`gen_products.py` + `convert_products.py`, prompts recorded in the script) of a PLAIN
+garment in the product's colour and cut — no logo, no text, no patches, no embroidery —
+laid flat on white in the A&P style. They are not photographs of Prodigy product and
+assert nothing about it: the GENIUS embroidery, the 死 concept art and the Recon/Maple
+artwork exist only in the client's own photography and in the renders. Wherever a
+placeholder appears it is captioned as one (card alt text, product-page figcaptions,
+the shop section lead, the footer legal line, the product page's "About the images").
+
+| id | front / back show |
+|---|---|
+| genius-gi-{black,white,blue} · shi-gi-{black,white} | plain gi jacket + folded trousers in the colourway |
+| core-ls-{black,white} · core-ss-{black,white} | plain long / short sleeve rashguard |
+| recon-{ls,ss,shorts,spats} · recon-set | woodland-camo rashguard / shorts / spats; set = LS + shorts side by side |
+| maple-ls · maple-set | Canadian-flag rashguard (red sleeves, white centre, one leaf); set = LS + red-and-white spats |
+| shorts-black · spats-black · core-set | plain black shorts / spats; set = LS + shorts |
+
+**Replacing them:** drop the client's own flat-lay photographs in at the same paths
+(square, front + back, garment on white) and remove the placeholder captions
+(`photoAlt`, the "About the images" block and the `PLACEHOLDER` caption in
+src/ui/product.js; the shop lead + footer line in shop.html; this section). The
+placeholder frames are the ONLY AI-generated imagery on the site; the landing, Culture
+and every campaign slot on shop.html remain real photography.
 
 ## Batch 2 — event photography (2026-08-26)
 

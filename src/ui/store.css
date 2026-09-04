@@ -528,14 +528,17 @@ body.store {
 @media (max-width: 999px) { .grid { grid-template-columns: repeat(2, 1fr); column-gap: var(--s-24); row-gap: var(--s-48); } }
 @media (max-width: 639px) { .grid { grid-template-columns: repeat(2, 1fr); column-gap: var(--s-12); row-gap: var(--s-48); } }
 
-.card { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; }
+/* A card is a link to product.html (shared.js cardHtml). Modelled on an albinoandpreto.com
+   collection tile: the flat-lay on white, the back view on hover, name and price — nothing
+   else. The card__photo--back sits on top of the front at opacity 0. */
+.card { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; text-decoration: none; }
 .card .stage svg { width: 80%; }
 .card__title { display: block; margin-top: var(--s-12); }
 .card__price { display: block; margin-top: var(--s-4); color: var(--ink-70); }
 .card:hover .card__title { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
-.card .stage--back { position: absolute; inset: 0; opacity: 0; transition: opacity var(--dur-state) var(--ease-inout); }
+.card .card__photo--back { opacity: 0; transition: opacity var(--dur-state) var(--ease-inout); }
 @media (hover: hover) and (pointer: fine) {
-  .card:hover .stage--back { opacity: 1; }
+  .card:hover .card__photo--back, .card:focus-visible .card__photo--back { opacity: 1; }
 }
 .card--more { display: none; }
 .grid.is-all .card--more { display: block; }
@@ -590,25 +593,26 @@ body.store {
 }
 
 /* --------------------------------------------------------------------------
-   PDP modal
+   Product page (product.html, src/ui/product.js) — modelled on an albinoandpreto.com
+   product page: the gallery stacked on the left, the buy column on the right, plain
+   paragraphs. The .pdp__* names date from the modal this page replaced (2026-09-04).
    -------------------------------------------------------------------------- */
-.pdp-overlay {
-  position: fixed; inset: 0; z-index: 300; background: rgba(11, 18, 32, 0.72);
-  display: none; overflow-y: auto; padding: var(--s-40) var(--s-20);
-}
-.pdp-overlay.is-open { display: block; }
-.pdp {
-  position: relative; background: var(--bone); color: var(--ink);
-  max-width: 1200px; margin-inline: auto; padding: var(--s-48);
-}
-.pdp:focus { outline: none; }
-.pdp__close {
-  position: absolute; top: var(--s-16); right: var(--s-16); width: 40px; height: 40px;
-  display: grid; place-items: center; color: var(--ink); background: none;
-}
+.prod { padding-block: var(--s-40) var(--pad-standard); }
+.prod__missing { padding-block: var(--pad-major); }
+.prod__missing .t-label { display: block; color: var(--ink-45); margin-bottom: var(--s-16); }
+.prod__missing p { margin-top: var(--s-24); }
 .pdp__crumb { color: var(--ink-45); margin-bottom: var(--s-24); }
+.pdp__crumb a { text-decoration: none; }
+.pdp__crumb a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .pdp__grid { display: grid; grid-template-columns: 58% 1fr; gap: var(--s-64); align-items: start; }
-.pdp__gallery .seg { margin-bottom: var(--s-16); }
+/* gallery: every frame a square, stacked; placeholders framed like every other photograph on the page */
+.pdp__gallery { display: grid; gap: var(--s-16); }
+.pdp__shot { margin: 0; min-width: 0; }
+.pdp__shot > img { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: contain; background: #FFFFFF; border: 1px solid var(--bone-line); }
+.pdp__shot figcaption { display: block; margin-top: var(--s-8); color: var(--ink-45); }
+@media (min-width: 1000px) {
+  .pdp__buy { position: sticky; top: calc(var(--hdr-h) + var(--s-24)); }
+}
 .pdp__stage { position: relative; aspect-ratio: 1 / 1; background: var(--bone-deep); display: grid; place-items: center; overflow: hidden; }
 .pdp__stage svg { width: 80%; height: auto; }
 .pdp__stage.is-spin svg { display: none; }
@@ -647,7 +651,6 @@ body.store {
 .pdp__row--4 { grid-template-columns: repeat(4, 1fr); }
 .pdp__sec > .t-body-s { color: var(--ink-70); }
 @media (max-width: 999px) {
-  .pdp { padding: var(--s-24); }
   .pdp__grid { grid-template-columns: 1fr; gap: var(--s-32); }
   .pdp__crops { grid-template-columns: 1fr; }
   .pdp__row, .pdp__row--4 { grid-template-columns: repeat(2, 1fr); gap: var(--s-24); }
@@ -657,46 +660,19 @@ body.store {
 }
 
 /* --------------------------------------------------------------------------
-   PDP on a phone — a full-screen sheet, not a floating card. The second half of the
-   query catches the landscape phone (844x390), which is wider than 767px but has the
-   same problem: a 40/20-padded dialog with a close button that scrolls out of reach.
-
-   Three things were wrong at 390x844: the overlay's 40/20 padding left the dialog
-   350px wide with the storefront visible around it; the close button is absolute
-   inside a 3,456px-tall .pdp, so it scrolled away after the first screen and the
-   only way out was the hardware back gesture or Escape; and Add to cart sat ~920px
-   into the scroll with nothing pinning it.
+   Product page on a phone. The second half of the query catches the landscape phone
+   (844x390), which is wider than 767px but has the same problem: Add to cart a long
+   scroll down a stacked page with nothing pinning it.
    -------------------------------------------------------------------------- */
 @media (max-width: 767px), (max-width: 1023px) and (max-height: 560px) {
-  .pdp-overlay {
-    padding: 0;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-  .pdp {
-    max-width: none; min-height: 100%;
-    padding: var(--s-20);
-    padding-top: calc(var(--s-16) + 44px + env(safe-area-inset-top));
-    /* Clears the fixed action bar below (see .pdp__add). */
-    padding-bottom: calc(var(--s-128) + env(safe-area-inset-bottom));
-  }
-
-  /* Fixed to the viewport, so it is reachable from any scroll position in the sheet.
-     The overlay has no transform, so `fixed` resolves against the viewport. */
-  .pdp__close {
-    position: fixed;
-    top: calc(var(--s-8) + env(safe-area-inset-top));
-    right: calc(var(--s-8) + env(safe-area-inset-right));
-    width: 44px; height: 44px; z-index: 6;
-    background: var(--bone); border: 1px solid var(--bone-line);
-    font-size: 22px; line-height: 1;
-  }
+  /* Clears the fixed action bar below (see .pdp__add). */
+  .prod { padding-bottom: calc(var(--s-128) + env(safe-area-inset-bottom)); }
 
   /* Add to cart becomes a permanent action bar. `position: sticky; bottom: 0` was tried
      first and does nothing here: bottom-sticky only pulls a box UP from a natural
-     position below the fold, and .pdp__add sits near the TOP of a 1,534px buy box, so
+     position below the fold, and .pdp__add sits near the TOP of a tall buy box, so
      it simply scrolled away like any other block. Fixed keeps it on screen for the whole
-     PDP, which is what the phone actually needs.
+     page, which is what the phone actually needs.
      The "checkout is not connected" line rides in the bar — it is honesty copy attached
      to this control and must not be separable from it. */
   .pdp__add {
@@ -727,7 +703,7 @@ body.store {
   .pdp__add { display: flex; align-items: center; gap: var(--s-16); }
   .pdp__add .btn--wide { width: auto; flex: 0 0 240px; height: 44px; }
   .pdp__add .pdp__note { margin-top: 0; }
-  .pdp { padding-bottom: calc(var(--s-96) + env(safe-area-inset-bottom)); }
+  .prod { padding-bottom: calc(var(--s-96) + env(safe-area-inset-bottom)); }
 }
 
 /* --------------------------------------------------------------------------
@@ -785,9 +761,10 @@ body.store {
 .sets__row--dark .sets__item { background: var(--ink-raise, #131B2C); }
 .sets__row--dark .t-label { color: var(--on-dark-45, #737C8A); }
 
-/* photograph thumbnails in the shop grid */
-.card .stage--photo { background: var(--ink-raise, #131B2C); }
-.card .card__photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; display: block; }
+/* placeholder product photographs in the shop grid — flat-lay on white, square, so the
+   stage shows them whole (contain) on a white ground, never cropped */
+.card .stage--photo { background: #FFFFFF; }
+.card .card__photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: 50% 50%; display: block; }
 
 /* --------------------------------------------------------------------------
    Landscape phone (844x390 and friends).

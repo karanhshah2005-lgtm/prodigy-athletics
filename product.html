@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product — Prodigy Athletics (Sample Storefront)</title>
+<meta name="description" content="Sample product page for Prodigy Athletics. Product photographs are placeholders; product views are renders from our own pattern files. Prices, product copy and specifications are placeholders.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="src/brand.css">
+<link rel="stylesheet" href="src/ui/store.css">
+<script type="importmap">
+{"imports":{
+  "three": "./vendor/three/three.module.js",
+  "three/addons/": "./vendor/three/addons/"
+}}
+</script>
+</head>
+<body class="store">
+<a class="skip-link t-button" href="#product">Skip to product</a>
+
+<!-- 0. SAMPLE STRIP — permanent, not dismissible -->
+<div class="strip t-micro" role="note">Sample storefront — prices and product copy are placeholders</div>
+
+<!-- 1. HEADER — the shop header, links pointing back into shop.html -->
+<header class="hdr is-solid" id="hdr">
+  <div class="hdr__inner">
+    <a class="hdr__wordmark t-h2" href="index.html">Prodigy Athletics</a>
+    <nav class="hdr__nav" id="hdrNav" aria-label="Primary">
+      <a class="hdr__link t-nav" href="shop.html#gis">Gis</a>
+      <a class="hdr__link t-nav" href="shop.html#shop">Rashguards</a>
+      <a class="hdr__link t-nav" href="shop.html#sets">Sets</a>
+      <a class="hdr__link t-nav" href="culture.html">Culture</a>
+    </nav>
+    <span class="hdr__spacer"></span>
+    <button class="hdr__menu t-nav" type="button" id="hdrMenu" aria-expanded="false" aria-controls="hdrNav">Menu</button>
+    <a class="hdr__cart t-nav" href="shop.html#shop" id="cartLink">Cart <span id="cartCount">0</span></a>
+  </div>
+</header>
+
+<main id="main">
+  <!-- Filled by src/ui/product.js from ?id=<product id> (src/data/catalog.js):
+       gallery = placeholder flat-lay front + back (assets/photos/products/, docs/PHOTOS.md
+       "Placeholder product imagery"), then the renders of the cut, then the 360 for tops. -->
+  <div class="wrap prod" id="product" tabindex="-1">
+    <noscript>
+      <div class="prod__missing">
+        <span class="t-label">Needs JavaScript</span>
+        <h1 class="t-h1">The product page draws its renders in the browser.</h1>
+        <p class="t-body-s"><a class="tlink" href="shop.html#shop">Back to the whole range</a></p>
+      </div>
+    </noscript>
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="ftr">
+  <div class="wrap">
+    <div class="ftr__cols">
+      <div class="ftr__col">
+        <h2 class="t-label">Shop</h2>
+        <ul>
+          <li><a class="t-body-s" href="shop.html#core">Core</a></li>
+          <li><a class="t-body-s" href="shop.html#sets">Sets</a></li>
+          <li><a class="t-body-s" href="shop.html#shop">Shorts and spats</a></li>
+          <li><a class="t-body-s" href="shop.html#gis">Gis</a></li>
+          <li><a class="t-body-s" href="shop.html#detail">Where the marks sit</a></li>
+        </ul>
+      </div>
+      <div class="ftr__col">
+        <h2 class="t-label">Support</h2>
+        <ul>
+          <li><span class="t-body-s">Sizes XS–4XL</span></li>
+          <li><span class="t-body-s">Shipping <span class="todo">— to confirm</span></span></li>
+          <li><span class="t-body-s">Returns <span class="todo">— to confirm</span></span></li>
+          <li><span class="t-body-s">Contact <span class="todo">— to confirm</span></span></li>
+        </ul>
+      </div>
+      <div class="ftr__col">
+        <h2 class="t-label">Prodigy</h2>
+        <ul>
+          <li><a class="t-body-s" href="culture.html">Culture</a></li>
+          <li><span class="t-body-s">A Canadian kimono company</span></li>
+          <li><span class="t-body-s">Rashguards are the newer line</span></li>
+          <li><span class="t-body-s">Story <span class="todo">— to confirm</span></span></li>
+        </ul>
+      </div>
+    </div>
+    <hr class="ftr__rule">
+    <div class="ftr__bottom">
+      <span class="ftr__mark t-h2">Prodigy Athletics</span>
+      <p class="ftr__legal t-micro">
+        Sample storefront. Prices, product copy and specifications are placeholders.<br>
+        Checkout is not connected. Product photographs are placeholders; product views are browser renders.
+      </p>
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="src/ui/product.js"></script>
+</body>
+</html>

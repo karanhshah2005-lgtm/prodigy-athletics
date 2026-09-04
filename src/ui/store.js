@@ -1,86 +1,26 @@
 /**
- * store.js — Prodigy Athletics storefront (homepage + PDP modal).
+ * store.js — Prodigy Athletics storefront (shop.html).
  *
- * Implements docs/DESIGN-SYSTEM.md: sample strip, sticky header, 360 hero, the six
- * numbered sections, the shop grid and the PDP.
+ * Implements docs/DESIGN-SYSTEM.md: sample strip, sticky header, hero, the numbered
+ * sections and the shop grid. Every product tile is a link to product.html
+ * (src/ui/product.js); the helpers both pages share live in shared.js.
  *
- * Every garment view on this page is produced by src/render/*. Photography is the
- * client's own (docs/PHOTOS.md) and only appears where it genuinely shows the product.
- * Prices are sample data (catalog.js) and specs render "— TO CONFIRM".
+ * Every garment view on this page is produced by src/render/*. Campaign photography is
+ * the client's own (docs/PHOTOS.md); the grid's product photographs are PLACEHOLDERS
+ * (docs/PHOTOS.md, "Placeholder product imagery") until the client's own arrive, and are
+ * captioned as such. Prices are sample data (catalog.js) and specs render "— TO CONFIRM".
  */
 
-import { renderGarment, STYLES, GI_PRESETS } from '../render/garment.js';
-import { PHOTO_THUMBS } from '../data/thumbs.js';
+import { STYLES, GI_PRESETS } from '../render/garment.js';
 import { renderCutSheet } from '../render/panel.js';
-import { artPatternDef, artPatternRef } from '../render/art.js';
-import { makePattern } from '../data/patterns.js';
-import { svgToPng } from '../render/export.js';
-import { PRODUCTS, findProduct, SIZES } from '../data/catalog.js';
+import { PRODUCTS, findProduct } from '../data/catalog.js';
+import { $, $$, esc, nextUid, priceText, REDUCED, svgFor, productSvg, cropSvg, hotspots, cardHtml, productHref, initHeader } from './shared.js';
 
-/* ── helpers ───────────────────────────────────────────────────────────── */
-
-const $ = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
-const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-let UID = 0;
-const nextUid = () => `s${(UID++).toString(36)}`;
+/* ── 1. header: transparent over the hero, solid after 80px (shared.js) ── */
 
-/** Sample prices only. Never render a bare number. */
-const priceText = (p) => `$${p.price.amount} sample`;
-
-const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-/**
- * One garment render. Handles the artwork pattern defs.
- * Every svg gets its own uid so ids never cross-wire between instances.
- */
-function svgFor({ style, view = 'front', baseColor, artSpec = null, artScale = 1, marks = null, size = 1000, detail = 'full', design = null, part = null }) {
-  const uid = nextUid();
-  let defs = '', slots = {};
-  if (artSpec) {
-    const art = makePattern(artSpec, 320);
-    defs = artPatternDef({ uid, art, tile: true, transform: { scale: artScale } });
-    slots = { all: artPatternRef({ uid }) };
-  }
-  return renderGarment({ style, view, baseColor, slots, size, detail, uid, defs, marks, design, part });
-}
-
-const productSvg = (p, opts = {}) => svgFor({
-  style: p.style, baseColor: p.baseColor, artSpec: p.artSpec, artScale: p.artScale,
-  marks: p.marks, design: p.design || null, ...opts,
-});
-
-/**
- * A detail crop is the SAME svg string with its root viewBox rewritten — no second
- * render, no image file, no zoom transform. box = [x, y, w, h] in viewBox units.
- */
-function cropSvg(svg, box) {
-  const cut = svg.indexOf('>');
-  const head = svg.slice(0, cut)
-    .replace(/\swidth="[^"]*"/, '')
-    .replace(/\sheight="[^"]*"/, '')
-    .replace(/viewBox="[^"]*"/, `viewBox="${box.join(' ')}"`);
-  return head + svg.slice(cut);
-}
-
-/* ── 1. header: transparent over the hero, ink-navy after 80px ─────────── */
-
-const hdr = $('#hdr');
-const onScroll = () => hdr.classList.toggle('is-solid', window.scrollY > 80);
-addEventListener('scroll', onScroll, { passive: true });
-onScroll();
-
-const menuBtn = $('#hdrMenu');
-const navEl = $('#hdrNav');
-menuBtn.addEventListener('click', () => {
-  const open = navEl.classList.toggle('is-open');
-  menuBtn.setAttribute('aria-expanded', String(open));
-});
-navEl.addEventListener('click', (e) => {
-  if (e.target.closest('a')) { navEl.classList.remove('is-open'); menuBtn.setAttribute('aria-expanded', 'false'); }
-});
+initHeader();
 
 /* ── 2. hero — the real 360 viewer ─────────────────────────────────────── */
 
@@ -88,7 +28,7 @@ let heroApi = null;
 async function mountHero() {
   const host = $('#heroSpin');
   const hint = $('#heroDrag');
-  if (!host) return;   // hero runs imagery-only; the 360 lives on PDPs and in the Studio
+  if (!host) return;   // hero runs imagery-only; the 360 lives on product pages and in the Studio
   // Without WebGL the host stops being a rotatable control, so it drops back to an image.
   const toStaticImage = () => {
     host.removeAttribute('tabindex');
@@ -192,11 +132,11 @@ function buildCore() {
     const p = findProduct(mount.dataset.core);
     if (!p) continue;
     mount.innerHTML = `
-      <button class="card core__item" type="button" data-id="${esc(p.id)}">
+      <a class="card core__item" href="${productHref(p.id)}" data-id="${esc(p.id)}">
         <span class="stage">${productSvg(p, { size: 620 })}</span>
         <span class="card__title t-card-title">${esc(p.name)}</span>
         <span class="card__price t-price">${priceText(p)}</span>
-      </button>`;
+      </a>`;
   }
 }
 
@@ -219,51 +159,15 @@ function buildSets() {
     { style: 'spats', marks: bottomMk, label: 'Spats', id: 'recon-spats' },
   ];
   $('#setsRow').innerHTML = pieces.map(pc => `
-    <button class="card card--tile sets__item" type="button" data-id="${esc(pc.id)}">
+    <a class="card card--tile sets__item" href="${productHref(pc.id)}" data-id="${esc(pc.id)}">
       <span class="sets__piece" style="${horizonShift(pc.style)}">
         ${svgFor({ style: pc.style, baseColor: set.baseColor, artSpec: set.artSpec, artScale: set.artScale, marks: pc.marks, size: 520 })}
       </span>
       <span class="t-label">${esc(pc.label)}</span>
-    </button>`).join('');
+    </a>`).join('');
 }
 
 /* ── 6. section 04 — the detail ────────────────────────────────────────── */
-
-/**
- * Detail crops. `at` and `crop` are in the rendered viewBox space (0-1000), and the
- * sleeve run sits in a DIFFERENT place on each cut: garment.js draws the long sleeve
- * down to the wrist (SLEEVE_AXIS.ls, mid-run ~y 542) and the short sleeve as a stub at
- * the shoulder (SLEEVE_AXIS.ss, mid-run ~y 363, and much closer to the body). One crop
- * table for both cuts left every short-sleeve product with two empty panels, so the
- * table is per style. Chest and back marks sit at the same height on both cuts.
- */
-function hotspots(style) {
-  const ss = style === 'ss';
-  // sleeve mark centres, mapped through garment.js's RASH_XF (x1.1 about [500,520])
-  const sl = ss ? { x: 731, y: 363 } : { x: 783, y: 542 };
-  const sr = ss ? { x: 269, y: 363 } : { x: 217, y: 542 };
-  // 2.2x crop, 3:2, kept inside the 1000-unit canvas so a crop never opens onto bare ground
-  const fit = (v, span) => Math.round(Math.max(0, Math.min(1000 - span, v)));
-  const box = (cx, cy) => [fit(cx - 226, 453), fit(cy - 151, 302), 453, 302];
-  return [
-    {
-      n: '01', label: 'Chest wordmark', view: 'front', at: [500, 357], crop: box(500, 357),
-      cap: 'Chest lockup, centred on the front body panel. Print height <span class="todo">— to confirm</span>.',
-    },
-    {
-      n: '02', label: 'Left sleeve', view: 'front', at: [sl.x, sl.y], crop: box(sl.x, sl.y),
-      cap: 'PRODIGY runs shoulder to cuff on both sleeves. It reads from inside your own guard.',
-    },
-    {
-      n: '03', label: 'Right sleeve', view: 'front', at: [sr.x, sr.y], crop: box(sr.x, sr.y),
-      cap: 'Mirrored, so the name runs the same direction on either arm.',
-    },
-    {
-      n: '04', label: 'Back print', view: 'back', at: [500, 318], crop: box(500, 318),
-      cap: 'Back print sits between the shoulder blades, clear of the collar seam.',
-    },
-  ];
-}
 
 /** The homepage detail section always shows the long-sleeve render. */
 const HOTSPOTS = hotspots('ls');
@@ -327,7 +231,7 @@ function setSpot(i) {
 /**
  * Section 04 — the gi row is the three GENIUS SKUs (the real product line, catalog.js)
  * rendered from the pattern files, plus the Prodigy × 死 studio concept. Every card is a
- * .card[data-id] button, so the page's delegated handler opens its PDP. The gi jacket
+ * .card[data-id] link to its product page (product.html). The gi jacket
  * only renders if the renderer ships a 'gi' style; otherwise the static placeholder stays.
  */
 function buildGis() {
@@ -336,14 +240,14 @@ function buildGis() {
   let out;
   try {
     out = genius.map(p => `
-      <button class="card card--tile gis__item" type="button" data-id="${esc(p.id)}">
+      <a class="card card--tile gis__item" href="${productHref(p.id)}" data-id="${esc(p.id)}">
         ${productSvg(p, { size: 420 })}
         <span class="t-label">${esc(p.name)}</span>
-      </button>`).join('') + `
-      <button class="card card--tile gis__item gis__item--featured" type="button" data-id="shi-gi-black">
+      </a>`).join('') + `
+      <a class="card card--tile gis__item gis__item--featured" href="${productHref('shi-gi-black')}" data-id="shi-gi-black">
         ${svgFor({ style: 'gi', baseColor: GI_PRESETS.black, design: 'shi', size: 420 })}
         <span class="t-label">Prodigy × 死 — concept</span>
-      </button>`;
+      </a>`;
   } catch (err) {
     console.warn('gi render unavailable', err);
     return;
@@ -371,39 +275,15 @@ function buildStudio() {
 
 /* ── 9. shop grid ──────────────────────────────────────────────────────── */
 
-/**
- * One grid card. `more` holds it behind SHOW ALL; `back` adds the hover slot the shop
- * grid fills lazily (rows inside the PDP have no hover renderer, so they omit it rather
- * than crossfade to an empty stage).
- */
-function cardHtml(p, { more = false, back = true } = {}) {
-  // Thumbnails are the client's own photographs (docs/PHOTOS.md), attached only where
-  // the photo genuinely shows that product; hovering crossfades to the product render.
-  // Products without a photograph fall back to the render alone.
-  const hasThumb = PHOTO_THUMBS.has(p.id);
-  const media = hasThumb
-    ? `<img class="card__photo" src="assets/photos/thumbs/${esc(p.id)}.webp" width="672" height="900" loading="lazy" decoding="async"
-         alt="Team photograph of ${esc(p.name.toLowerCase())}">`
-    : productSvg(p, { size: 316, detail: 'lite' });
-  return `
-    <button class="card${more ? ' card--more' : ''}" type="button" data-id="${esc(p.id)}">
-      <span class="stage${hasThumb ? ' stage--photo' : ''}">
-        ${media}
-        ${back ? `<span class="stage stage--back" data-back="${esc(p.id)}"></span>` : ''}
-      </span>
-      <span class="card__title t-card-title">${esc(p.name)}</span>
-      <span class="card__price t-price">${priceText(p)}</span>
-      ${p.unconfirmed ? `<span class="card__todo t-micro todo">${esc(p.unconfirmed)}</span>` : ''}
-    </button>`;
-}
-
 const PREVIEW = 8;   // blueprint section 09: eight cards, then one text link
 
+/** Product cards are the shared photo card (shared.js): placeholder flat-lay, back view
+ * on hover, name, price — each a link to product.html. */
 function buildGrid() {
   const grid = $('#grid');
   grid.innerHTML = PRODUCTS.map((p, i) => cardHtml(p, { more: i >= PREVIEW })).join('');
 
-  // "SHOP ALL" reveals the rest of the range in place. There is no second page to link
+  // "SHOW ALL" reveals the rest of the range in place. There is no second page to link
   // to, and a link that goes nowhere is not an honest control.
   const all = $('#shopAll');
   if (all) {
@@ -413,273 +293,7 @@ function buildGrid() {
       all.closest('.shopall').remove();
     });
   }
-
-  // back view is rendered on first hover only — one extra render per hovered card
-  grid.addEventListener('pointerenter', (e) => {
-    const c = e.target.closest?.('.card');
-    if (!c) return;
-    const back = $('[data-back]', c);
-    if (back && !back.dataset.done) {
-      back.dataset.done = '1';
-      back.innerHTML = productSvg(findProduct(c.dataset.id), { size: 316, detail: 'lite', view: 'back' });
-    }
-  }, true);
 }
-
-/* ── PDP ───────────────────────────────────────────────────────────────── */
-
-const overlay = $('#pdpOverlay');
-const pdpBody = $('#pdpBody');
-let pdpSpin = null;
-let cart = 0;
-
-const CUT_LABEL = { ls: 'Long sleeve', ss: 'Short sleeve', shorts: 'Shorts', spats: 'Spats', gi: 'Gi' };
-
-function specRows(p) {
-  const gi = p.style === 'gi';
-  const rows = [
-    ['Cut', CUT_LABEL[p.style]],
-    ['Sleeve', p.style === 'ls' ? 'Long' : p.style === 'ss' ? 'Short' : '—'],
-    ['Body colour', 'See colourway'],
-    ['Fabric', null],
-    ['Weight', null],
-    ['Print method', gi ? null : 'Dye sublimation, all-over'],
-    ['Sizes', gi ? 'A0–A6' : 'XS–4XL'],
-  ];
-  return rows.map(([k, v]) => `<tr><th class="t-label" scope="row">${esc(k)}</th><td class="t-body-s">${v ? esc(v) : '<span class="todo">— to confirm</span>'}</td></tr>`).join('');
-}
-
-/**
- * The gallery view survives a variant change and the rest of the session, per the
- * blueprint's "state persists in sessionStorage".
- */
-const VIEW_KEY = 'prodigy.pdpView';
-const readView = () => { try { return sessionStorage.getItem(VIEW_KEY); } catch { return null; } };
-const writeView = (v) => { try { sessionStorage.setItem(VIEW_KEY, v); } catch { /* private mode */ } };
-
-/**
- * Set members: the same artwork line, cut for the other half of the kit. A top proposes
- * the bottoms and a bottom proposes the tops; a line with no counterpart gets no block
- * rather than a padded one.
- */
-const isTopStyle = (style) => style === 'ls' || style === 'ss';
-function setMates(p) {
-  const top = isTopStyle(p.style);
-  return PRODUCTS
-    .filter(x => x.line === p.line && x.id !== p.id && !x.pieces && isTopStyle(x.style) !== top)
-    .slice(0, 3);
-}
-/** The same garment in the other cut, when the range carries one. */
-function cutSwitch(p) {
-  if (!isTopStyle(p.style) || p.pieces) return null;
-  return PRODUCTS.find(x => x.line === p.line && x.id !== p.id && isTopStyle(x.style)
-    && x.baseColor === p.baseColor) || null;
-}
-
-function moreFrom(p, exclude) {
-  const skip = new Set([p.id, ...exclude.map(x => x.id)]);
-  return PRODUCTS.filter(x => x.line === p.line && !skip.has(x.id)).slice(0, 4);
-}
-
-function openPdp(id) {
-  const p = findProduct(id);
-  if (!p) return;
-  if (pdpSpin) { pdpSpin.dispose(); pdpSpin = null; }
-  const isTop = p.style === 'ls' || p.style === 'ss';
-  const canSpin = isTop;
-  let view = readView() || 'front';
-  if (view === 'spin' && !canSpin) view = 'front';
-  const mates = setMates(p);
-  const more = moreFrom(p, mates);
-  const otherCut = cutSwitch(p);
-  const front = productSvg(p, { size: 700 });
-  const back = productSvg(p, { size: 700, view: 'back' });
-
-  const crops = isTop ? hotspots(p.style).slice(0, 3).map(h => `
-    <div>
-      <div class="cropstage">${cropSvg(productSvg(p, { size: 1000, view: h.view }), h.crop)}</div>
-      <span class="t-label">${esc(h.n)} ${esc(h.label)}</span>
-    </div>`).join('') : '';
-
-  pdpBody.innerHTML = `
-    <p class="pdp__crumb t-label">${esc(p.line)} / ${esc(CUT_LABEL[p.style])}</p>
-    <div class="pdp__grid">
-      <div class="pdp__gallery">
-        <div class="seg t-label" id="pdpSeg">
-          <button type="button" data-view="front"${view === 'front' ? ' class="is-on"' : ''}>Front</button>
-          <button type="button" data-view="back"${view === 'back' ? ' class="is-on"' : ''}>Back</button>
-          ${canSpin ? `<button type="button" data-view="spin"${view === 'spin' ? ' class="is-on"' : ''}>360</button>` : ''}
-        </div>
-        <div class="pdp__stage${view === 'spin' ? ' is-spin' : ''}" id="pdpStage">
-          <span data-slot="flat">${view === 'back' ? back : front}</span>
-          <div class="pdp__spin" id="pdpSpinHost"></div>
-        </div>
-        ${canSpin ? '' : '<p class="pdp__note t-caption">The 360 view covers tops only for now.</p>'}
-      </div>
-
-      <div class="pdp__buy">
-        <span class="pdp__eyebrow t-label">${esc(p.eyebrow)}</span>
-        ${p.unconfirmed ? `<span class="pdp__eyebrow t-label todo">${esc(p.unconfirmed)}</span>` : ''}
-        <h2 class="t-h1" id="pdpTitle">${esc(p.name)}</h2>
-        <p class="pdp__price t-body">${priceText(p)}</p>
-
-        ${otherCut ? `
-        <div class="pdp__field">
-          <span class="pdp__flabel t-label">Sleeve</span>
-          <div class="seg t-label" id="pdpCut">
-            <button type="button" data-cut="${esc(p.style === 'ss' ? p.id : otherCut.id)}"${p.style === 'ss' ? ' class="is-on"' : ''}>Short</button>
-            <button type="button" data-cut="${esc(p.style === 'ls' ? p.id : otherCut.id)}"${p.style === 'ls' ? ' class="is-on"' : ''}>Long</button>
-          </div>
-        </div>` : ''}
-
-        <div class="pdp__field">
-          <label class="t-label" for="pdpSize">Size</label>
-          <select id="pdpSize">${(p.sizes || SIZES).map(s => `<option>${s}</option>`).join('')}</select>
-        </div>
-
-        <div class="pdp__add">
-          <button class="btn btn--ink btn--wide t-button" type="button" id="pdpAdd">Add to cart</button>
-          <p class="pdp__note t-caption">Checkout is not connected. This is a sample storefront.</p>
-        </div>
-
-        <div class="pdp__sec">
-          <span class="t-label">Details</span>
-          <p class="t-body-s">${esc(p.copy[0])}</p>
-          <p class="t-body-s">${esc(p.copy[1])}</p>
-        </div>
-
-        <div class="pdp__sec">
-          <span class="t-label">Fit and sizing</span>
-          <p class="t-body-s">${esc(p.copy[2])}</p>
-          <table class="spec">${specRows(p)}</table>
-        </div>
-
-        <div class="pdp__sec">
-          <span class="t-label">Shipping and returns</span>
-          <p class="t-body-s">Sample text. Shipping and returns policy <span class="todo">— to confirm</span>.</p>
-        </div>
-      </div>
-    </div>
-    ${crops ? `<div class="pdp__sec"><span class="t-label">The detail</span><div class="pdp__crops">${crops}</div></div>` : ''}
-    ${mates.length ? `<div class="pdp__sec">
-      <span class="t-label">Complete the set</span>
-      <p class="t-body-s">One artwork, cut for each style.</p>
-      <div class="pdp__row">${mates.map(x => cardHtml(x, { back: false })).join('')}</div>
-    </div>` : ''}
-    ${more.length ? `<div class="pdp__sec">
-      <span class="t-label">More from ${esc(p.line)}</span>
-      <div class="pdp__row pdp__row--4">${more.map(x => cardHtml(x, { back: false })).join('')}</div>
-    </div>` : ''}
-  `;
-
-  const stage = $('#pdpStage');
-  const flat = $('[data-slot="flat"]', stage);
-  if (view === 'spin') mountPdpSpin(p);
-  $('#pdpSeg').addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-view]');
-    if (!b) return;
-    $$('#pdpSeg button').forEach(x => x.classList.toggle('is-on', x === b));
-    const v = b.dataset.view;
-    writeView(v);
-    if (v === 'spin') {
-      stage.classList.add('is-spin');
-      if (!pdpSpin) await mountPdpSpin(p);
-    } else {
-      stage.classList.remove('is-spin');
-      flat.innerHTML = v === 'back' ? back : front;
-    }
-  });
-
-
-  const cutSeg = $('#pdpCut');
-  if (cutSeg) cutSeg.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-cut]');
-    if (b && b.dataset.cut !== p.id) openPdp(b.dataset.cut);
-  });
-
-  $('#pdpAdd').addEventListener('click', () => {
-    cart += 1;
-    $('#cartCount').textContent = String(cart);
-  });
-
-  overlay.classList.add('is-open');
-  document.body.style.overflow = 'hidden';
-  $('#pdp').focus({ preventScroll: true });
-}
-
-/**
- * The product's own flat render, baked onto the 3D garment: front/back × torso and the
- * two sleeves, unshaded (detail:'tex'), so the 360 carries the same artwork and the same
- * marks as the flat views next to it. Data URLs, because the viewer reads these back off
- * a canvas.
- */
-const BAKE_PX = 1024;
-function blobToDataUrl(blob) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(String(r.result));
-    r.onerror = () => rej(r.error || new Error('bake read failed'));
-    r.readAsDataURL(blob);
-  });
-}
-async function bakeProduct(p) {
-  const jobs = [];
-  for (const view of ['front', 'back']) {
-    for (const part of ['torso', 'sleeveL', 'sleeveR']) {
-      const svg = productSvg(p, { view, part, detail: 'tex', size: BAKE_PX });
-      const name = part === 'torso' ? view : `${part}${view === 'front' ? 'Front' : 'Back'}`;
-      jobs.push(svgToPng(svg, { width: BAKE_PX }).then(blobToDataUrl).then((url) => [name, url]));
-    }
-  }
-  return Object.fromEntries(await Promise.all(jobs));
-}
-
-async function mountPdpSpin(p) {
-  const host = $('#pdpSpinHost');
-  try {
-    const mod = await import('../render/spin3d.js');
-    let bake = null;
-    try { bake = await bakeProduct(p); } catch (e) { console.warn('360 bake failed — showing the plain garment', e); }
-    if (!host.isConnected) return;
-    pdpSpin = mod.mountSpin(host, {
-      style: p.style,
-      baseColor: p.baseColor,
-      sleeveColor: null,
-      // With a bake every print — artwork, chest lockup, sleeve run, back word — is
-      // already in the texture. Without one, fall back to the procedural marks.
-      bake,
-      art: bake ? null : (p.artSpec ? makePattern(p.artSpec, 320) : null),
-      artTile: 3,
-      sleeveText: bake ? null : 'PRODIGY',
-      sleeveTextColor: p.marks?.sleeves?.color || '#F5F3EE',
-      chestMark: bake ? null : 'wordmark',
-      chestMarkColor: p.marks?.chest?.color || '#F5F3EE',
-      backText: bake ? null : 'PRODIGY',
-      autoRotate: !REDUCED,
-      speed: 0.6,
-    });
-  } catch (err) {
-    console.warn('spin3d unavailable', err);
-  }
-}
-
-function closePdp() {
-  overlay.classList.remove('is-open');
-  document.body.style.overflow = '';
-  if (pdpSpin) { pdpSpin.dispose(); pdpSpin = null; }
-  pdpBody.innerHTML = '';
-}
-// cards inside COMPLETE THE SET / MORE FROM open their own product in place
-pdpBody.addEventListener('click', (e) => {
-  const c = e.target.closest('.pdp__row .card');
-  if (!c) return;
-  openPdp(c.dataset.id);
-  overlay.scrollTop = 0;
-});
-
-$('#pdpClose').addEventListener('click', closePdp);
-overlay.addEventListener('click', (e) => { if (e.target === overlay) closePdp(); });
-addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('is-open')) closePdp(); });
 
 /* ── entrance: one per section header, fires once ──────────────────────── */
 
@@ -701,13 +315,6 @@ function observeReveals() {
 mountHero();
 buildHeroRotation();
 
-// Every product tile on the page — grid card, gi card, core pair, set piece — opens
-// its PDP through one delegated handler.
-$('#main').addEventListener('click', (e) => {
-  const c = e.target.closest('.card[data-id]');
-  if (c) openPdp(c.dataset.id);
-});
-
 const nextFrame = (fn) => requestAnimationFrame(() => requestAnimationFrame(fn));
 nextFrame(() => {
   buildCore();
@@ -728,7 +335,5 @@ window.__store = {
   products: PRODUCTS.length,
   spot: () => activeSpot,
   setSpot,
-  openPdp,
-  closePdp,
   heroInfo: () => (heroApi && heroApi.getInfo ? heroApi.getInfo() : null),
 };

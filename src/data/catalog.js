@@ -10,7 +10,7 @@
  * {
  *   id        string
  *   name      string   card-title register, UPPERCASE, e.g. "CORE LONG SLEEVE — BLACK"
- *   line      string   merchandising line: 'Genius' | 'Core' | 'Recon Camo' | 'Maple' | 'Sets'
+ *   line      string   merchandising line: 'Genius' | 'Core' | 'Oni' | 'Maple' | 'Sets'
  *   eyebrow   string   mono eyebrow on the PDP, e.g. "CORE — LONG SLEEVE"
  *   style     'ls'|'ss'|'shorts'|'spats'|'gi'     garment.js style key
  *   baseColor hex
@@ -31,7 +31,7 @@ import { BASE_PRESETS, GI_PRESETS } from '../render/garment.js';
 export const SIZES = Object.freeze(['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL']);
 export const GI_SIZES = 'A0–A6';
 
-export const LINES = Object.freeze(['Genius', 'Core', 'Recon Camo', 'Maple', 'Sets']);
+export const LINES = Object.freeze(['Genius', 'Core', 'Oni', 'Maple', 'Sets']);
 
 const BLACK = BASE_PRESETS.black;   // #14161b
 const WHITE = BASE_PRESETS.white;   // #ECECEA
@@ -44,7 +44,9 @@ const price = (amount) => ({ sample: true, amount, currency: null });
 
 /* ── artwork specs ─────────────────────────────────────────────────────── */
 
-const CAMO = { kind: 'camo', colors: ['#2b3a2a', '#4a5b3d', '#7a7d55', '#1c2418'], seed: 11 };
+// Oni (2026-09-04, owner direction: drop the camouflage line) — crimson-on-black seigaiha waves stand in
+// for the oni-mask concept print on the renders; the concept art itself lives in the placeholder frames.
+const ONI = { kind: 'waves', colors: ['#14161b', '#7a0f14', '#b3202a'], seed: 11, bands: 6 };
 const MAPLE = { kind: 'flag-ca', colors: ['#C8102E', '#F7F5F0', '#C8102E'], seed: 4 };
 
 /* ── mark sets ─────────────────────────────────────────────────────────── */
@@ -150,55 +152,55 @@ export const PRODUCTS = Object.freeze([
   core('core-ss-black', 'ss', 'Black', BLACK, 68),
   core('core-ss-white', 'ss', 'White', WHITE, 68),
 
-  /* ── Recon Camo ────────────────────────────────────────────────────── */
+  /* ── Oni ────────────────────────────────────────────────────── */
   {
-    id: 'recon-ls', line: 'Recon Camo', name: 'RECON CAMO LONG SLEEVE',
-    eyebrow: 'RECON CAMO — LONG SLEEVE',
-    style: 'ls', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62,
+    id: 'recon-ls', line: 'Oni', name: 'ONI LONG SLEEVE',
+    eyebrow: 'ONI — LONG SLEEVE',
+    style: 'ls', baseColor: '#14161b', artSpec: ONI, artScale: 0.62,
     marks: topMarks(BONE_MARK), price: price(88), sizes: SIZES, pieces: null,
     copy: [
-      'Recon Camo long sleeve. The camo runs to the seam on every panel, so the pattern carries across the join instead of stopping at a panel edge.',
+      'Oni long sleeve. The mask sits on the chest and the petals run to the seam on every panel, so the print carries across the join instead of stopping at a panel edge.',
       P_SPEC,
       P_FIT,
     ],
   },
   {
-    id: 'recon-ss', line: 'Recon Camo', name: 'RECON CAMO SHORT SLEEVE',
-    eyebrow: 'RECON CAMO — SHORT SLEEVE',
-    style: 'ss', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62,
+    id: 'recon-ss', line: 'Oni', name: 'ONI SHORT SLEEVE',
+    eyebrow: 'ONI — SHORT SLEEVE',
+    style: 'ss', baseColor: '#14161b', artSpec: ONI, artScale: 0.62,
     marks: topMarks(BONE_MARK), price: price(78), sizes: SIZES, pieces: null,
     copy: [
-      'Recon Camo short sleeve. Same file as the long sleeve, re-cut for the shorter pattern piece.',
+      'Oni short sleeve. Same file as the long sleeve, re-cut for the shorter pattern piece.',
       P_SPEC,
       P_FIT,
     ],
   },
   {
-    id: 'recon-shorts', line: 'Recon Camo', name: 'RECON CAMO GRAPPLING SHORTS',
-    eyebrow: 'RECON CAMO — SHORTS',
-    style: 'shorts', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62,
+    id: 'recon-shorts', line: 'Oni', name: 'ONI GRAPPLING SHORTS',
+    eyebrow: 'ONI — SHORTS',
+    style: 'shorts', baseColor: '#14161b', artSpec: ONI, artScale: 0.62,
     marks: bottomMarks(BONE_MARK), price: price(62), sizes: SIZES, pieces: null,
     copy: [
-      'Recon Camo grappling shorts. PRODIGY sits on the waistband and down the right leg.',
+      'Oni grappling shorts. PRODIGY sits on the waistband and down the right leg.',
       P_SPEC,
       P_FIT_BOTTOM,
     ],
   },
   {
-    id: 'recon-spats', line: 'Recon Camo', name: 'RECON CAMO SPATS',
-    eyebrow: 'RECON CAMO — SPATS',
-    style: 'spats', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62,
+    id: 'recon-spats', line: 'Oni', name: 'ONI SPATS',
+    eyebrow: 'ONI — SPATS',
+    style: 'spats', baseColor: '#14161b', artSpec: ONI, artScale: 0.62,
     marks: bottomMarks(BONE_MARK), price: price(68), sizes: SIZES, pieces: null,
     copy: [
-      'Recon Camo spats. Waistband name, one leg print, and the same camo file as the tops.',
+      'Oni spats. Waistband name, one leg print, and the same Oni file as the tops.',
       P_SPEC,
       P_FIT_BOTTOM,
     ],
   },
   {
-    id: 'recon-set', line: 'Sets', name: 'RECON CAMO SET — LONG SLEEVE + SHORTS',
-    eyebrow: 'SETS — RECON CAMO',
-    style: 'ls', baseColor: '#1c2418', artSpec: CAMO, artScale: 0.62,
+    id: 'recon-set', line: 'Sets', name: 'ONI SET — LONG SLEEVE + SHORTS',
+    eyebrow: 'SETS — ONI',
+    style: 'ls', baseColor: '#14161b', artSpec: ONI, artScale: 0.62,
     marks: topMarks(BONE_MARK), price: price(142), sizes: SIZES,
     pieces: [{ style: 'shorts', marks: bottomMarks(BONE_MARK) }],
     copy: [

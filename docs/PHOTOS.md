@@ -53,21 +53,28 @@ it asserts nothing, and no partnership claim (SAU or otherwise) may be attached 
 
 ## Batch 2 — event photography (2026-08-26)
 
-Seven JPEGs supplied 2026-08-26 (Downloads, UUID names, 1080–2048 px). These are NOT
-product photography and are NOT the client's own shots: they are fight-night and
-grappling-tournament event frames. **Placement was owner-directed 2026-08-26** (the two
-landing panels and the Thinkandwin culture section, by named file).
+Seven JPEGs supplied 2026-08-26 (Downloads, UUID names, 1080–2048 px), plus an eighth
+supplied 2026-09-04 by named file (INVINCIBLE145Logo.jpg, 3600×2400 — a filename, not a
+logo; it is a cage-action photograph). These are NOT product photography and are NOT
+the client's own shots: they are fight-night and grappling-tournament event frames.
+**Placement was owner-directed** (2026-08-26: the two landing panels and the
+Thinkandwin culture section, by named file; 2026-09-04: the panel-1 replacement, by
+named file).
 
-Watermarks (verified per file): three of the seven sources carry the **@photography_bh**
-stamp at lower right — 5867d03f (landing-fight), 98044249 (landing-cage, replaced
-2026-08-29 and removed from assets), b41e9d8d (culture-tw-cage). No watermark is ever
-retouched or cloned out, but the slot cover-crops do not all preserve it:
-landing-fight.webp clips it at the bottom frame edge and culture-tw-cage.webp's square
-crop drops it entirely. Because the mark does not survive everywhere, both page footers
-carry an explicit credit (index.html and culture.html: event photography —
-@photography_bh and others). The other four sources carry no visible mark and their
-photographers are unknown. **Usage rights are the client's to confirm with
-the photographer(s) — TO CONFIRM; listed in DESIGN.md §7 "What the client must supply".**
+Watermarks (verified per file): three of the seven 2026-08-26 sources carry the
+**@photography_bh** stamp at lower right — 5867d03f (landing-fight, replaced 2026-09-04
+and removed from assets), 98044249 (landing-cage, replaced 2026-08-29 and removed from
+assets), b41e9d8d (culture-tw-cage). The 2026-09-04 source carries a circular
+photographer's stamp at lower right that reads **@photography_bji** (glyph reading
+uncertain — possibly _bjj; whether this is the same photographer as @photography_bh is
+TO CONFIRM). No watermark is ever retouched or cloned out, but the slot cover-crops do
+not all preserve it: landing-banner.webp's window falls above the stamp (a faint edge
+survives at the corner) and culture-tw-cage.webp's square crop drops its stamp entirely.
+Because the mark does not survive everywhere, both page footers carry an explicit credit
+(index.html and culture.html: event photography — @photography_bh and others). The other
+four 08-26 sources carry no visible mark and their photographers are unknown. **Usage
+rights are the client's to confirm with the photographer(s) — TO CONFIRM; listed in
+DESIGN.md §7 "What the client must supply".**
 
 Honesty rules for this batch (same spirit as the federation-seal rule):
 
@@ -79,18 +86,24 @@ Honesty rules for this batch (same spirit as the federation-seal rule):
   crest or the "Invincible Fighting Championships" name in any asset without written SAU
   permission — a rule about the asset, not just the copy. The owner directed these
   specific frames onto the landing panels 2026-08-26 knowing their content; on
-  2026-08-29 the cage-banner frame was replaced (owner direction) by a tournament
-  frame, so the remaining exposure is the promotion's floor lettering in landing
-  panel 1 only. **Written permission for that is still an open must-supply item
-  (§7)**, and no frame may ADD such a mark beyond the owner-directed set. The SAU crest itself ships nowhere (culture-tw-armlock
-  was re-cropped to take a referee's SAU shirt out of frame). Unrelated marks (shorts
-  sponsors, other clubs' tees, an A&P patch) stay unnamed in all user-facing copy.
+  2026-08-29 the cage-banner frame was replaced (owner direction), leaving the
+  promotion's floor lettering in landing panel 1 only; on 2026-09-04 that panel-1 frame
+  was in turn replaced (owner direction, named file) and the new frame's 16:9 window
+  was deliberately placed ABOVE the INVINCIBLE floor lettering — **as of 2026-09-04 no
+  legible promotion mark ships in any authored asset** (the frame's subject is
+  Prodigy's own cage banner). Keep it that way: no frame may ADD such a mark, and any
+  re-crop of landing-banner.webp must stay above the floor lettering (source rows
+  ~2210+) or the §7 permission question reopens. The SAU crest itself ships nowhere
+  (culture-tw-armlock was re-cropped to take a referee's SAU shirt out of frame).
+  Unrelated marks (shorts sponsors, other clubs' tees, an A&P patch) stay unnamed in
+  all user-facing copy.
 - "The team, photographed / every frame is Prodigy's own" claims were rescoped 2026-08-26
   to the batch-1 section only ("The line, worn.").
 
 | file | source (UUID prefix) | content | slot | crop | marks in frame (never named in copy) |
 |---|---|---|---|---|---|
-| landing-fight.webp | 5867d03f | MMA ground control, fist raised | landing panel 1 (→ shop) 1920×1080 | focus_y 0.45 | promotion floor lettering top-left; NEOMMA.COM / H2O sponsor shorts; @photography_bh stamp clipped at bottom edge |
+| ~~landing-fight.webp~~ | 5867d03f | MMA ground control, fist raised | REPLACED 2026-09-04 by landing-banner.webp (owner direction); removed from assets | — | promotion floor lettering top-left; NEOMMA.COM / H2O sponsor shorts; @photography_bh stamp clipped at bottom edge |
+| landing-banner.webp | INVINCIBLE145Logo.jpg (2026-09-04) | cage exchange against the fence, **Prodigy Athletics THINK AND WIN banner on the cage post** | landing panel 1 (→ shop) 1920×1080 | full-width 16:9 window, source rows 56–2081 (above the INVINCIBLE floor lettering at ~2210+) | Weyburn Dodge sponsor shorts; @photography_bji stamp below crop (faint corner edge survives) |
 | ~~landing-cage.webp~~ | 98044249 | athlete in hoodie + headphones shadowboxing alone in the cage | REPLACED 2026-08-29 by landing-armlock.webp (owner direction); removed from assets | — | promotion cage banner, full right edge; full @photography_bh stamp |
 | landing-armlock.webp | 03479a44 | black-gi armlock scramble, arena crowd (same source as culture-tw-armlock) | landing panel 2 (→ culture) 1920×1080 | full-width 16:9 window, rows 605–1526 (SAU-crest shirt above frame) | ONE-branded gis; arena crowd |
 | culture-tw-walkout.webp | 296721ca | walkout, gloves up, sparks | Thinkandwin tile 1080² | focus_y 0.30 | fighter-name tee + kanji; promotion name on glove cuff |

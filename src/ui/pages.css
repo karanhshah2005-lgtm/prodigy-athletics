@@ -52,6 +52,14 @@
 .tile__cap { display: block; margin-top: var(--s-12, 12px); max-width: 58ch; }
 .tile:hover .tile__cap { color: var(--gold-ink, #8A5A12); }
 
+/* Concept wall (concepts.html, 2026-09-04): thirty placeholder flat-lays, 3-up on
+   desktop, photo-on-white tiles framed like every other photograph on the site. */
+.cult__grid--3 { grid-template-columns: repeat(3, 1fr); gap: var(--s-40, 40px) var(--s-24, 24px); }
+.tile--white .tile__box { background: #FFFFFF; border: 1px solid var(--bone-line, #E6E2DA); }
+.tile__sub { display: block; margin-top: 2px; color: var(--ink-45, #7C8492); text-transform: none; letter-spacing: 0; }
+@media (max-width: 1023px) { .cult__grid--3 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 599px) { .cult__grid--3 { grid-template-columns: 1fr; } }
+
 /* Culture sections (2026-08-26, the Thinkandwin lookbook). figure.tile is the
    non-link tile — no shop deep-link when no product is shown — so both link
    affordances (gold caption + image zoom) are suppressed there. */
